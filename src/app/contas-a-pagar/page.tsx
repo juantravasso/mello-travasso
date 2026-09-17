@@ -10,12 +10,13 @@ import { ContaListItem } from "@/components/contas/ContaListItem";
 import { ContasTabela } from "@/components/contas/ContasTabela";
 import { FiltrosContas } from "@/components/contas/FiltrosContas";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { formatarMoeda } from "@/lib/formatadores";
 
 export default function ContasAPagarPage() {
-  const [filtros, setFiltros] = useState<FiltrosContaFinanceira>({});
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const [filtros, setFiltros] = useState<FiltrosContaFinanceira>({ status: "em_aberto" });
+  const [modalAberto, setModalAberto] = useState(false);
   const { obras } = useObras();
   const { contas, carregando, criarConta } = useContas("pagar", filtros);
   const { usuarioOuPadrao } = useUsuarioAtual();
@@ -31,28 +32,8 @@ export default function ContasAPagarPage() {
     <div className="animar-entrada">
       <PageHeader
         titulo="Contas a Pagar"
-        acao={
-          <Button tamanho="sm" onClick={() => setMostrarForm((v) => !v)}>
-            {mostrarForm ? "Fechar" : "+ Nova conta"}
-          </Button>
-        }
+        acao={<Button tamanho="sm" onClick={() => setModalAberto(true)}>+ Nova conta</Button>}
       />
-
-      {mostrarForm && (
-        <div className="mb-4">
-          <ContaForm
-            tipo="pagar"
-            obras={obras}
-            onCancelar={() => setMostrarForm(false)}
-            onSalvar={async (inputs) => {
-              for (const input of inputs) {
-                await criarConta(input, usuarioOuPadrao);
-              }
-              setMostrarForm(false);
-            }}
-          />
-        </div>
-      )}
 
       <FiltrosContas filtros={filtros} onChange={setFiltros} obras={obras} />
 
@@ -70,6 +51,22 @@ export default function ContasAPagarPage() {
           <ContaListItem key={conta.id} conta={conta} obra={obraPorId.get(conta.obraId)} />
         ))}
       </div>
+
+      {modalAberto && (
+        <Modal titulo="Nova conta a pagar" onFechar={() => setModalAberto(false)}>
+          <ContaForm
+            tipo="pagar"
+            obras={obras}
+            onCancelar={() => setModalAberto(false)}
+            onSalvar={async (inputs) => {
+              for (const input of inputs) {
+                await criarConta(input, usuarioOuPadrao);
+              }
+              setModalAberto(false);
+            }}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

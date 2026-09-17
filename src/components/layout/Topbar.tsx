@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconeSino } from "./icones";
+import { SeletorTema } from "./SeletorTema";
 
 function dataDeHoje(): string {
   return new Date().toLocaleDateString("pt-BR", {
@@ -22,6 +23,7 @@ export function Topbar() {
   return (
     <header className="sticky top-0 z-20 hidden items-center justify-end gap-4 border-b border-border bg-background/80 px-8 py-3 backdrop-blur md:flex">
       <span className="text-sm capitalize text-muted">{data}</span>
+      <SeletorTema />
       <button
         type="button"
         aria-label="Notificações"

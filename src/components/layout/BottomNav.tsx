@@ -7,6 +7,7 @@ import {
   IconeCadastro,
   IconeCaixa,
   IconeCamera,
+  IconeConfig,
   IconeDashboard,
   IconeEntrada,
   IconeSaida,
@@ -19,6 +20,7 @@ const itens = [
   { href: "/contas-a-receber", rotulo: "A Receber", Icone: IconeEntrada },
   { href: "/custos-produtos", rotulo: "Custos", Icone: IconeCaixa },
   { href: "/cadastro", rotulo: "Cadastro", Icone: IconeCadastro, tambem: ["/obras", "/funcionarios"] },
+  { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
 ] as const;
 
 export function BottomNav() {

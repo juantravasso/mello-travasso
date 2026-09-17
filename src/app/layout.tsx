@@ -25,12 +25,24 @@ export const viewport: Viewport = {
   themeColor: "#0b0e14",
 };
 
+const SCRIPT_TEMA_INICIAL = `
+try {
+  var tema = window.localStorage.getItem("mello-travasso:tema");
+  if (tema === "light") document.documentElement.setAttribute("data-theme", "light");
+} catch (e) {}
+`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Aplica o tema salvo antes da primeira pintura, evitando um flash do tema errado. */}
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
+      </head>
       <body className="min-h-full bg-background text-foreground">
         <ShellWrapper>{children}</ShellWrapper>
       </body>

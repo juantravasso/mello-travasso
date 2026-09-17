@@ -4,7 +4,6 @@ import { useState } from "react";
 import type { NovaContaFinanceiraInput, Obra, TipoConta } from "@/types";
 import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -98,7 +97,7 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
   }
 
   return (
-    <Card className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
         <option value="" disabled>
           Selecione a obra
@@ -175,6 +174,6 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
           }}
         />
       )}
-    </Card>
+    </div>
   );
 }

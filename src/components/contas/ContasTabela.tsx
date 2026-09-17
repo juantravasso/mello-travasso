@@ -1,0 +1,75 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import type { ContaFinanceira, Obra } from "@/types";
+import { Card } from "@/components/ui/Card";
+import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import { formatarData, formatarMoeda } from "@/lib/formatadores";
+
+export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[]; obraPorId: Map<string, Obra> }) {
+  const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
+
+  return (
+    <Card className="hidden overflow-x-auto p-0 md:block">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-muted">
+            <th className="w-14 p-3 font-medium" aria-label="Comprovante" />
+            <th className="p-3 font-medium">Fornecedor/Cliente</th>
+            <th className="p-3 font-medium">Obra</th>
+            <th className="p-3 font-medium">Vencimento</th>
+            <th className="p-3 font-medium text-right">Valor</th>
+            <th className="p-3 font-medium">Status</th>
+            <th className="w-10 p-3" aria-label="Ações" />
+          </tr>
+        </thead>
+        <tbody>
+          {contas.map((conta) => (
+            <tr key={conta.id} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
+              <td className="p-3">
+                <button
+                  type="button"
+                  onClick={() => conta.comprovanteUrl && setImagemAmpliada(conta.comprovanteUrl)}
+                  className="block h-10 w-9 overflow-hidden rounded border border-border bg-muted-bg"
+                >
+                  {conta.comprovanteUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={conta.comprovanteUrl} alt="Comprovante" className="h-full w-full object-cover" />
+                  ) : null}
+                </button>
+              </td>
+              <td className="p-3">
+                <Link
+                  href={`/${conta.tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"}/${conta.id}`}
+                  className="font-medium text-foreground hover:text-primary"
+                >
+                  {conta.favorecidoOuCliente}
+                </Link>
+                <p className="truncate text-xs text-muted">{conta.descricao}</p>
+              </td>
+              <td className="p-3 text-muted">{obraPorId.get(conta.obraId)?.nome ?? "—"}</td>
+              <td className="p-3 text-muted">{formatarData(conta.dataVencimento)}</td>
+              <td className="p-3 text-right font-medium">{formatarMoeda(conta.valor)}</td>
+              <td className="p-3">
+                <StatusContaBadge status={conta.status} tipo={conta.tipo} />
+              </td>
+              <td className="p-3 text-right">
+                <Link
+                  href={`/${conta.tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"}/${conta.id}`}
+                  className="text-muted hover:text-primary"
+                  aria-label="Ver detalhe"
+                >
+                  ›
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {imagemAmpliada && <ImageLightbox url={imagemAmpliada} onFechar={() => setImagemAmpliada(null)} />}
+    </Card>
+  );
+}

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CategoriaGasto, DadosExtraidosComprovante, TipoDocumentoCapturado } from "@/types";
+import type { CategoriaContaPagar, DadosExtraidosComprovante, FormaPagamento, TipoDocumentoCapturado } from "@/types";
 import { useObras } from "@/hooks/useObras";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { categorias, rotulosCategoria } from "@/lib/categorias";
+import { categoriasPagar, formasPagamento, rotulosCategoriaPagar, rotulosFormaPagamento } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { cn } from "@/lib/cn";
 
@@ -26,7 +26,9 @@ export interface DadosConfirmados {
   data: string;
   favorecido: string;
   descricao: string;
-  categoria: CategoriaGasto;
+  categoria?: CategoriaContaPagar;
+  formaPagamento?: FormaPagamento;
+  observacao?: string;
   obraId: string;
   itens: ItemNotaFiscalEditavel[];
 }
@@ -61,7 +63,9 @@ export function ConfirmacaoExtracao({
   const [data, setData] = useState(hojeISO());
   const [favorecido, setFavorecido] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaGasto>("material");
+  const [categoria, setCategoria] = useState<CategoriaContaPagar | "">("");
+  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
+  const [observacao, setObservacao] = useState("");
   const [obraId, setObraId] = useState("");
   const [itens, setItens] = useState<ItemNotaFiscalEditavel[]>([]);
   const [camposDestacados, setCamposDestacados] = useState<string[]>([]);
@@ -74,8 +78,8 @@ export function ConfirmacaoExtracao({
     if (dadosExtraidos.favorecido) setFavorecido(dadosExtraidos.favorecido);
     if (dadosExtraidos.descricao) setDescricao(dadosExtraidos.descricao);
     if (dadosExtraidos.categoriaSugerida) {
-      const sugerida = dadosExtraidos.categoriaSugerida as CategoriaGasto;
-      if (categorias.includes(sugerida)) setCategoria(sugerida);
+      const sugerida = dadosExtraidos.categoriaSugerida as CategoriaContaPagar;
+      if (categoriasPagar.includes(sugerida)) setCategoria(sugerida);
     }
     if (dadosExtraidos.itens?.length) {
       setItens(
@@ -121,8 +125,10 @@ export function ConfirmacaoExtracao({
       valor: valorNumerico,
       data,
       favorecido: favorecido.trim(),
-      descricao: descricao.trim() || rotulosCategoria[categoria],
-      categoria,
+      descricao: descricao.trim() || favorecido.trim(),
+      categoria: categoria || undefined,
+      formaPagamento: formaPagamento || undefined,
+      observacao: observacao.trim() || undefined,
       obraId,
       itens: tipoDocumento === "nota_fiscal" ? itens : [],
     });
@@ -195,13 +201,6 @@ export function ConfirmacaoExtracao({
           destaque={camposDestacados.includes("descricao")}
           placeholder="Descrição do gasto"
         />
-        <Select label="Categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaGasto)}>
-          {categorias.map((c) => (
-            <option key={c} value={c}>
-              {rotulosCategoria[c]}
-            </option>
-          ))}
-        </Select>
         <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
           <option value="" disabled>
             Selecione a obra
@@ -212,6 +211,43 @@ export function ConfirmacaoExtracao({
             </option>
           ))}
         </Select>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <p className="text-xs text-muted">
+          Os campos abaixo são opcionais aqui — este lançamento fica marcado como &quot;completar cadastro&quot; e
+          alguém pode preencher com calma depois.
+        </p>
+        <Select
+          label="Categoria (opcional)"
+          value={categoria}
+          onChange={(e) => setCategoria(e.target.value as CategoriaContaPagar)}
+        >
+          <option value="">Completar depois</option>
+          {categoriasPagar.map((c) => (
+            <option key={c} value={c}>
+              {rotulosCategoriaPagar[c]}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Forma de pagamento (opcional)"
+          value={formaPagamento}
+          onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
+        >
+          <option value="">Completar depois</option>
+          {formasPagamento.map((f) => (
+            <option key={f} value={f}>
+              {rotulosFormaPagamento[f]}
+            </option>
+          ))}
+        </Select>
+        <Textarea
+          label="Observação (opcional)"
+          value={observacao}
+          onChange={(e) => setObservacao(e.target.value)}
+          placeholder="Qualquer detalhe adicional sobre este gasto"
+        />
       </Card>
 
       {tipoDocumento === "nota_fiscal" && (

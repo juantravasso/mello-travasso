@@ -49,7 +49,19 @@ const ESQUEMA_EXTRACAO: Anthropic.Tool.InputSchema = {
     descricao: { type: "string", description: "Descrição curta do gasto" },
     categoriaSugerida: {
       type: "string",
-      enum: ["material", "mao_de_obra", "equipamento", "transporte", "servico_terceirizado", "taxa_licenca", "outros"],
+      enum: [
+        "aluguel",
+        "aluguel_equipamentos",
+        "fretes",
+        "pro_labore_marcio",
+        "pro_labore_anderson",
+        "custo_funcionario",
+        "custo_produtos",
+        "manutencao_veiculos",
+        "custo_transporte",
+        "outros_custos_despesas",
+      ],
+      description: "Categoria do gasto (conta a pagar). Se não tiver certeza, prefira 'outros_custos_despesas'.",
     },
     itens: {
       type: "array",

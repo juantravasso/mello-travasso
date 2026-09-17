@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ContaFinanceira, Obra } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { PrecisaCompletarBadge } from "@/components/ui/PrecisaCompletarBadge";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { formatarData, formatarMoeda } from "@/lib/formatadores";
@@ -53,7 +54,10 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
               <td className="p-3 text-muted">{formatarData(conta.dataVencimento)}</td>
               <td className="p-3 text-right font-medium">{formatarMoeda(conta.valor)}</td>
               <td className="p-3">
-                <StatusContaBadge status={conta.status} tipo={conta.tipo} />
+                <div className="flex flex-wrap gap-1.5">
+                  <StatusContaBadge status={conta.status} tipo={conta.tipo} />
+                  {conta.precisaCompletarCadastro && <PrecisaCompletarBadge />}
+                </div>
               </td>
               <td className="p-3 text-right">
                 <Link

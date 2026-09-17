@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ContaFinanceira, Obra } from "@/types";
 import { Card } from "@/components/ui/Card";
+import { PrecisaCompletarBadge } from "@/components/ui/PrecisaCompletarBadge";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { formatarData, formatarMoeda } from "@/lib/formatadores";
@@ -36,6 +37,7 @@ export function ContaListItem({ conta, obra }: { conta: ContaFinanceira; obra?: 
         <span className="font-semibold">{formatarMoeda(conta.valor)}</span>
         <span className="text-xs text-muted">{formatarData(conta.dataVencimento)}</span>
         <StatusContaBadge status={conta.status} tipo={conta.tipo} />
+        {conta.precisaCompletarCadastro && <PrecisaCompletarBadge />}
       </div>
 
       {lightboxAberto && conta.comprovanteUrl && (

@@ -17,6 +17,12 @@ function corresponde(
   if (filtros.obraId && conta.obraId !== filtros.obraId) return false;
   if (filtros.status && conta.status !== filtros.status) return false;
   if (filtros.categoria && conta.categoria !== filtros.categoria) return false;
+  if (
+    filtros.precisaCompletarCadastro !== undefined &&
+    conta.precisaCompletarCadastro !== filtros.precisaCompletarCadastro
+  ) {
+    return false;
+  }
   if (filtros.dataInicio && conta.dataVencimento < filtros.dataInicio) return false;
   if (filtros.dataFim && conta.dataVencimento > filtros.dataFim) return false;
   if (filtros.busca) {
@@ -50,6 +56,18 @@ export class ContasRepositorioLocal implements ContasRepositorio {
     banco.contas.push(novaConta);
     salvarBanco(banco);
     return novaConta;
+  }
+
+  async atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira> {
+    const banco = lerBanco();
+    const indice = banco.contas.findIndex((conta) => conta.id === id);
+    if (indice === -1) throw new Error(`Conta ${id} não encontrada`);
+    const existente = banco.contas[indice];
+    if (!existente) throw new Error(`Conta ${id} não encontrada`);
+    const atualizada: ContaFinanceira = { ...existente, ...input, id, atualizadoEm: agoraISO() };
+    banco.contas[indice] = atualizada;
+    salvarBanco(banco);
+    return atualizada;
   }
 
   async baixar(input: BaixarContaInput): Promise<ContaFinanceira> {

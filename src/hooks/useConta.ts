@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { BaixarContaInput, ContaFinanceira } from "@/types";
+import type { BaixarContaInput, ContaFinanceira, NovaContaFinanceiraInput } from "@/types";
 import { contasRepositorio } from "@/services/data";
 
 export function useConta(id: string) {
@@ -16,14 +16,20 @@ export function useConta(id: string) {
     void recarregar();
   }, [recarregar]);
 
-  const darBaixa = useCallback(
-    async (input: BaixarContaInput) => {
-      const atualizada = await contasRepositorio.baixar(input);
+  const darBaixa = useCallback(async (input: BaixarContaInput) => {
+    const atualizada = await contasRepositorio.baixar(input);
+    setConta(atualizada);
+    return atualizada;
+  }, []);
+
+  const atualizar = useCallback(
+    async (input: Partial<NovaContaFinanceiraInput>) => {
+      const atualizada = await contasRepositorio.atualizar(id, input);
       setConta(atualizada);
       return atualizada;
     },
-    [],
+    [id],
   );
 
-  return { conta, carregando, darBaixa };
+  return { conta, carregando, darBaixa, atualizar };
 }

@@ -61,6 +61,14 @@ export function FiltrosContas({ filtros, onChange, obras }: FiltrosContasProps) 
         value={filtros.dataFim ?? ""}
         onChange={(e) => onChange({ ...filtros, dataFim: e.target.value || undefined })}
       />
+      <label className="flex items-end gap-2 pb-2.5 text-sm text-foreground">
+        <input
+          type="checkbox"
+          checked={filtros.precisaCompletarCadastro === true}
+          onChange={(e) => onChange({ ...filtros, precisaCompletarCadastro: e.target.checked || undefined })}
+        />
+        Só pendentes de completar
+      </label>
     </Card>
   );
 }

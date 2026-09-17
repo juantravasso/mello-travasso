@@ -3,6 +3,7 @@ export * from "./Button";
 export * from "./Card";
 export * from "./Input";
 export * from "./Select";
+export * from "./PrecisaCompletarBadge";
 export * from "./StatusContaBadge";
 export * from "./StatusFuncionarioBadge";
 export * from "./StatusObraBadge";

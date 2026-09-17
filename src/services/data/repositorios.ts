@@ -32,6 +32,7 @@ export interface ContasRepositorio {
   listar(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Promise<ContaFinanceira[]>;
   obterPorId(id: string): Promise<ContaFinanceira | null>;
   criar(input: NovaContaFinanceiraInput): Promise<ContaFinanceira>;
+  atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira>;
   baixar(input: BaixarContaInput): Promise<ContaFinanceira>;
 }
 

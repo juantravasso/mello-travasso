@@ -1,5 +1,5 @@
-import type { CategoriaGasto, ContaFinanceira, Obra } from "@/types";
-import { rotulosCategoria } from "./categorias";
+import type { CategoriaContaPagar, ContaFinanceira, Obra } from "@/types";
+import { rotulosCategoriaPagar } from "./categorias";
 
 export interface PontoFluxoMensal {
   mes: string; // rótulo curto, ex.: "Jan"
@@ -8,7 +8,7 @@ export interface PontoFluxoMensal {
 }
 
 export interface FatiaCategoria {
-  categoria: CategoriaGasto | "outros";
+  categoria: CategoriaContaPagar | "outros";
   rotulo: string;
   valor: number;
 }
@@ -58,8 +58,8 @@ export function gastosPorCategoria(contasPagar: ContaFinanceira[]): FatiaCategor
   }
   return Array.from(totais.entries())
     .map(([categoria, valor]) => ({
-      categoria: categoria as CategoriaGasto,
-      rotulo: rotulosCategoria[categoria as CategoriaGasto] ?? "Outros",
+      categoria: categoria as CategoriaContaPagar,
+      rotulo: rotulosCategoriaPagar[categoria as CategoriaContaPagar] ?? "Outros",
       valor,
     }))
     .sort((a, b) => b.valor - a.valor);

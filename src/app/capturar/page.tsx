@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { extrairDadosDoComprovante } from "@/services/ai/reciboReader";
 import { contasRepositorio, itensProdutoRepositorio } from "@/services/data";
 import { blobParaDataUrl } from "@/lib/imagem";
+import { hojeISO } from "@/lib/formatadores";
 
 type Etapa = "captura" | "revisao";
 
@@ -53,12 +54,18 @@ export default function PaginaCaptura() {
         tipo: "pagar",
         obraId: dados.obraId,
         valor: dados.valor,
+        dataLancamento: hojeISO(),
         dataVencimento: dados.data,
         favorecidoOuCliente: dados.favorecido,
         descricao: dados.descricao,
         categoria: dados.categoria,
+        formaPagamento: dados.formaPagamento,
+        observacao: dados.observacao,
         comprovanteUrl: previewUrl,
         origemNotaFiscal: dados.tipoDocumento === "nota_fiscal",
+        // Lançamentos vindos da câmera ficam sinalizados para alguém revisar
+        // e completar categoria/forma de pagamento/observação com calma depois.
+        precisaCompletarCadastro: true,
       });
 
       if (dados.tipoDocumento === "comprovante") {

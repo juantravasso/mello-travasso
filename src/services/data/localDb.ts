@@ -1,6 +1,6 @@
 import type { ContaFinanceira, Funcionario, ItemProduto, Obra } from "@/types";
 
-const DB_KEY = "mello-travasso:db:v2";
+const DB_KEY = "mello-travasso:db:v3";
 
 interface Banco {
   obras: Obra[];

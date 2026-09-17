@@ -1,9 +1,11 @@
+import { CatalogoRepositorioLocal } from "./catalogoRepositorio.local";
 import { ContasRepositorioLocal } from "./contasRepositorio.local";
 import { FuncionariosRepositorioLocal } from "./funcionariosRepositorio.local";
 import { ItensProdutoRepositorioLocal } from "./itensProdutoRepositorio.local";
 import { semearBancoSeVazio } from "./localDb";
 import { ObrasRepositorioLocal } from "./obrasRepositorio.local";
 import type {
+  CatalogoRepositorio,
   ContasRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
@@ -21,6 +23,7 @@ export const obrasRepositorio: ObrasRepositorio = new ObrasRepositorioLocal();
 export const contasRepositorio: ContasRepositorio = new ContasRepositorioLocal();
 export const itensProdutoRepositorio: ItensProdutoRepositorio = new ItensProdutoRepositorioLocal();
 export const funcionariosRepositorio: FuncionariosRepositorio = new FuncionariosRepositorioLocal();
+export const catalogoRepositorio: CatalogoRepositorio = new CatalogoRepositorioLocal();
 
 export function garantirDadosDeExemplo(): void {
   semearBancoSeVazio({
@@ -32,6 +35,7 @@ export function garantirDadosDeExemplo(): void {
 }
 
 export type {
+  CatalogoRepositorio,
   ContasRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,

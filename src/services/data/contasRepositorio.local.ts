@@ -1,6 +1,8 @@
 import type {
   BaixarContaInput,
+  CancelarContaInput,
   ContaFinanceira,
+  EventoHistorico,
   FiltrosContaFinanceira,
   NovaContaFinanceiraInput,
   TipoConta,
@@ -32,6 +34,10 @@ function corresponde(
   return true;
 }
 
+function evento(tipo: EventoHistorico["tipo"], usuario: string, detalhes?: string): EventoHistorico {
+  return { id: gerarId("evt"), tipo, usuario, data: agoraISO(), detalhes };
+}
+
 export class ContasRepositorioLocal implements ContasRepositorio {
   async listar(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Promise<ContaFinanceira[]> {
     return lerBanco()
@@ -43,13 +49,14 @@ export class ContasRepositorioLocal implements ContasRepositorio {
     return lerBanco().contas.find((conta) => conta.id === id) ?? null;
   }
 
-  async criar(input: NovaContaFinanceiraInput): Promise<ContaFinanceira> {
+  async criar(input: NovaContaFinanceiraInput, usuario: string): Promise<ContaFinanceira> {
     const banco = lerBanco();
     const agora = agoraISO();
     const novaConta: ContaFinanceira = {
       ...input,
       id: gerarId("conta"),
       status: "em_aberto",
+      historico: [evento("criacao", usuario)],
       criadoEm: agora,
       atualizadoEm: agora,
     };
@@ -58,13 +65,26 @@ export class ContasRepositorioLocal implements ContasRepositorio {
     return novaConta;
   }
 
-  async atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira> {
+  async atualizar(
+    id: string,
+    input: Partial<NovaContaFinanceiraInput>,
+    usuario: string,
+  ): Promise<ContaFinanceira> {
     const banco = lerBanco();
     const indice = banco.contas.findIndex((conta) => conta.id === id);
     if (indice === -1) throw new Error(`Conta ${id} não encontrada`);
     const existente = banco.contas[indice];
     if (!existente) throw new Error(`Conta ${id} não encontrada`);
-    const atualizada: ContaFinanceira = { ...existente, ...input, id, atualizadoEm: agoraISO() };
+    if (existente.status !== "em_aberto") {
+      throw new Error("Só é possível editar lançamentos em aberto.");
+    }
+    const atualizada: ContaFinanceira = {
+      ...existente,
+      ...input,
+      id,
+      historico: [...existente.historico, evento("edicao", usuario)],
+      atualizadoEm: agoraISO(),
+    };
     banco.contas[indice] = atualizada;
     salvarBanco(banco);
     return atualizada;
@@ -80,6 +100,28 @@ export class ContasRepositorioLocal implements ContasRepositorio {
       ...existente,
       status: "baixada",
       dataBaixa: input.dataBaixa,
+      historico: [...existente.historico, evento("baixa", input.usuario)],
+      atualizadoEm: agoraISO(),
+    };
+    banco.contas[indice] = atualizada;
+    salvarBanco(banco);
+    return atualizada;
+  }
+
+  async cancelar(input: CancelarContaInput): Promise<ContaFinanceira> {
+    const banco = lerBanco();
+    const indice = banco.contas.findIndex((conta) => conta.id === input.contaId);
+    if (indice === -1) throw new Error(`Conta ${input.contaId} não encontrada`);
+    const existente = banco.contas[indice];
+    if (!existente) throw new Error(`Conta ${input.contaId} não encontrada`);
+    if (existente.status !== "em_aberto") {
+      throw new Error("Só é possível cancelar lançamentos em aberto.");
+    }
+    const atualizada: ContaFinanceira = {
+      ...existente,
+      status: "cancelada",
+      motivoCancelamento: input.motivo,
+      historico: [...existente.historico, evento("cancelamento", input.usuario, input.motivo)],
       atualizadoEm: agoraISO(),
     };
     banco.contas[indice] = atualizada;

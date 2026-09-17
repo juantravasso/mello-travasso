@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { FiltrosContaFinanceira } from "@/types";
 import { useContas } from "@/hooks/useContas";
 import { useObras } from "@/hooks/useObras";
+import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { ContaForm } from "@/components/contas/ContaForm";
 import { ContaListItem } from "@/components/contas/ContaListItem";
 import { ContasTabela } from "@/components/contas/ContasTabela";
@@ -17,6 +18,7 @@ export default function ContasAReceberPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const { obras } = useObras();
   const { contas, carregando, criarConta } = useContas("receber", filtros);
+  const { usuarioOuPadrao } = useUsuarioAtual();
 
   const totalEmAberto = useMemo(
     () => contas.filter((c) => c.status === "em_aberto").reduce((soma, c) => soma + c.valor, 0),
@@ -42,8 +44,10 @@ export default function ContasAReceberPage() {
             tipo="receber"
             obras={obras}
             onCancelar={() => setMostrarForm(false)}
-            onSalvar={async (input) => {
-              await criarConta(input);
+            onSalvar={async (inputs) => {
+              for (const input of inputs) {
+                await criarConta(input, usuarioOuPadrao);
+              }
               setMostrarForm(false);
             }}
           />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ContaFinanceira, Obra } from "@/types";
 import { contasRepositorio, garantirDadosDeExemplo, obrasRepositorio } from "@/services/data";
+import { useCatalogoCategorias } from "@/hooks/useCatalogo";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [contas, setContas] = useState<ContaFinanceira[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const categoriasCatalogo = useCatalogoCategorias("pagar");
 
   useEffect(() => {
     garantirDadosDeExemplo();
@@ -78,7 +80,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <h2 className="mb-2 font-medium">Gastos por categoria</h2>
-          <GastosCategoriaChart dados={gastosPorCategoria(contasPagar)} />
+          <GastosCategoriaChart dados={gastosPorCategoria(contasPagar, categoriasCatalogo.rotuloDe)} />
         </Card>
       </div>
 

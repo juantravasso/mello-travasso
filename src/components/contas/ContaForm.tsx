@@ -1,49 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import type { CategoriaConta, FormaPagamento, NovaContaFinanceiraInput, Obra, TipoConta } from "@/types";
+import type { NovaContaFinanceiraInput, Obra, TipoConta } from "@/types";
+import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import {
-  categoriasPagar,
-  categoriasReceber,
-  formasPagamento,
-  rotulosCategoriaPagar,
-  rotulosCategoriaReceber,
-  rotulosFormaPagamento,
-} from "@/lib/categorias";
+import { ModalParcelamento, type ParcelaEditavel } from "./ModalParcelamento";
+import { SelectComCriacao } from "./SelectComCriacao";
+import { FORMAS_PAGAMENTO_PARCELAVEIS } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { blobParaDataUrl } from "@/lib/imagem";
 
 interface ContaFormProps {
   tipo: TipoConta;
   obras: Obra[];
-  onSalvar: (input: NovaContaFinanceiraInput) => Promise<void>;
+  onSalvar: (inputs: NovaContaFinanceiraInput[]) => Promise<void>;
   onCancelar: () => void;
 }
 
 export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps) {
+  const categoriasCatalogo = useCatalogoCategorias(tipo);
+  const formasCatalogo = useCatalogoFormasPagamento();
+
   const [obraId, setObraId] = useState(obras[0]?.id ?? "");
   const [valor, setValor] = useState("");
   const [dataLancamento, setDataLancamento] = useState(hojeISO());
   const [dataVencimento, setDataVencimento] = useState(hojeISO());
   const [favorecidoOuCliente, setFavorecidoOuCliente] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState<CategoriaConta | "">("");
-  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
+  const [categoria, setCategoria] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("");
   const [observacao, setObservacao] = useState("");
   const [comprovanteUrl, setComprovanteUrl] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [parcelas, setParcelas] = useState<ParcelaEditavel[] | null>(null);
+  const [modalParcelamentoAberto, setModalParcelamentoAberto] = useState(false);
 
-  function rotuloCategoria(c: CategoriaConta): string {
-    return tipo === "pagar"
-      ? rotulosCategoriaPagar[c as keyof typeof rotulosCategoriaPagar]
-      : rotulosCategoriaReceber[c as keyof typeof rotulosCategoriaReceber];
-  }
-
+  const podeParcelar = FORMAS_PAGAMENTO_PARCELAVEIS.includes(formaPagamento);
   const valido = Number(valor) > 0 && obraId !== "" && favorecidoOuCliente.trim() !== "";
 
   async function aoSelecionarComprovante(e: React.ChangeEvent<HTMLInputElement>) {
@@ -51,26 +47,51 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
     if (arquivo) setComprovanteUrl(await blobParaDataUrl(arquivo));
   }
 
+  function aoMudarFormaPagamento(novoValor: string) {
+    setFormaPagamento(novoValor);
+    if (!FORMAS_PAGAMENTO_PARCELAVEIS.includes(novoValor)) setParcelas(null);
+  }
+
+  function base(): Omit<NovaContaFinanceiraInput, "valor" | "dataVencimento" | "descricao" | "parcela" | "parcelamentoId"> {
+    return {
+      tipo,
+      obraId,
+      dataLancamento,
+      favorecidoOuCliente: favorecidoOuCliente.trim(),
+      categoria: categoria || undefined,
+      formaPagamento: formaPagamento || undefined,
+      observacao: observacao.trim() || undefined,
+      comprovanteUrl,
+      origemNotaFiscal: false,
+      precisaCompletarCadastro: false,
+    };
+  }
+
   async function submeter() {
     if (!valido) return;
     setSalvando(true);
     try {
-      await onSalvar({
-        tipo,
-        obraId,
-        valor: Number(valor),
-        dataLancamento,
-        dataVencimento,
-        favorecidoOuCliente: favorecidoOuCliente.trim(),
-        descricao: descricao.trim(),
-        categoria: categoria || undefined,
-        formaPagamento: formaPagamento || undefined,
-        observacao: observacao.trim() || undefined,
-        comprovanteUrl,
-        origemNotaFiscal: false,
-        // Cadastro manual já nasce completo — quem preencheu tinha todos os dados em mãos.
-        precisaCompletarCadastro: false,
-      });
+      if (parcelas && parcelas.length > 1) {
+        const parcelamentoId = crypto.randomUUID();
+        const inputs: NovaContaFinanceiraInput[] = parcelas.map((parcela, indice) => ({
+          ...base(),
+          valor: parcela.valor,
+          dataVencimento: parcela.dataVencimento,
+          descricao: `${descricao.trim() || favorecidoOuCliente.trim()} (parcela ${indice + 1}/${parcelas.length})`,
+          parcelamentoId,
+          parcela: { numero: indice + 1, totalParcelas: parcelas.length },
+        }));
+        await onSalvar(inputs);
+      } else {
+        await onSalvar([
+          {
+            ...base(),
+            valor: Number(valor),
+            dataVencimento,
+            descricao: descricao.trim(),
+          },
+        ]);
+      }
     } finally {
       setSalvando(false);
     }
@@ -104,26 +125,29 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
         />
       </div>
       <Textarea label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      <Select label="Categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaConta)}>
-        <option value="">Selecione a categoria</option>
-        {(tipo === "pagar" ? categoriasPagar : categoriasReceber).map((c) => (
-          <option key={c} value={c}>
-            {rotuloCategoria(c)}
-          </option>
-        ))}
-      </Select>
-      <Select
+      <SelectComCriacao
+        label="Categoria"
+        rotuloVazio="Selecione a categoria"
+        value={categoria}
+        onChange={setCategoria}
+        opcoes={categoriasCatalogo.opcoes}
+        onCriar={categoriasCatalogo.criar}
+        tituloModal="Nova categoria"
+      />
+      <SelectComCriacao
         label="Forma de pagamento"
+        rotuloVazio="Selecione a forma de pagamento"
         value={formaPagamento}
-        onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
-      >
-        <option value="">Selecione a forma de pagamento</option>
-        {formasPagamento.map((f) => (
-          <option key={f} value={f}>
-            {rotulosFormaPagamento[f]}
-          </option>
-        ))}
-      </Select>
+        onChange={aoMudarFormaPagamento}
+        opcoes={formasCatalogo.opcoes}
+        onCriar={formasCatalogo.criar}
+        tituloModal="Nova forma de pagamento"
+      />
+      {podeParcelar && (
+        <Button variante="outline" tamanho="sm" onClick={() => setModalParcelamentoAberto(true)}>
+          {parcelas ? `Parcelado em ${parcelas.length}x` : "Parcelar pagamento"}
+        </Button>
+      )}
       <Textarea label="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Comprovante (opcional)</span>
@@ -138,6 +162,19 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
           {salvando ? "Salvando…" : "Salvar"}
         </Button>
       </div>
+
+      {modalParcelamentoAberto && (
+        <ModalParcelamento
+          valorTotal={Number(valor) || 0}
+          dataVencimentoInicial={dataVencimento}
+          parcelasIniciais={parcelas ?? undefined}
+          onFechar={() => setModalParcelamentoAberto(false)}
+          onConfirmar={(novasParcelas) => {
+            setParcelas(novasParcelas);
+            setModalParcelamentoAberto(false);
+          }}
+        />
+      )}
     </Card>
   );
 }

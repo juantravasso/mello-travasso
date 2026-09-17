@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Logo } from "./Logo";
+import { SeletorUsuarioAtual } from "./SeletorUsuarioAtual";
 import {
   IconeCaixa,
   IconeCamera,
@@ -58,7 +59,8 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-border px-3 py-3">
+      <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
+        <SeletorUsuarioAtual />
         <Link
           href="/configuracoes"
           className={cn(

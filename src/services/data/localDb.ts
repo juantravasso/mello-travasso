@@ -1,16 +1,27 @@
-import type { ContaFinanceira, Funcionario, ItemProduto, Obra } from "@/types";
+import type { ContaFinanceira, Funcionario, ItemProduto, Obra, OpcaoPersonalizada } from "@/types";
 
-const DB_KEY = "mello-travasso:db:v3";
+const DB_KEY = "mello-travasso:db:v4";
+
+interface CatalogosPersonalizados {
+  categoriasPagar: OpcaoPersonalizada[];
+  categoriasReceber: OpcaoPersonalizada[];
+  formasPagamento: OpcaoPersonalizada[];
+}
 
 interface Banco {
   obras: Obra[];
   contas: ContaFinanceira[];
   itensProduto: ItemProduto[];
   funcionarios: Funcionario[];
+  catalogos: CatalogosPersonalizados;
+}
+
+function catalogosVazios(): CatalogosPersonalizados {
+  return { categoriasPagar: [], categoriasReceber: [], formasPagamento: [] };
 }
 
 function bancoVazio(): Banco {
-  return { obras: [], contas: [], itensProduto: [], funcionarios: [] };
+  return { obras: [], contas: [], itensProduto: [], funcionarios: [], catalogos: catalogosVazios() };
 }
 
 function isBrowser(): boolean {
@@ -33,6 +44,11 @@ export function lerBanco(): Banco {
       contas: dados.contas ?? [],
       itensProduto: dados.itensProduto ?? [],
       funcionarios: dados.funcionarios ?? [],
+      catalogos: {
+        categoriasPagar: dados.catalogos?.categoriasPagar ?? [],
+        categoriasReceber: dados.catalogos?.categoriasReceber ?? [],
+        formasPagamento: dados.catalogos?.formasPagamento ?? [],
+      },
     };
   } catch {
     return bancoVazio();
@@ -56,10 +72,10 @@ export function agoraISO(): string {
   return new Date().toISOString();
 }
 
-export function semearBancoSeVazio(seed: Banco): void {
+export function semearBancoSeVazio(seed: Omit<Banco, "catalogos">): void {
   if (!isBrowser()) return;
   const atual = lerBanco();
   if (atual.obras.length === 0 && atual.contas.length === 0) {
-    salvarBanco(seed);
+    salvarBanco({ ...seed, catalogos: catalogosVazios() });
   }
 }

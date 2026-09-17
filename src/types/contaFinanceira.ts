@@ -1,30 +1,31 @@
 export type TipoConta = "pagar" | "receber";
-export type StatusConta = "em_aberto" | "baixada";
+export type StatusConta = "em_aberto" | "baixada" | "cancelada";
 
-export type CategoriaContaPagar =
-  | "aluguel"
-  | "aluguel_equipamentos"
-  | "fretes"
-  | "pro_labore_marcio"
-  | "pro_labore_anderson"
-  | "custo_funcionario"
-  | "custo_produtos"
-  | "manutencao_veiculos"
-  | "custo_transporte"
-  | "outros_custos_despesas";
+/**
+ * Categorias e formas de pagamento padrão (ver src/lib/categorias.ts para os
+ * rótulos). Usuários podem cadastrar novas opções pela UI — por isso o tipo
+ * é `string`, não uma união literal fechada; os catálogos completos (padrão
+ * + personalizados) vêm de CatalogoRepositorio.
+ */
+export type CategoriaContaPagar = string;
+export type CategoriaContaReceber = string;
+export type CategoriaConta = string;
+export type FormaPagamento = string;
 
-export type CategoriaContaReceber = "obras" | "servicos_vans" | "manutencao";
+export type TipoEventoHistorico = "criacao" | "edicao" | "baixa" | "cancelamento";
 
-export type CategoriaConta = CategoriaContaPagar | CategoriaContaReceber;
+export interface EventoHistorico {
+  id: string;
+  tipo: TipoEventoHistorico;
+  usuario: string;
+  data: string; // ISO datetime
+  detalhes?: string;
+}
 
-export type FormaPagamento =
-  | "dinheiro"
-  | "pix"
-  | "cartao_credito"
-  | "cartao_debito"
-  | "transferencia"
-  | "boleto"
-  | "cheque";
+export interface ParcelaInfo {
+  numero: number;
+  totalParcelas: number;
+}
 
 export interface ContaFinanceira {
   id: string;
@@ -49,13 +50,19 @@ export interface ContaFinanceira {
    * pagamento e observação depois. Lançamentos manuais já nascem completos.
    */
   precisaCompletarCadastro: boolean;
+  /** Presente quando este lançamento é uma parcela de um pagamento parcelado. */
+  parcelamentoId?: string;
+  parcela?: ParcelaInfo;
+  /** Motivo informado ao cancelar (quando status === "cancelada"). */
+  motivoCancelamento?: string;
+  historico: EventoHistorico[];
   criadoEm: string; // ISO datetime
   atualizadoEm: string; // ISO datetime
 }
 
 export type NovaContaFinanceiraInput = Omit<
   ContaFinanceira,
-  "id" | "status" | "dataBaixa" | "criadoEm" | "atualizadoEm"
+  "id" | "status" | "dataBaixa" | "historico" | "motivoCancelamento" | "criadoEm" | "atualizadoEm"
 >;
 
 export interface FiltrosContaFinanceira {
@@ -71,4 +78,11 @@ export interface FiltrosContaFinanceira {
 export interface BaixarContaInput {
   contaId: string;
   dataBaixa: string; // ISO date
+  usuario: string;
+}
+
+export interface CancelarContaInput {
+  contaId: string;
+  motivo?: string;
+  usuario: string;
 }

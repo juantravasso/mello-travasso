@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { DadosExtraidosComprovante } from "@/types";
+import type { DadosExtraidosComprovante, NovaContaFinanceiraInput } from "@/types";
 import { CameraCapture } from "@/components/camera/CameraCapture";
 import { ConfirmacaoExtracao, type DadosConfirmados } from "@/components/camera/ConfirmacaoExtracao";
 import { PassosCaptura } from "@/components/camera/PassosCaptura";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { extrairDadosDoComprovante } from "@/services/ai/reciboReader";
 import { contasRepositorio, itensProdutoRepositorio } from "@/services/data";
+import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { blobParaDataUrl } from "@/lib/imagem";
 import { hojeISO } from "@/lib/formatadores";
 
@@ -16,6 +17,7 @@ type Etapa = "captura" | "revisao";
 
 export default function PaginaCaptura() {
   const router = useRouter();
+  const { usuarioOuPadrao } = useUsuarioAtual();
   const [etapa, setEtapa] = useState<Etapa>("captura");
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [carregandoIA, setCarregandoIA] = useState(false);
@@ -50,14 +52,11 @@ export default function PaginaCaptura() {
   async function salvarConta(dados: DadosConfirmados) {
     setEnviando(true);
     try {
-      const conta = await contasRepositorio.criar({
+      const base: Omit<NovaContaFinanceiraInput, "valor" | "dataVencimento" | "descricao" | "parcela" | "parcelamentoId"> = {
         tipo: "pagar",
         obraId: dados.obraId,
-        valor: dados.valor,
         dataLancamento: hojeISO(),
-        dataVencimento: dados.data,
         favorecidoOuCliente: dados.favorecido,
-        descricao: dados.descricao,
         categoria: dados.categoria,
         formaPagamento: dados.formaPagamento,
         observacao: dados.observacao,
@@ -66,18 +65,43 @@ export default function PaginaCaptura() {
         // Lançamentos vindos da câmera ficam sinalizados para alguém revisar
         // e completar categoria/forma de pagamento/observação com calma depois.
         precisaCompletarCadastro: true,
-      });
+      };
 
-      if (dados.tipoDocumento === "comprovante") {
-        await contasRepositorio.baixar({ contaId: conta.id, dataBaixa: dados.data });
+      const temParcelamento = dados.parcelas && dados.parcelas.length > 1;
+      let primeiraConta;
+
+      if (temParcelamento && dados.parcelas) {
+        const parcelamentoId = crypto.randomUUID();
+        for (const [indice, parcela] of dados.parcelas.entries()) {
+          const conta = await contasRepositorio.criar(
+            {
+              ...base,
+              valor: parcela.valor,
+              dataVencimento: parcela.dataVencimento,
+              descricao: `${dados.descricao} (parcela ${indice + 1}/${dados.parcelas.length})`,
+              parcelamentoId,
+              parcela: { numero: indice + 1, totalParcelas: dados.parcelas.length },
+            },
+            usuarioOuPadrao,
+          );
+          if (indice === 0) primeiraConta = conta;
+        }
+      } else {
+        primeiraConta = await contasRepositorio.criar(
+          { ...base, valor: dados.valor, dataVencimento: dados.data, descricao: dados.descricao },
+          usuarioOuPadrao,
+        );
+        if (dados.tipoDocumento === "comprovante") {
+          await contasRepositorio.baixar({ contaId: primeiraConta.id, dataBaixa: dados.data, usuario: usuarioOuPadrao });
+        }
       }
 
-      if (dados.tipoDocumento === "nota_fiscal" && dados.itens.length > 0) {
+      if (dados.tipoDocumento === "nota_fiscal" && dados.itens.length > 0 && primeiraConta) {
         await itensProdutoRepositorio.criarEmLote(
           dados.itens
             .filter((item) => item.descricao.trim() !== "")
             .map((item) => ({
-              contaFinanceiraId: conta.id,
+              contaFinanceiraId: primeiraConta.id,
               obraId: dados.obraId,
               descricao: item.descricao.trim(),
               quantidade: item.quantidade,

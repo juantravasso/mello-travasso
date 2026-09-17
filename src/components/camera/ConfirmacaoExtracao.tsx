@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import type { CategoriaContaPagar, DadosExtraidosComprovante, FormaPagamento, TipoDocumentoCapturado } from "@/types";
+import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { useObras } from "@/hooks/useObras";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { categoriasPagar, formasPagamento, rotulosCategoriaPagar, rotulosFormaPagamento } from "@/lib/categorias";
+import { ModalParcelamento, type ParcelaEditavel } from "@/components/contas/ModalParcelamento";
+import { SelectComCriacao } from "@/components/contas/SelectComCriacao";
+import { FORMAS_PAGAMENTO_PARCELAVEIS, categoriasPagar } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { cn } from "@/lib/cn";
 
@@ -31,6 +34,7 @@ export interface DadosConfirmados {
   observacao?: string;
   obraId: string;
   itens: ItemNotaFiscalEditavel[];
+  parcelas?: ParcelaEditavel[];
 }
 
 interface ConfirmacaoExtracaoProps {
@@ -57,6 +61,8 @@ export function ConfirmacaoExtracao({
   enviando,
 }: ConfirmacaoExtracaoProps) {
   const { obras } = useObras();
+  const categoriasCatalogo = useCatalogoCategorias("pagar");
+  const formasCatalogo = useCatalogoFormasPagamento();
 
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCapturado>("comprovante");
   const [valor, setValor] = useState("");
@@ -69,6 +75,8 @@ export function ConfirmacaoExtracao({
   const [obraId, setObraId] = useState("");
   const [itens, setItens] = useState<ItemNotaFiscalEditavel[]>([]);
   const [camposDestacados, setCamposDestacados] = useState<string[]>([]);
+  const [parcelas, setParcelas] = useState<ParcelaEditavel[] | null>(null);
+  const [modalParcelamentoAberto, setModalParcelamentoAberto] = useState(false);
 
   useEffect(() => {
     if (!dadosExtraidos) return;
@@ -118,6 +126,11 @@ export function ConfirmacaoExtracao({
   const valorNumerico = Number(valor.replace(",", "."));
   const formularioValido = valorNumerico > 0 && data !== "" && favorecido.trim() !== "" && obraId !== "";
 
+  function aoMudarFormaPagamento(novoValor: string) {
+    setFormaPagamento(novoValor);
+    if (!FORMAS_PAGAMENTO_PARCELAVEIS.includes(novoValor)) setParcelas(null);
+  }
+
   function submeter() {
     if (!formularioValido) return;
     onConfirmar({
@@ -131,6 +144,7 @@ export function ConfirmacaoExtracao({
       observacao: observacao.trim() || undefined,
       obraId,
       itens: tipoDocumento === "nota_fiscal" ? itens : [],
+      parcelas: parcelas && parcelas.length > 1 ? parcelas : undefined,
     });
   }
 
@@ -218,30 +232,31 @@ export function ConfirmacaoExtracao({
           Os campos abaixo são opcionais aqui — este lançamento fica marcado como &quot;completar cadastro&quot; e
           alguém pode preencher com calma depois.
         </p>
-        <Select
+        <SelectComCriacao
           label="Categoria (opcional)"
+          rotuloVazio="Completar depois"
+          opcional
           value={categoria}
-          onChange={(e) => setCategoria(e.target.value as CategoriaContaPagar)}
-        >
-          <option value="">Completar depois</option>
-          {categoriasPagar.map((c) => (
-            <option key={c} value={c}>
-              {rotulosCategoriaPagar[c]}
-            </option>
-          ))}
-        </Select>
-        <Select
+          onChange={(v) => setCategoria(v)}
+          opcoes={categoriasCatalogo.opcoes}
+          onCriar={categoriasCatalogo.criar}
+          tituloModal="Nova categoria"
+        />
+        <SelectComCriacao
           label="Forma de pagamento (opcional)"
+          rotuloVazio="Completar depois"
+          opcional
           value={formaPagamento}
-          onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
-        >
-          <option value="">Completar depois</option>
-          {formasPagamento.map((f) => (
-            <option key={f} value={f}>
-              {rotulosFormaPagamento[f]}
-            </option>
-          ))}
-        </Select>
+          onChange={aoMudarFormaPagamento}
+          opcoes={formasCatalogo.opcoes}
+          onCriar={formasCatalogo.criar}
+          tituloModal="Nova forma de pagamento"
+        />
+        {FORMAS_PAGAMENTO_PARCELAVEIS.includes(formaPagamento) && (
+          <Button variante="outline" tamanho="sm" onClick={() => setModalParcelamentoAberto(true)}>
+            {parcelas ? `Parcelado em ${parcelas.length}x` : "Parcelar pagamento"}
+          </Button>
+        )}
         <Textarea
           label="Observação (opcional)"
           value={observacao}
@@ -310,6 +325,19 @@ export function ConfirmacaoExtracao({
           {enviando ? "Salvando…" : "Confirmar e salvar"}
         </Button>
       </div>
+
+      {modalParcelamentoAberto && (
+        <ModalParcelamento
+          valorTotal={valorNumerico || 0}
+          dataVencimentoInicial={data}
+          parcelasIniciais={parcelas ?? undefined}
+          onFechar={() => setModalParcelamentoAberto(false)}
+          onConfirmar={(novasParcelas) => {
+            setParcelas(novasParcelas);
+            setModalParcelamentoAberto(false);
+          }}
+        />
+      )}
     </div>
   );
 }

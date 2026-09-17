@@ -1,31 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { CategoriaConta, FormaPagamento } from "@/types";
+import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { useConta } from "@/hooks/useConta";
 import { useObras } from "@/hooks/useObras";
+import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
-import {
-  categoriasPagar,
-  categoriasReceber,
-  formasPagamento,
-  rotulosCategoriaPagar,
-  rotulosCategoriaReceber,
-  rotulosFormaPagamento,
-} from "@/lib/categorias";
+import { HistoricoConta } from "./HistoricoConta";
+import { ModalCancelarConta } from "./ModalCancelarConta";
+import { SelectComCriacao } from "./SelectComCriacao";
 import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
 export function ContaDetalhe({ contaId }: { contaId: string }) {
-  const { conta, carregando, darBaixa, atualizar } = useConta(contaId);
+  const { conta, carregando, darBaixa, cancelar, atualizar } = useConta(contaId);
   const { obras } = useObras();
+  const { usuarioOuPadrao } = useUsuarioAtual();
+  const categoriasCatalogo = useCatalogoCategorias(conta?.tipo ?? "pagar");
+  const formasCatalogo = useCatalogoFormasPagamento();
+
   const [dataBaixa, setDataBaixa] = useState(hojeISO());
   const [baixando, setBaixando] = useState(false);
+  const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
+
+  const [valor, setValor] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [favorecido, setFavorecido] = useState("");
+  const [dataVencimento, setDataVencimento] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("");
+  const [observacao, setObservacao] = useState("");
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+
+  useEffect(() => {
+    if (!conta || conta.status !== "em_aberto") return;
+    setValor(String(conta.valor));
+    setDescricao(conta.descricao);
+    setFavorecido(conta.favorecidoOuCliente);
+    setDataVencimento(conta.dataVencimento);
+    setCategoria(conta.categoria ?? "");
+    setFormaPagamento(conta.formaPagamento ?? "");
+    setObservacao(conta.observacao ?? "");
+    // Só preenche o formulário quando a conta muda de identidade (carregou pela
+    // 1ª vez) — reflete só o que foi salvo depois, sem sobrescrever a edição em curso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conta?.id]);
 
   if (carregando) return <p className="text-sm text-muted">Carregando…</p>;
   if (!conta) return <p className="text-sm text-danger">Conta não encontrada.</p>;
@@ -33,14 +56,40 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   const obra = obras.find((o) => o.id === conta.obraId);
   const rotuloParte = conta.tipo === "pagar" ? "Favorecido" : "Cliente";
   const rotuloAcao = conta.tipo === "pagar" ? "Dar baixa (marcar como paga)" : "Marcar como recebida";
-  const rotulosCategoriaDoTipo = conta.tipo === "pagar" ? rotulosCategoriaPagar : rotulosCategoriaReceber;
+  const podeEditar = conta.status === "em_aberto";
 
   async function confirmarBaixa() {
     setBaixando(true);
     try {
-      await darBaixa({ contaId, dataBaixa });
+      await darBaixa({ contaId, dataBaixa, usuario: usuarioOuPadrao });
     } finally {
       setBaixando(false);
+    }
+  }
+
+  async function confirmarCancelamento(motivo: string) {
+    await cancelar({ contaId, motivo: motivo || undefined, usuario: usuarioOuPadrao });
+    setModalCancelarAberto(false);
+  }
+
+  async function salvarEdicao() {
+    setSalvandoEdicao(true);
+    try {
+      await atualizar(
+        {
+          valor: Number(valor) || 0,
+          descricao: descricao.trim(),
+          favorecidoOuCliente: favorecido.trim(),
+          dataVencimento,
+          categoria: categoria || undefined,
+          formaPagamento: formaPagamento || undefined,
+          observacao: observacao.trim() || undefined,
+          precisaCompletarCadastro: categoria === "" || formaPagamento === "",
+        },
+        usuarioOuPadrao,
+      );
+    } finally {
+      setSalvandoEdicao(false);
     }
   }
 
@@ -60,16 +109,16 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           <span className="text-2xl font-semibold">{formatarMoeda(conta.valor)}</span>
           <StatusContaBadge status={conta.status} tipo={conta.tipo} />
         </div>
+        {conta.parcela && (
+          <DetalheLinha rotulo="Parcela" valor={`${conta.parcela.numero}/${conta.parcela.totalParcelas}`} />
+        )}
         <DetalheLinha rotulo={rotuloParte} valor={conta.favorecidoOuCliente} />
         <DetalheLinha rotulo="Descrição" valor={conta.descricao} />
         {conta.categoria && (
-          <DetalheLinha
-            rotulo="Categoria"
-            valor={rotulosCategoriaDoTipo[conta.categoria as keyof typeof rotulosCategoriaDoTipo] ?? conta.categoria}
-          />
+          <DetalheLinha rotulo="Categoria" valor={categoriasCatalogo.rotuloDe(conta.categoria)} />
         )}
         {conta.formaPagamento && (
-          <DetalheLinha rotulo="Forma de pagamento" valor={rotulosFormaPagamento[conta.formaPagamento]} />
+          <DetalheLinha rotulo="Forma de pagamento" valor={formasCatalogo.rotuloDe(conta.formaPagamento)} />
         )}
         {conta.observacao && <DetalheLinha rotulo="Observação" valor={conta.observacao} />}
         <DetalheLinha
@@ -79,18 +128,64 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
         <DetalheLinha rotulo="Data de lançamento" valor={formatarData(conta.dataLancamento)} />
         <DetalheLinha rotulo="Data de vencimento" valor={formatarData(conta.dataVencimento)} />
         {conta.dataBaixa && <DetalheLinha rotulo="Data de baixa" valor={formatarData(conta.dataBaixa)} />}
+        {conta.motivoCancelamento && <DetalheLinha rotulo="Motivo do cancelamento" valor={conta.motivoCancelamento} />}
         {conta.origemNotaFiscal && <DetalheLinha rotulo="Origem" valor="Nota fiscal" />}
       </Card>
 
-      {conta.precisaCompletarCadastro && (
-        <CompletarCadastro
-          categoriaAtual={conta.categoria}
-          formaPagamentoAtual={conta.formaPagamento}
-          observacaoAtual={conta.observacao}
-          categorias={conta.tipo === "pagar" ? categoriasPagar : categoriasReceber}
-          rotulosCategoria={rotulosCategoriaDoTipo}
-          onSalvar={(dados) => atualizar({ ...dados, precisaCompletarCadastro: false })}
-        />
+      {podeEditar && (
+        <div
+          className={
+            conta.precisaCompletarCadastro
+              ? "flex flex-col gap-3 rounded-xl border border-info/40 bg-info-bg p-4"
+              : "flex flex-col gap-3 rounded-xl border border-border bg-card p-4"
+          }
+        >
+          <div>
+            <p className="font-medium text-foreground">
+              {conta.precisaCompletarCadastro ? "Completar cadastro" : "Editar lançamento"}
+            </p>
+            <p className="text-sm text-muted">
+              {conta.precisaCompletarCadastro
+                ? "Este lançamento foi criado rapidamente pela câmera. Preencha o que faltar."
+                : "Só é possível editar enquanto o lançamento está em aberto."}
+            </p>
+          </div>
+          <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
+          <Input
+            label={conta.tipo === "pagar" ? "Favorecido/Fornecedor" : "Cliente"}
+            value={favorecido}
+            onChange={(e) => setFavorecido(e.target.value)}
+          />
+          <Textarea label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+          <Input
+            label="Data de vencimento"
+            type="date"
+            value={dataVencimento}
+            onChange={(e) => setDataVencimento(e.target.value)}
+          />
+          <SelectComCriacao
+            label="Categoria"
+            rotuloVazio="Selecione a categoria"
+            value={categoria}
+            onChange={setCategoria}
+            opcoes={categoriasCatalogo.opcoes}
+            onCriar={categoriasCatalogo.criar}
+            tituloModal="Nova categoria"
+          />
+          <SelectComCriacao
+            label="Forma de pagamento"
+            rotuloVazio="Selecione a forma de pagamento"
+            value={formaPagamento}
+            onChange={setFormaPagamento}
+            opcoes={formasCatalogo.opcoes}
+            onCriar={formasCatalogo.criar}
+            tituloModal="Nova forma de pagamento"
+          />
+          <Textarea label="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
+          <Button onClick={salvarEdicao} disabled={salvandoEdicao}>
+            {salvandoEdicao ? "Salvando…" : "Salvar alterações"}
+          </Button>
+        </div>
       )}
 
       {conta.status === "em_aberto" && (
@@ -99,83 +194,17 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           <Button onClick={confirmarBaixa} disabled={baixando}>
             {baixando ? "Salvando…" : rotuloAcao}
           </Button>
+          <Button variante="outline" onClick={() => setModalCancelarAberto(true)} disabled={baixando}>
+            Cancelar lançamento
+          </Button>
         </Card>
       )}
-    </div>
-  );
-}
 
-interface CompletarCadastroProps {
-  categoriaAtual?: CategoriaConta;
-  formaPagamentoAtual?: FormaPagamento;
-  observacaoAtual?: string;
-  categorias: readonly CategoriaConta[];
-  rotulosCategoria: Record<string, string>;
-  onSalvar: (dados: { categoria?: CategoriaConta; formaPagamento?: FormaPagamento; observacao?: string }) => Promise<unknown>;
-}
+      <HistoricoConta eventos={conta.historico} />
 
-function CompletarCadastro({
-  categoriaAtual,
-  formaPagamentoAtual,
-  observacaoAtual,
-  categorias,
-  rotulosCategoria,
-  onSalvar,
-}: CompletarCadastroProps) {
-  const [categoria, setCategoria] = useState<CategoriaConta | "">(categoriaAtual ?? "");
-  const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">(formaPagamentoAtual ?? "");
-  const [observacao, setObservacao] = useState(observacaoAtual ?? "");
-  const [salvando, setSalvando] = useState(false);
-
-  const valido = categoria !== "" && formaPagamento !== "";
-
-  async function salvar() {
-    if (!valido) return;
-    setSalvando(true);
-    try {
-      await onSalvar({
-        categoria: categoria || undefined,
-        formaPagamento: formaPagamento || undefined,
-        observacao: observacao.trim() || undefined,
-      });
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-info/40 bg-info-bg p-4">
-      <div>
-        <p className="font-medium text-foreground">Completar cadastro</p>
-        <p className="text-sm text-muted">
-          Este lançamento foi criado rapidamente pela câmera. Preencha categoria e forma de pagamento para
-          finalizar o cadastro.
-        </p>
-      </div>
-      <Select label="Categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as CategoriaConta)}>
-        <option value="">Selecione a categoria</option>
-        {categorias.map((c) => (
-          <option key={c} value={c}>
-            {rotulosCategoria[c]}
-          </option>
-        ))}
-      </Select>
-      <Select
-        label="Forma de pagamento"
-        value={formaPagamento}
-        onChange={(e) => setFormaPagamento(e.target.value as FormaPagamento)}
-      >
-        <option value="">Selecione a forma de pagamento</option>
-        {formasPagamento.map((f) => (
-          <option key={f} value={f}>
-            {rotulosFormaPagamento[f]}
-          </option>
-        ))}
-      </Select>
-      <Textarea label="Observação (opcional)" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-      <Button onClick={salvar} disabled={!valido || salvando}>
-        {salvando ? "Salvando…" : "Salvar e concluir cadastro"}
-      </Button>
+      {modalCancelarAberto && (
+        <ModalCancelarConta onFechar={() => setModalCancelarAberto(false)} onConfirmar={confirmarCancelamento} />
+      )}
     </div>
   );
 }

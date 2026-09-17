@@ -50,16 +50,20 @@ export function fluxoFinanceiroUltimosMeses(contas: ContaFinanceira[], meses = 6
   return janelas.map((j) => porChave.get(j.chave) as PontoFluxoMensal);
 }
 
-export function gastosPorCategoria(contasPagar: ContaFinanceira[]): FatiaCategoria[] {
+export function gastosPorCategoria(
+  contasPagar: ContaFinanceira[],
+  rotuloDe: (categoria: string) => string = (c) => rotulosCategoriaPagar[c] ?? "Outros",
+): FatiaCategoria[] {
   const totais = new Map<string, number>();
   for (const conta of contasPagar) {
+    if (conta.status === "cancelada") continue;
     const chave = conta.categoria ?? "outros";
     totais.set(chave, (totais.get(chave) ?? 0) + conta.valor);
   }
   return Array.from(totais.entries())
     .map(([categoria, valor]) => ({
       categoria: categoria as CategoriaContaPagar,
-      rotulo: rotulosCategoriaPagar[categoria as CategoriaContaPagar] ?? "Outros",
+      rotulo: categoria === "outros" ? "Outros" : rotuloDe(categoria),
       valor,
     }))
     .sort((a, b) => b.valor - a.valor);
@@ -99,6 +103,14 @@ export function atividadeRecente(contas: ContaFinanceira[], limite = 5): ItemAti
           descricao: `${conta.tipo === "pagar" ? "Conta paga" : "Recebimento confirmado"}: ${conta.favorecidoOuCliente}`,
           quando: conta.atualizadoEm,
           tom: "success" as const,
+        };
+      }
+      if (conta.status === "cancelada") {
+        return {
+          id: conta.id,
+          descricao: `Lançamento cancelado: ${conta.favorecidoOuCliente}`,
+          quando: conta.atualizadoEm,
+          tom: "danger" as const,
         };
       }
       return {

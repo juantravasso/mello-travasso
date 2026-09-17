@@ -28,7 +28,14 @@ export function ContaListItem({ conta, obra }: { conta: ContaFinanceira; obra?: 
       </button>
 
       <Link href={`/${conta.tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"}/${conta.id}`} className="min-w-0 flex-1">
-        <p className="truncate font-medium">{conta.favorecidoOuCliente}</p>
+        <p className="truncate font-medium">
+          {conta.favorecidoOuCliente}
+          {conta.parcela && (
+            <span className="ml-1.5 text-xs font-normal text-muted">
+              ({conta.parcela.numero}/{conta.parcela.totalParcelas})
+            </span>
+          )}
+        </p>
         <p className="truncate text-sm text-muted">{conta.descricao}</p>
         {obra && <p className="truncate text-xs text-muted">{obra.nome}</p>}
       </Link>

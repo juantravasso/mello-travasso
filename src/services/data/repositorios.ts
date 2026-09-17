@@ -1,5 +1,6 @@
 import type {
   BaixarContaInput,
+  CancelarContaInput,
   ContaFinanceira,
   FiltrosContaFinanceira,
   FiltrosFuncionario,
@@ -9,9 +10,11 @@ import type {
   ItemProduto,
   NovaContaFinanceiraInput,
   NovaObraInput,
+  NovaOpcaoPersonalizadaInput,
   NovoFuncionarioInput,
   NovoItemProdutoInput,
   Obra,
+  OpcaoPersonalizada,
   TipoConta,
 } from "@/types";
 
@@ -31,9 +34,10 @@ export interface ObrasRepositorio {
 export interface ContasRepositorio {
   listar(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Promise<ContaFinanceira[]>;
   obterPorId(id: string): Promise<ContaFinanceira | null>;
-  criar(input: NovaContaFinanceiraInput): Promise<ContaFinanceira>;
-  atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira>;
+  criar(input: NovaContaFinanceiraInput, usuario: string): Promise<ContaFinanceira>;
+  atualizar(id: string, input: Partial<NovaContaFinanceiraInput>, usuario: string): Promise<ContaFinanceira>;
   baixar(input: BaixarContaInput): Promise<ContaFinanceira>;
+  cancelar(input: CancelarContaInput): Promise<ContaFinanceira>;
 }
 
 export interface ItensProdutoRepositorio {
@@ -49,4 +53,11 @@ export interface FuncionariosRepositorio {
   criar(input: NovoFuncionarioInput): Promise<Funcionario>;
   atualizar(id: string, input: Partial<NovoFuncionarioInput>): Promise<Funcionario>;
   definirStatus(id: string, status: Funcionario["status"]): Promise<Funcionario>;
+}
+
+export interface CatalogoRepositorio {
+  listarCategorias(tipo: TipoConta): Promise<OpcaoPersonalizada[]>;
+  criarCategoria(tipo: TipoConta, input: NovaOpcaoPersonalizadaInput): Promise<OpcaoPersonalizada>;
+  listarFormasPagamento(): Promise<OpcaoPersonalizada[]>;
+  criarFormaPagamento(input: NovaOpcaoPersonalizadaInput): Promise<OpcaoPersonalizada>;
 }

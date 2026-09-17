@@ -14,6 +14,7 @@ interface FiltrosContasProps {
 const rotulosStatus: Record<StatusConta, string> = {
   em_aberto: "Em aberto",
   baixada: "Baixada",
+  cancelada: "Cancelada",
 };
 
 export function FiltrosContas({ filtros, onChange, obras }: FiltrosContasProps) {

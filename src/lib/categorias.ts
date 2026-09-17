@@ -38,3 +38,6 @@ export const rotulosFormaPagamento: Record<FormaPagamento, string> = {
 };
 
 export const formasPagamento: FormaPagamento[] = Object.keys(rotulosFormaPagamento) as FormaPagamento[];
+
+/** Formas de pagamento padrão que fazem sentido parcelar em várias datas de vencimento. */
+export const FORMAS_PAGAMENTO_PARCELAVEIS = ["boleto", "cartao_credito"];

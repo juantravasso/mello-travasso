@@ -14,7 +14,7 @@ export function GastosCategoriaChart({ dados }: { dados: FatiaCategoria[] }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
+    <div className="flex min-w-0 flex-col items-center gap-4 sm:flex-row">
       <div className="relative h-[180px] w-[180px] flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -40,17 +40,17 @@ export function GastosCategoriaChart({ dados }: { dados: FatiaCategoria[] }) {
         </div>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-2 text-sm">
+      <ul className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
         {dados.map((fatia, indice) => (
           <li key={fatia.categoria} className="flex items-center justify-between gap-3">
-            <span className="flex items-center gap-2 text-muted">
+            <span className="flex min-w-0 items-center gap-2 truncate text-muted">
               <span
                 className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
                 style={{ backgroundColor: PALETA[indice % PALETA.length] }}
               />
-              {fatia.rotulo}
+              <span className="truncate">{fatia.rotulo}</span>
             </span>
-            <span className="font-medium text-foreground">{formatarMoeda(fatia.valor)}</span>
+            <span className="flex-shrink-0 font-medium text-foreground">{formatarMoeda(fatia.valor)}</span>
           </li>
         ))}
       </ul>

@@ -10,9 +10,11 @@ export function ProgressoObrasList({ itens }: { itens: ProgressoObra[] }) {
       {itens.map(({ obra, gasto, percentual }) => (
         <li key={obra.id}>
           <Link href={`/obras/${obra.id}`} className="group flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium text-foreground group-hover:text-primary">{obra.nome}</span>
-              <span className="text-muted">{percentual !== null ? `${percentual.toFixed(0)}%` : "—"}</span>
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate font-medium text-foreground group-hover:text-primary">
+                {obra.nome}
+              </span>
+              <span className="flex-shrink-0 text-muted">{percentual !== null ? `${percentual.toFixed(0)}%` : "—"}</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
               <div

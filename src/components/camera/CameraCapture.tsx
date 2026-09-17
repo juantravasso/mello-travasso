@@ -5,6 +5,7 @@ import { useCamera } from "@/hooks/useCamera";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
 
 interface CameraCaptureProps {
   onFotoConfirmada: (foto: Blob) => void;
@@ -105,10 +106,22 @@ export function CameraCapture({ onFotoConfirmada }: CameraCaptureProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="overflow-hidden p-0">
-        {estado.ativa ? (
-          <video ref={videoRef} playsInline muted className="aspect-[3/4] w-full bg-black object-cover" />
-        ) : (
+      <Card className="relative overflow-hidden p-0">
+        {/*
+          O <video> fica sempre montado no DOM (só escondido via CSS quando
+          inativo) porque useCamera.iniciar() precisa de videoRef.current já
+          existente para atribuir o stream ANTES de marcar ativa=true. Se o
+          elemento só fosse montado depois de ativa=true, o stream nunca
+          seria atribuído a nenhum <video> real — a tela ficava preta mesmo
+          com a câmera concedida.
+        */}
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          className={cn("aspect-[3/4] w-full bg-black object-cover", !estado.ativa && "hidden")}
+        />
+        {!estado.ativa && (
           <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 bg-muted-bg p-6 text-center text-muted">
             {estado.carregando ? (
               <p>Aguardando permissão da câmera…</p>

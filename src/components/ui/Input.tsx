@@ -9,12 +9,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export function Input({ label, erro, destaque, className, id, ...props }: InputProps) {
   return (
-    <label className="flex flex-col gap-1 text-sm" htmlFor={id}>
+    <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor={id}>
       {label && <span className="font-medium text-foreground">{label}</span>}
       <input
         id={id}
         className={cn(
-          "h-11 rounded-lg border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary",
+          "h-11 w-full min-w-0 rounded-lg border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary",
           erro ? "border-danger" : destaque ? "border-info bg-info-bg" : "border-border",
           className,
         )}

@@ -3,7 +3,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 interface EstadoCamera {
   suportada: boolean;
   ativa: boolean;
+  carregando: boolean;
   erro: string | null;
+}
+
+function mensagemDeErro(erro: unknown): string {
+  const nome = erro instanceof DOMException ? erro.name : "";
+  switch (nome) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Permissão da câmera negada. Habilite o acesso à câmera nas configurações do navegador e tente de novo.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "Nenhuma câmera traseira foi encontrada neste dispositivo.";
+    case "NotReadableError":
+      return "A câmera já está sendo usada por outro aplicativo.";
+    default:
+      return "Não foi possível acessar a câmera. Use o botão de upload.";
+  }
 }
 
 /**
@@ -21,14 +38,22 @@ export function useCamera() {
   const [estado, setEstado] = useState<EstadoCamera>({
     suportada: false,
     ativa: false,
+    carregando: false,
     erro: null,
   });
+
+  // Detecção de suporte é só feature-detection (não pede permissão), então
+  // pode rodar assim que o componente monta no cliente, sem gesto do usuário.
+  useEffect(() => {
+    setEstado((s) => ({ ...s, suportada: !!navigator.mediaDevices?.getUserMedia }));
+  }, []);
 
   const iniciar = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setEstado((s) => ({ ...s, suportada: false }));
       return;
     }
+    setEstado((s) => ({ ...s, carregando: true, erro: null }));
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -39,9 +64,9 @@ export function useCamera() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
-      setEstado({ suportada: true, ativa: true, erro: null });
-    } catch {
-      setEstado({ suportada: true, ativa: false, erro: "Não foi possível acessar a câmera. Use o botão de upload." });
+      setEstado({ suportada: true, ativa: true, carregando: false, erro: null });
+    } catch (erro) {
+      setEstado({ suportada: true, ativa: false, carregando: false, erro: mensagemDeErro(erro) });
     }
   }, []);
 

@@ -8,12 +8,12 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export function Select({ label, className, id, children, ...props }: SelectProps) {
   return (
-    <label className="flex flex-col gap-1 text-sm" htmlFor={id}>
+    <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor={id}>
       {label && <span className="font-medium text-foreground">{label}</span>}
       <select
         id={id}
         className={cn(
-          "h-11 rounded-lg border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-primary",
+          "h-11 w-full min-w-0 rounded-lg border border-border bg-surface px-3 text-base text-foreground outline-none transition-colors focus:border-primary",
           className,
         )}
         {...props}

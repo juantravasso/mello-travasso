@@ -22,7 +22,6 @@ export function FiltrosContas({ filtros, onChange, obras }: FiltrosContasProps) 
       <Input
         label="Buscar"
         placeholder="Fornecedor, descrição..."
-        className="sm:col-span-1"
         value={filtros.busca ?? ""}
         onChange={(e) => onChange({ ...filtros, busca: e.target.value || undefined })}
       />

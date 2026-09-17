@@ -18,13 +18,14 @@ export function CameraCapture({ onFotoConfirmada }: CameraCaptureProps) {
   const inputGaleriaRef = useRef<HTMLInputElement | null>(null);
   const inputFallbackRef = useRef<HTMLInputElement | null>(null);
 
+  // Importante: getUserMedia só é chamado a partir de um toque do usuário
+  // (onClick de "Ligar câmera"), nunca automaticamente ao montar a tela —
+  // no Safari do iOS, pedir a câmera sem um gesto direto costuma falhar ou
+  // nem exibir o prompt de permissão.
   useEffect(() => {
-    // No computador não há câmera relevante para fotografar um comprovante
-    // físico — pula getUserMedia e mostra só a opção de carregar o arquivo.
-    if (!isDesktop) void iniciar();
     return () => parar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDesktop]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -53,7 +54,6 @@ export function CameraCapture({ onFotoConfirmada }: CameraCaptureProps) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setFotoBlob(null);
-    if (!isDesktop) void iniciar();
   }
 
   if (previewUrl && fotoBlob) {
@@ -109,20 +109,35 @@ export function CameraCapture({ onFotoConfirmada }: CameraCaptureProps) {
         {estado.ativa ? (
           <video ref={videoRef} playsInline muted className="aspect-[3/4] w-full bg-black object-cover" />
         ) : (
-          <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-2 bg-muted-bg p-6 text-center text-muted">
-            <p>{estado.erro ?? "Câmera não iniciada."}</p>
+          <div className="flex aspect-[3/4] w-full flex-col items-center justify-center gap-3 bg-muted-bg p-6 text-center text-muted">
+            {estado.carregando ? (
+              <p>Aguardando permissão da câmera…</p>
+            ) : estado.erro ? (
+              <>
+                <p className="text-danger">{estado.erro}</p>
+                <Button tamanho="sm" variante="outline" onClick={() => void iniciar()}>
+                  Tentar novamente
+                </Button>
+              </>
+            ) : (
+              <p>Toque em &quot;Ligar câmera&quot; para fotografar o comprovante.</p>
+            )}
           </div>
         )}
       </Card>
 
       <div className="flex flex-col gap-3">
-        {estado.ativa && (
+        {estado.ativa ? (
           <Button tamanho="lg" onClick={aoClicarCapturar}>
             Tirar foto
           </Button>
-        )}
+        ) : !estado.erro ? (
+          <Button tamanho="lg" onClick={() => void iniciar()} disabled={estado.carregando}>
+            {estado.carregando ? "Ligando câmera…" : "Ligar câmera"}
+          </Button>
+        ) : null}
 
-        {!estado.suportada || estado.erro ? (
+        {(!estado.suportada || estado.erro) && (
           <>
             <input
               ref={inputFallbackRef}
@@ -136,7 +151,7 @@ export function CameraCapture({ onFotoConfirmada }: CameraCaptureProps) {
               Tirar foto (câmera do dispositivo)
             </Button>
           </>
-        ) : null}
+        )}
 
         <input
           ref={inputGaleriaRef}

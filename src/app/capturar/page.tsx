@@ -57,6 +57,7 @@ export default function PaginaCaptura() {
         obraId: dados.obraId,
         dataLancamento: hojeISO(),
         favorecidoOuCliente: dados.favorecido,
+        fornecedorId: dados.fornecedorId,
         categoria: dados.categoria,
         formaPagamento: dados.formaPagamento,
         observacao: dados.observacao,

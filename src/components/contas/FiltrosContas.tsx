@@ -1,11 +1,13 @@
 "use client";
 
-import type { FiltrosContaFinanceira, Obra, StatusConta } from "@/types";
+import type { FiltrosContaFinanceira, Obra, StatusConta, TipoConta } from "@/types";
+import { useFornecedores } from "@/hooks/useFornecedores";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 
 interface FiltrosContasProps {
+  tipo: TipoConta;
   filtros: FiltrosContaFinanceira;
   onChange: (filtros: FiltrosContaFinanceira) => void;
   obras: Obra[];
@@ -17,12 +19,14 @@ const rotulosStatus: Record<StatusConta, string> = {
   cancelada: "Cancelada",
 };
 
-export function FiltrosContas({ filtros, onChange, obras }: FiltrosContasProps) {
+export function FiltrosContas({ tipo, filtros, onChange, obras }: FiltrosContasProps) {
+  const { fornecedores } = useFornecedores();
+
   return (
     <Card className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
       <Input
         label="Buscar"
-        placeholder="Fornecedor, descrição..."
+        placeholder={tipo === "pagar" ? "Fornecedor, descrição..." : "Cliente, descrição..."}
         value={filtros.busca ?? ""}
         onChange={(e) => onChange({ ...filtros, busca: e.target.value || undefined })}
       />
@@ -38,6 +42,20 @@ export function FiltrosContas({ filtros, onChange, obras }: FiltrosContasProps) 
           </option>
         ))}
       </Select>
+      {tipo === "pagar" && (
+        <Select
+          label="Fornecedor"
+          value={filtros.fornecedorId ?? ""}
+          onChange={(e) => onChange({ ...filtros, fornecedorId: e.target.value || undefined })}
+        >
+          <option value="">Todos</option>
+          {fornecedores.map((fornecedor) => (
+            <option key={fornecedor.id} value={fornecedor.id}>
+              {fornecedor.nome}
+            </option>
+          ))}
+        </Select>
+      )}
       <Select
         label="Status"
         value={filtros.status ?? ""}

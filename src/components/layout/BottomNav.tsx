@@ -19,7 +19,7 @@ const itens = [
   { href: "/contas-a-pagar", rotulo: "A Pagar", Icone: IconeSaida },
   { href: "/contas-a-receber", rotulo: "A Receber", Icone: IconeEntrada },
   { href: "/custos-produtos", rotulo: "Custos", Icone: IconeCaixa },
-  { href: "/cadastro", rotulo: "Cadastro", Icone: IconeCadastro, tambem: ["/obras", "/funcionarios"] },
+  { href: "/cadastro", rotulo: "Cadastro", Icone: IconeCadastro, tambem: ["/obras", "/funcionarios", "/fornecedores"] },
   { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
 ] as const;
 

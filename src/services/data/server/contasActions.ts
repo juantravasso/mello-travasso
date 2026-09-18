@@ -25,6 +25,7 @@ function paraConta(registro: ContaRegistro): ContaFinanceira {
     dataBaixa: registro.dataBaixa ?? undefined,
     status: registro.status as ContaFinanceira["status"],
     favorecidoOuCliente: registro.favorecidoOuCliente,
+    fornecedorId: registro.fornecedorId ?? undefined,
     descricao: registro.descricao,
     categoria: registro.categoria ?? undefined,
     formaPagamento: registro.formaPagamento ?? undefined,
@@ -56,6 +57,7 @@ function paraWhere(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Pri
   if (filtros.obraId) where.obraId = filtros.obraId;
   if (filtros.status) where.status = filtros.status;
   if (filtros.categoria) where.categoria = filtros.categoria;
+  if (filtros.fornecedorId) where.fornecedorId = filtros.fornecedorId;
   if (filtros.precisaCompletarCadastro !== undefined) {
     where.precisaCompletarCadastro = filtros.precisaCompletarCadastro;
   }

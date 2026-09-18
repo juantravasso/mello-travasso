@@ -71,6 +71,15 @@ export const IconePessoas = (p: SVGProps<SVGSVGElement>) => (
   </Base>
 );
 
+export const IconeFornecedor = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M3 7h11v9H3z" />
+    <path d="M14 10h4l3 3v3h-7z" />
+    <circle cx="7.5" cy="18" r="1.6" />
+    <circle cx="17" cy="18" r="1.6" />
+  </Base>
+);
+
 export const IconeConfig = (p: SVGProps<SVGSVGElement>) => (
   <Base {...p}>
     <circle cx="12" cy="12" r="3" />

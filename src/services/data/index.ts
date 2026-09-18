@@ -1,6 +1,7 @@
 import type {
   CatalogoRepositorio,
   ContasRepositorio,
+  FornecedoresRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,
@@ -38,6 +39,12 @@ import {
   listarCategoriasPersonalizadas,
   listarFormasPagamentoPersonalizadas,
 } from "./server/catalogoActions";
+import {
+  atualizarFornecedor,
+  criarFornecedor,
+  listarFornecedores,
+  obterFornecedorPorId,
+} from "./server/fornecedoresActions";
 
 /**
  * Ponto único de acesso à camada de dados. Cada método aqui é uma Server
@@ -83,9 +90,17 @@ export const catalogoRepositorio: CatalogoRepositorio = {
   criarFormaPagamento: criarFormaPagamentoPersonalizada,
 };
 
+export const fornecedoresRepositorio: FornecedoresRepositorio = {
+  listar: listarFornecedores,
+  obterPorId: obterFornecedorPorId,
+  criar: criarFornecedor,
+  atualizar: atualizarFornecedor,
+};
+
 export type {
   CatalogoRepositorio,
   ContasRepositorio,
+  FornecedoresRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,

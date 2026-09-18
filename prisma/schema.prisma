@@ -43,7 +43,7 @@ enum StatusFuncionarioDb {
 }
 
 model Obra {
-  id                String        @id @default(uuid())
+  id                String       @id @default(uuid())
   nome              String
   cliente           String
   endereco          String?
@@ -61,45 +61,66 @@ model Obra {
 }
 
 model ContaFinanceira {
-  id                     String         @id @default(uuid())
-  tipo                   TipoContaDb
-  obraId                 String
-  obra                   Obra           @relation(fields: [obraId], references: [id])
-  valor                  Float
-  dataLancamento         String
-  dataVencimento         String
-  dataBaixa              String?
-  status                 StatusContaDb  @default(em_aberto)
-  favorecidoOuCliente    String
-  descricao              String
-  categoria              String?
-  formaPagamento         String?
-  observacao             String?
-  comprovanteUrl         String         @db.Text
-  origemNotaFiscal       Boolean        @default(false)
-  notaFiscalId           String?
-  precisaCompletarCadastro Boolean      @default(false)
-  parcelamentoId         String?
-  parcelaNumero          Int?
-  parcelaTotal           Int?
-  motivoCancelamento     String?
+  id                       String        @id @default(uuid())
+  tipo                     TipoContaDb
+  obraId                   String
+  obra                     Obra          @relation(fields: [obraId], references: [id])
+  valor                    Float
+  dataLancamento           String
+  dataVencimento           String
+  dataBaixa                String?
+  status                   StatusContaDb @default(em_aberto)
+  favorecidoOuCliente      String
+  fornecedorId             String?
+  fornecedor               Fornecedor?   @relation(fields: [fornecedorId], references: [id])
+  descricao                String
+  categoria                String?
+  formaPagamento           String?
+  observacao               String?
+  comprovanteUrl           String        @db.Text
+  origemNotaFiscal         Boolean       @default(false)
+  notaFiscalId             String?
+  precisaCompletarCadastro Boolean       @default(false)
+  parcelamentoId           String?
+  parcelaNumero            Int?
+  parcelaTotal             Int?
+  motivoCancelamento       String?
   /// Array de EventoHistorico ({ id, tipo, usuario, data, detalhes? }) — ver src/types/contaFinanceira.ts
-  historico              Json           @default("[]")
-  criadoEm               String
-  atualizadoEm           String
+  historico                Json          @default("[]")
+  criadoEm                 String
+  atualizadoEm             String
 
   itensProduto ItemProduto[]
 
   @@index([obraId])
   @@index([tipo, status])
+  @@index([fornecedorId])
+}
+
+// Cadastro de fornecedores, usado para preencher/filtrar o favorecido das
+// contas a pagar (dropdown com busca + criação rápida quando a IA não
+// identifica o fornecedor na leitura do comprovante).
+model Fornecedor {
+  id           String  @id @default(uuid())
+  nome         String
+  documento    String?
+  telefone     String?
+  email        String?
+  observacao   String?
+  criadoEm     String
+  atualizadoEm String
+
+  contas ContaFinanceira[]
+
+  @@index([nome])
 }
 
 model ItemProduto {
-  id                String   @id @default(uuid())
+  id                String          @id @default(uuid())
   contaFinanceiraId String
   contaFinanceira   ContaFinanceira @relation(fields: [contaFinanceiraId], references: [id])
   obraId            String
-  obra              Obra     @relation(fields: [obraId], references: [id])
+  obra              Obra            @relation(fields: [obraId], references: [id])
   descricao         String
   quantidade        Float
   unidade           String?
@@ -114,19 +135,19 @@ model ItemProduto {
 }
 
 model Funcionario {
-  id            String              @id @default(uuid())
-  nome          String
-  cargo         String
-  telefone      String?
-  email         String?
-  cpf           String?
-  dataAdmissao  String
-  obraId        String?
-  obra          Obra?               @relation(fields: [obraId], references: [id])
-  salario       Float?
-  status        StatusFuncionarioDb @default(ativo)
-  criadoEm      String
-  atualizadoEm  String
+  id           String              @id @default(uuid())
+  nome         String
+  cargo        String
+  telefone     String?
+  email        String?
+  cpf          String?
+  dataAdmissao String
+  obraId       String?
+  obra         Obra?               @relation(fields: [obraId], references: [id])
+  salario      Float?
+  status       StatusFuncionarioDb @default(ativo)
+  criadoEm     String
+  atualizadoEm String
 
   @@index([obraId])
 }

@@ -37,6 +37,8 @@ export interface ContaFinanceira {
   dataBaixa?: string; // ISO date — quando efetivamente paga/recebida
   status: StatusConta;
   favorecidoOuCliente: string;
+  /** Referência ao cadastro de fornecedores (ver src/types/fornecedor.ts) — só se aplica a contas do tipo "pagar". */
+  fornecedorId?: string;
   descricao: string;
   categoria?: CategoriaConta;
   formaPagamento?: FormaPagamento;
@@ -71,6 +73,7 @@ export interface FiltrosContaFinanceira {
   dataInicio?: string; // ISO date
   dataFim?: string; // ISO date
   categoria?: CategoriaConta;
+  fornecedorId?: string;
   precisaCompletarCadastro?: boolean;
   busca?: string; // texto livre sobre favorecidoOuCliente/descricao
 }

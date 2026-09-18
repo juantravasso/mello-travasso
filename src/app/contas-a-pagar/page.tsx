@@ -35,7 +35,7 @@ export default function ContasAPagarPage() {
         acao={<Button tamanho="sm" onClick={() => setModalAberto(true)}>+ Nova conta</Button>}
       />
 
-      <FiltrosContas filtros={filtros} onChange={setFiltros} obras={obras} />
+      <FiltrosContas tipo="pagar" filtros={filtros} onChange={setFiltros} obras={obras} />
 
       <p className="mb-3 text-sm text-muted">
         Em aberto no filtro atual: <span className="font-semibold text-foreground">{formatarMoeda(totalEmAberto)}</span>

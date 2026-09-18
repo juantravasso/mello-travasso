@@ -13,6 +13,7 @@ import {
   IconeConfig,
   IconeDashboard,
   IconeEntrada,
+  IconeFornecedor,
   IconeObra,
   IconePessoas,
   IconeSaida,
@@ -26,6 +27,7 @@ const itens = [
   { href: "/obras", rotulo: "Obras", Icone: IconeObra },
   { href: "/custos-produtos", rotulo: "Produtos e materiais", Icone: IconeCaixa },
   { href: "/funcionarios", rotulo: "Funcionários", Icone: IconePessoas },
+  { href: "/fornecedores", rotulo: "Fornecedores", Icone: IconeFornecedor },
 ] as const;
 
 function ComTooltip({ rotulo, children }: { rotulo: string; children: ReactNode }) {

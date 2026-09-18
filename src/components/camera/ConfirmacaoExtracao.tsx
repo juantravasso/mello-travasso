@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CategoriaContaPagar, DadosExtraidosComprovante, FormaPagamento, TipoDocumentoCapturado } from "@/types";
 import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
+import { useFornecedores } from "@/hooks/useFornecedores";
 import { useObras } from "@/hooks/useObras";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -11,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { ModalParcelamento, type ParcelaEditavel } from "@/components/contas/ModalParcelamento";
 import { SelectComCriacao } from "@/components/contas/SelectComCriacao";
+import { SelectFornecedor } from "@/components/contas/SelectFornecedor";
 import { FORMAS_PAGAMENTO_PARCELAVEIS, categoriasPagar } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { cn } from "@/lib/cn";
@@ -28,6 +30,7 @@ export interface DadosConfirmados {
   valor: number;
   data: string;
   favorecido: string;
+  fornecedorId?: string;
   descricao: string;
   categoria?: CategoriaContaPagar;
   formaPagamento?: FormaPagamento;
@@ -63,11 +66,13 @@ export function ConfirmacaoExtracao({
   const { obras } = useObras();
   const categoriasCatalogo = useCatalogoCategorias("pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
+  const { fornecedores, criarFornecedor } = useFornecedores();
 
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCapturado>("comprovante");
   const [valor, setValor] = useState("");
   const [data, setData] = useState(hojeISO());
   const [favorecido, setFavorecido] = useState("");
+  const [fornecedorId, setFornecedorId] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState<CategoriaContaPagar | "">("");
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento | "">("");
@@ -107,6 +112,15 @@ export function ConfirmacaoExtracao({
     if (!obraId && obras.length > 0 && obras[0]) setObraId(obras[0].id);
   }, [obras, obraId]);
 
+  useEffect(() => {
+    // A IA só extrai o nome em texto — tenta casar com um fornecedor já
+    // cadastrado; se não achar, deixa o dropdown vazio para o usuário
+    // buscar ou cadastrar rapidamente.
+    if (!favorecido || fornecedores.length === 0) return;
+    const encontrado = fornecedores.find((f) => f.nome.trim().toLowerCase() === favorecido.trim().toLowerCase());
+    if (encontrado) setFornecedorId(encontrado.id);
+  }, [favorecido, fornecedores]);
+
   function atualizarItem(indice: number, campo: keyof ItemNotaFiscalEditavel, valor: string) {
     setItens((atual) =>
       atual.map((item, i) => {
@@ -138,6 +152,7 @@ export function ConfirmacaoExtracao({
       valor: valorNumerico,
       data,
       favorecido: favorecido.trim(),
+      fornecedorId: fornecedorId || undefined,
       descricao: descricao.trim() || favorecido.trim(),
       categoria: categoria || undefined,
       formaPagamento: formaPagamento || undefined,
@@ -201,13 +216,23 @@ export function ConfirmacaoExtracao({
           onChange={(e) => setData(e.target.value)}
           destaque={camposDestacados.includes("data")}
         />
-        <Input
-          label="Favorecido / Fornecedor"
-          value={favorecido}
-          onChange={(e) => setFavorecido(e.target.value)}
-          destaque={camposDestacados.includes("favorecido")}
-          placeholder="Nome do fornecedor"
+        <SelectFornecedor
+          label="Fornecedor"
+          fornecedores={fornecedores}
+          fornecedorId={fornecedorId}
+          nomeSugerido={favorecido}
+          onSelecionar={(f) => {
+            setFornecedorId(f.id);
+            setFavorecido(f.nome);
+          }}
+          onCriar={(nome) => criarFornecedor({ nome })}
         />
+        {!fornecedorId && favorecido && (
+          <p className="text-xs text-muted">
+            A IA leu &quot;{favorecido}&quot;, mas nenhum fornecedor cadastrado bate com esse nome — busque ou cadastre
+            acima.
+          </p>
+        )}
         <Textarea
           label="Descrição"
           value={descricao}

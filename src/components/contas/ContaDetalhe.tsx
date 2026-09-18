@@ -4,22 +4,26 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { useConta } from "@/hooks/useConta";
+import { useFornecedores } from "@/hooks/useFornecedores";
 import { useObras } from "@/hooks/useObras";
 import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { HistoricoConta } from "./HistoricoConta";
 import { ModalCancelarConta } from "./ModalCancelarConta";
 import { ModalConfirmarBaixa } from "./ModalConfirmarBaixa";
 import { SelectComCriacao } from "./SelectComCriacao";
+import { SelectFornecedor } from "./SelectFornecedor";
 import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
 export function ContaDetalhe({ contaId }: { contaId: string }) {
   const { conta, carregando, darBaixa, cancelar, atualizar } = useConta(contaId);
   const { obras } = useObras();
+  const { fornecedores, criarFornecedor } = useFornecedores();
   const { usuarioOuPadrao } = useUsuarioAtual();
   const categoriasCatalogo = useCatalogoCategorias(conta?.tipo ?? "pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
@@ -32,6 +36,8 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [favorecido, setFavorecido] = useState("");
+  const [fornecedorId, setFornecedorId] = useState("");
+  const [obraId, setObraId] = useState("");
   const [dataVencimento, setDataVencimento] = useState("");
   const [categoria, setCategoria] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
@@ -43,6 +49,8 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
     setValor(String(conta.valor));
     setDescricao(conta.descricao);
     setFavorecido(conta.favorecidoOuCliente);
+    setFornecedorId(conta.fornecedorId ?? "");
+    setObraId(conta.obraId);
     setDataVencimento(conta.dataVencimento);
     setCategoria(conta.categoria ?? "");
     setFormaPagamento(conta.formaPagamento ?? "");
@@ -83,6 +91,8 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           valor: Number(valor) || 0,
           descricao: descricao.trim(),
           favorecidoOuCliente: favorecido.trim(),
+          fornecedorId: conta?.tipo === "pagar" ? fornecedorId || undefined : undefined,
+          obraId,
           dataVencimento,
           categoria: categoria || undefined,
           formaPagamento: formaPagamento || undefined,
@@ -164,11 +174,31 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             </p>
           </div>
           <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
-          <Input
-            label={conta.tipo === "pagar" ? "Favorecido/Fornecedor" : "Cliente"}
-            value={favorecido}
-            onChange={(e) => setFavorecido(e.target.value)}
-          />
+          <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+            <option value="" disabled>
+              Selecione a obra
+            </option>
+            {obras.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.nome}
+              </option>
+            ))}
+          </Select>
+          {conta.tipo === "pagar" ? (
+            <SelectFornecedor
+              label="Favorecido/Fornecedor"
+              fornecedores={fornecedores}
+              fornecedorId={fornecedorId}
+              nomeSugerido={favorecido}
+              onSelecionar={(f) => {
+                setFornecedorId(f.id);
+                setFavorecido(f.nome);
+              }}
+              onCriar={(nome) => criarFornecedor({ nome })}
+            />
+          ) : (
+            <Input label="Cliente" value={favorecido} onChange={(e) => setFavorecido(e.target.value)} />
+          )}
           <Textarea label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
           <Input
             label="Data de vencimento"

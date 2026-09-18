@@ -3,12 +3,14 @@
 import { useState } from "react";
 import type { NovaContaFinanceiraInput, Obra, TipoConta } from "@/types";
 import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
+import { useFornecedores } from "@/hooks/useFornecedores";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { ModalParcelamento, type ParcelaEditavel } from "./ModalParcelamento";
 import { SelectComCriacao } from "./SelectComCriacao";
+import { SelectFornecedor } from "./SelectFornecedor";
 import { FORMAS_PAGAMENTO_PARCELAVEIS } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { blobParaDataUrl } from "@/lib/imagem";
@@ -23,12 +25,14 @@ interface ContaFormProps {
 export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps) {
   const categoriasCatalogo = useCatalogoCategorias(tipo);
   const formasCatalogo = useCatalogoFormasPagamento();
+  const { fornecedores, criarFornecedor } = useFornecedores();
 
   const [obraId, setObraId] = useState(obras[0]?.id ?? "");
   const [valor, setValor] = useState("");
   const [dataLancamento, setDataLancamento] = useState(hojeISO());
   const [dataVencimento, setDataVencimento] = useState(hojeISO());
   const [favorecidoOuCliente, setFavorecidoOuCliente] = useState("");
+  const [fornecedorId, setFornecedorId] = useState("");
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("");
@@ -57,6 +61,7 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
       obraId,
       dataLancamento,
       favorecidoOuCliente: favorecidoOuCliente.trim(),
+      fornecedorId: tipo === "pagar" ? fornecedorId || undefined : undefined,
       categoria: categoria || undefined,
       formaPagamento: formaPagamento || undefined,
       observacao: observacao.trim() || undefined,
@@ -109,11 +114,24 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
             </option>
           ))}
         </Select>
-        <Input
-          label={tipo === "pagar" ? "Fornecedor/Favorecido" : "Cliente"}
-          value={favorecidoOuCliente}
-          onChange={(e) => setFavorecidoOuCliente(e.target.value)}
-        />
+        {tipo === "pagar" ? (
+          <SelectFornecedor
+            label="Fornecedor/Favorecido"
+            fornecedores={fornecedores}
+            fornecedorId={fornecedorId}
+            onSelecionar={(f) => {
+              setFornecedorId(f.id);
+              setFavorecidoOuCliente(f.nome);
+            }}
+            onCriar={(nome) => criarFornecedor({ nome })}
+          />
+        ) : (
+          <Input
+            label="Cliente"
+            value={favorecidoOuCliente}
+            onChange={(e) => setFavorecidoOuCliente(e.target.value)}
+          />
+        )}
         <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
         <Input label="Data de lançamento" type="date" value={dataLancamento} onChange={(e) => setDataLancamento(e.target.value)} />
         <Input

@@ -3,14 +3,17 @@ import type {
   CancelarContaInput,
   ContaFinanceira,
   FiltrosContaFinanceira,
+  FiltrosFornecedor,
   FiltrosFuncionario,
   FiltrosItemProduto,
+  Fornecedor,
   Funcionario,
   HistoricoPrecoProduto,
   ItemProduto,
   NovaContaFinanceiraInput,
   NovaObraInput,
   NovaOpcaoPersonalizadaInput,
+  NovoFornecedorInput,
   NovoFuncionarioInput,
   NovoItemProdutoInput,
   Obra,
@@ -59,4 +62,11 @@ export interface CatalogoRepositorio {
   criarCategoria(tipo: TipoConta, input: NovaOpcaoPersonalizadaInput): Promise<OpcaoPersonalizada>;
   listarFormasPagamento(): Promise<OpcaoPersonalizada[]>;
   criarFormaPagamento(input: NovaOpcaoPersonalizadaInput): Promise<OpcaoPersonalizada>;
+}
+
+export interface FornecedoresRepositorio {
+  listar(filtros?: FiltrosFornecedor): Promise<Fornecedor[]>;
+  obterPorId(id: string): Promise<Fornecedor | null>;
+  criar(input: NovoFornecedorInput): Promise<Fornecedor>;
+  atualizar(id: string, input: Partial<NovoFornecedorInput>): Promise<Fornecedor>;
 }

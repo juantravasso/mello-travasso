@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { animate } from "animejs";
+import { cn } from "@/lib/cn";
 
 interface ModalProps {
   titulo: string;
@@ -21,8 +21,6 @@ const LARGURAS: Record<NonNullable<ModalProps["tamanho"]>, string> = {
 };
 
 export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
-  const painelRef = useRef<HTMLDivElement>(null);
   const [saindo, setSaindo] = useState(false);
   // Só usa o portal depois de montar no client — evita mismatch de hidratação,
   // já que document.body não existe durante o SSR.
@@ -30,15 +28,6 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
 
   useEffect(() => {
     setMontado(true);
-  }, []);
-
-  useEffect(() => {
-    if (backdropRef.current) {
-      animate(backdropRef.current, { opacity: [0, 1], duration: 160, ease: "outQuad" });
-    }
-    if (painelRef.current) {
-      animate(painelRef.current, { opacity: [0, 1], scale: [0.96, 1], duration: 200, ease: "outQuad" });
-    }
   }, []);
 
   useEffect(() => {
@@ -53,12 +42,6 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
   function fechar() {
     if (saindo) return;
     setSaindo(true);
-    if (painelRef.current) {
-      animate(painelRef.current, { opacity: [1, 0], scale: [1, 0.97], duration: DURACAO_SAIDA_MS, ease: "inQuad" });
-    }
-    if (backdropRef.current) {
-      animate(backdropRef.current, { opacity: [1, 0], duration: DURACAO_SAIDA_MS, ease: "inQuad" });
-    }
     window.setTimeout(onFechar, DURACAO_SAIDA_MS);
   }
 
@@ -66,17 +49,19 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
 
   return createPortal(
     <div
-      ref={backdropRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      style={{ opacity: 0 }}
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4",
+        saindo ? "animar-modal-backdrop-saida" : "animar-modal-backdrop-entrada",
+      )}
       onClick={fechar}
       role="dialog"
       aria-modal
     >
       <div
-        ref={painelRef}
-        className={`flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg ${LARGURAS[tamanho]}`}
-        style={{ opacity: 0 }}
+        className={cn(
+          `flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg ${LARGURAS[tamanho]}`,
+          saindo ? "animar-modal-painel-saida" : "animar-modal-painel-entrada",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-border p-5 pb-4">

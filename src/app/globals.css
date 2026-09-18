@@ -111,3 +111,66 @@ body {
 .animar-entrada {
   animation: fade-in-up 0.35s ease-out both;
 }
+
+/*
+ * Animação do Modal em CSS puro (não JS/rAF): usada em vez de animejs porque
+ * um efeito acionado via requestAnimationFrame pode nunca "disparar" quando a
+ * aba está em segundo plano (o navegador pausa rAF), deixando o modal preso
+ * em opacity:0 — invisível mas clicável. Uma @keyframes com "both" aplica o
+ * estado final sozinha, sem depender de nenhum agendamento em JS.
+ */
+@keyframes modal-backdrop-entrada {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-backdrop-saida {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-painel-entrada {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modal-painel-saida {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+.animar-modal-backdrop-entrada {
+  animation: modal-backdrop-entrada 160ms ease-out both;
+}
+
+.animar-modal-backdrop-saida {
+  animation: modal-backdrop-saida 140ms ease-in both;
+}
+
+.animar-modal-painel-entrada {
+  animation: modal-painel-entrada 200ms ease-out both;
+}
+
+.animar-modal-painel-saida {
+  animation: modal-painel-saida 140ms ease-in both;
+}

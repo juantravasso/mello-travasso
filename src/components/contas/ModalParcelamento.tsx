@@ -67,7 +67,7 @@ export function ModalParcelamento({
   const diferenca = Math.round((somaParcelas - valorTotal) * 100) / 100;
 
   return (
-    <Modal titulo="Parcelamento" onFechar={onFechar}>
+    <Modal titulo="Parcelamento" tamanho="lg" onFechar={onFechar}>
       <div className="flex flex-col gap-4">
         <Input
           label="Quantas parcelas?"

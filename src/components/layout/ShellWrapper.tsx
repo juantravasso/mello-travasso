@@ -22,7 +22,7 @@ export function ShellWrapper({ children }: { children: ReactNode }) {
       {/* min-w-0: sem isso, um item flex não encolhe abaixo do min-content dos
           descendentes (ex.: um <select>/<input type="date">), o que forçava
           overflow horizontal da página inteira no mobile. */}
-      <div className="flex min-h-full min-w-0 flex-1 flex-col md:ml-64">
+      <div className="flex min-h-full min-w-0 flex-1 flex-col md:ml-[68px]">
         <Topbar />
         <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-6">
           {children}

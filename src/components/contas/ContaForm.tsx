@@ -98,23 +98,23 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
 
   return (
     <div className="flex flex-col gap-3">
-      <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
-        <option value="" disabled>
-          Selecione a obra
-        </option>
-        {obras.map((obra) => (
-          <option key={obra.id} value={obra.id}>
-            {obra.nome}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+          <option value="" disabled>
+            Selecione a obra
           </option>
-        ))}
-      </Select>
-      <Input
-        label={tipo === "pagar" ? "Fornecedor/Favorecido" : "Cliente"}
-        value={favorecidoOuCliente}
-        onChange={(e) => setFavorecidoOuCliente(e.target.value)}
-      />
-      <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
-      <div className="grid grid-cols-2 gap-3">
+          {obras.map((obra) => (
+            <option key={obra.id} value={obra.id}>
+              {obra.nome}
+            </option>
+          ))}
+        </Select>
+        <Input
+          label={tipo === "pagar" ? "Fornecedor/Favorecido" : "Cliente"}
+          value={favorecidoOuCliente}
+          onChange={(e) => setFavorecidoOuCliente(e.target.value)}
+        />
+        <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
         <Input label="Data de lançamento" type="date" value={dataLancamento} onChange={(e) => setDataLancamento(e.target.value)} />
         <Input
           label={tipo === "pagar" ? "Data de vencimento" : "Data prevista"}
@@ -122,31 +122,31 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
           value={dataVencimento}
           onChange={(e) => setDataVencimento(e.target.value)}
         />
+        <SelectComCriacao
+          label="Categoria"
+          rotuloVazio="Selecione a categoria"
+          value={categoria}
+          onChange={setCategoria}
+          opcoes={categoriasCatalogo.opcoes}
+          onCriar={categoriasCatalogo.criar}
+          tituloModal="Nova categoria"
+        />
+        <SelectComCriacao
+          label="Forma de pagamento"
+          rotuloVazio="Selecione a forma de pagamento"
+          value={formaPagamento}
+          onChange={aoMudarFormaPagamento}
+          opcoes={formasCatalogo.opcoes}
+          onCriar={formasCatalogo.criar}
+          tituloModal="Nova forma de pagamento"
+        />
+        {podeParcelar && (
+          <Button variante="outline" tamanho="sm" className="md:self-end" onClick={() => setModalParcelamentoAberto(true)}>
+            {parcelas ? `Parcelado em ${parcelas.length}x` : "Parcelar pagamento"}
+          </Button>
+        )}
       </div>
       <Textarea label="Descrição" value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      <SelectComCriacao
-        label="Categoria"
-        rotuloVazio="Selecione a categoria"
-        value={categoria}
-        onChange={setCategoria}
-        opcoes={categoriasCatalogo.opcoes}
-        onCriar={categoriasCatalogo.criar}
-        tituloModal="Nova categoria"
-      />
-      <SelectComCriacao
-        label="Forma de pagamento"
-        rotuloVazio="Selecione a forma de pagamento"
-        value={formaPagamento}
-        onChange={aoMudarFormaPagamento}
-        opcoes={formasCatalogo.opcoes}
-        onCriar={formasCatalogo.criar}
-        tituloModal="Nova forma de pagamento"
-      />
-      {podeParcelar && (
-        <Button variante="outline" tamanho="sm" onClick={() => setModalParcelamentoAberto(true)}>
-          {parcelas ? `Parcelado em ${parcelas.length}x` : "Parcelar pagamento"}
-        </Button>
-      )}
       <Textarea label="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Comprovante (opcional)</span>

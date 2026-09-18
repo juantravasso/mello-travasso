@@ -24,7 +24,11 @@ export function SeletorUsuarioAtual({ compacto }: { compacto?: boolean }) {
           setNome(usuario);
           setAberto(true);
         }}
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+        className={
+          compacto
+            ? "flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+            : "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+        }
       >
         <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
           {(usuario || "?").slice(0, 1).toUpperCase()}

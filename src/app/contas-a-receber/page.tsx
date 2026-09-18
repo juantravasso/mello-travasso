@@ -53,7 +53,7 @@ export default function ContasAReceberPage() {
       </div>
 
       {modalAberto && (
-        <Modal titulo="Nova conta a receber" onFechar={() => setModalAberto(false)}>
+        <Modal titulo="Nova conta a receber" tamanho="lg" onFechar={() => setModalAberto(false)}>
           <ContaForm
             tipo="receber"
             obras={obras}

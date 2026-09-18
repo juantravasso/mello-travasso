@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { Logo } from "./Logo";
 import { SeletorUsuarioAtual } from "./SeletorUsuarioAtual";
 import {
@@ -26,53 +28,76 @@ const itens = [
   { href: "/funcionarios", rotulo: "Funcionários", Icone: IconePessoas },
 ] as const;
 
+function ComTooltip({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+  return (
+    <div className="group relative flex justify-center">
+      {children}
+      <span
+        className="pointer-events-none absolute left-full top-1/2 z-40 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground opacity-0 shadow-lg transition-opacity delay-150 group-hover:opacity-100"
+      >
+        {rotulo}
+      </span>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { usuario } = useUsuarioAtual();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-sidebar md:flex">
-      <div className="border-b border-border px-5 py-5">
-        <Logo tamanho="sm" />
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[68px] flex-col items-center border-r border-border bg-sidebar md:flex">
+      <div className="flex w-full justify-center border-b border-border py-4">
+        <Logo tamanho="sm" comTexto={false} />
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      {/* Sem overflow-y-auto: definir só o eixo Y como auto faz o navegador
+          tratar o eixo X como auto também, cortando o tooltip que aparece à
+          direita do ícone. Com poucos itens, a lista não deve estourar a altura. */}
+      <nav className="flex-1 px-2 py-4">
         <ul className="flex flex-col gap-1">
           {itens.map(({ href, rotulo, Icone }) => {
             const ativo = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <li key={href}>
-                <Link
-                  href={href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    ativo
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted hover:bg-surface-2 hover:text-foreground",
-                  )}
-                >
-                  <Icone className="h-[18px] w-[18px] flex-shrink-0" />
-                  <span className="truncate">{rotulo}</span>
-                </Link>
+                <ComTooltip rotulo={rotulo}>
+                  <Link
+                    href={href}
+                    aria-label={rotulo}
+                    className={cn(
+                      "flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+                      ativo
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted hover:bg-surface-2 hover:text-foreground",
+                    )}
+                  >
+                    <Icone className="h-5 w-5 flex-shrink-0" />
+                  </Link>
+                </ComTooltip>
               </li>
             );
           })}
         </ul>
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-border px-3 py-3">
-        <SeletorUsuarioAtual />
-        <Link
-          href="/configuracoes"
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-            pathname.startsWith("/configuracoes")
-              ? "bg-primary/15 text-primary"
-              : "text-muted hover:bg-surface-2 hover:text-foreground",
-          )}
-        >
-          <IconeConfig className="h-[18px] w-[18px] flex-shrink-0" />
-          Configurações
-        </Link>
+      <div className="flex w-full flex-col items-center gap-1 border-t border-border px-2 py-3">
+        <ComTooltip rotulo={usuario || "Definir seu nome"}>
+          <SeletorUsuarioAtual compacto />
+        </ComTooltip>
+        <ComTooltip rotulo="Configurações">
+          <Link
+            href="/configuracoes"
+            aria-label="Configurações"
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+              pathname.startsWith("/configuracoes")
+                ? "bg-primary/15 text-primary"
+                : "text-muted hover:bg-surface-2 hover:text-foreground",
+            )}
+          >
+            <IconeConfig className="h-5 w-5 flex-shrink-0" />
+          </Link>
+        </ComTooltip>
       </div>
     </aside>
   );

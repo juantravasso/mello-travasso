@@ -1,9 +1,3 @@
-import { CatalogoRepositorioLocal } from "./catalogoRepositorio.local";
-import { ContasRepositorioLocal } from "./contasRepositorio.local";
-import { FuncionariosRepositorioLocal } from "./funcionariosRepositorio.local";
-import { ItensProdutoRepositorioLocal } from "./itensProdutoRepositorio.local";
-import { semearBancoSeVazio } from "./localDb";
-import { ObrasRepositorioLocal } from "./obrasRepositorio.local";
 import type {
   CatalogoRepositorio,
   ContasRepositorio,
@@ -11,28 +5,83 @@ import type {
   ItensProdutoRepositorio,
   ObrasRepositorio,
 } from "./repositorios";
-import { contasSeed, funcionariosSeed, itensProdutoSeed, obrasSeed } from "./seed";
+import {
+  atualizarObra,
+  criarObra,
+  listarObras,
+  obterObraPorId,
+} from "./server/obrasActions";
+import {
+  atualizarConta,
+  baixarConta,
+  cancelarConta,
+  criarConta,
+  listarContas,
+  obterContaPorId,
+} from "./server/contasActions";
+import {
+  criarItensProdutoEmLote,
+  historicoPrecoPorDescricao,
+  listarDescricoesUnicasProduto,
+  listarItensProduto,
+} from "./server/itensProdutoActions";
+import {
+  atualizarFuncionario,
+  criarFuncionario,
+  definirStatusFuncionario,
+  listarFuncionarios,
+  obterFuncionarioPorId,
+} from "./server/funcionariosActions";
+import {
+  criarCategoriaPersonalizada,
+  criarFormaPagamentoPersonalizada,
+  listarCategoriasPersonalizadas,
+  listarFormasPagamentoPersonalizadas,
+} from "./server/catalogoActions";
 
 /**
- * Ponto único de acesso à camada de dados. Troque estas instâncias por
- * implementações HTTP (ex.: ObrasRepositorioHttp) quando o backend/banco
- * de dados estiver pronto — o restante do app usa só as interfaces em
- * ./repositorios e não precisa mudar.
+ * Ponto único de acesso à camada de dados. Cada método aqui é uma Server
+ * Action (ver ./server/*) que roda no servidor e fala com o Postgres via
+ * Prisma — hooks e componentes continuam chamando essas interfaces sem
+ * saber que existe um banco por trás.
  */
-export const obrasRepositorio: ObrasRepositorio = new ObrasRepositorioLocal();
-export const contasRepositorio: ContasRepositorio = new ContasRepositorioLocal();
-export const itensProdutoRepositorio: ItensProdutoRepositorio = new ItensProdutoRepositorioLocal();
-export const funcionariosRepositorio: FuncionariosRepositorio = new FuncionariosRepositorioLocal();
-export const catalogoRepositorio: CatalogoRepositorio = new CatalogoRepositorioLocal();
+export const obrasRepositorio: ObrasRepositorio = {
+  listar: listarObras,
+  obterPorId: obterObraPorId,
+  criar: criarObra,
+  atualizar: atualizarObra,
+};
 
-export function garantirDadosDeExemplo(): void {
-  semearBancoSeVazio({
-    obras: obrasSeed,
-    contas: contasSeed,
-    itensProduto: itensProdutoSeed,
-    funcionarios: funcionariosSeed,
-  });
-}
+export const contasRepositorio: ContasRepositorio = {
+  listar: listarContas,
+  obterPorId: obterContaPorId,
+  criar: criarConta,
+  atualizar: atualizarConta,
+  baixar: baixarConta,
+  cancelar: cancelarConta,
+};
+
+export const itensProdutoRepositorio: ItensProdutoRepositorio = {
+  listar: listarItensProduto,
+  criarEmLote: criarItensProdutoEmLote,
+  historicoPorDescricao: historicoPrecoPorDescricao,
+  listarDescricoesUnicas: listarDescricoesUnicasProduto,
+};
+
+export const funcionariosRepositorio: FuncionariosRepositorio = {
+  listar: listarFuncionarios,
+  obterPorId: obterFuncionarioPorId,
+  criar: criarFuncionario,
+  atualizar: atualizarFuncionario,
+  definirStatus: definirStatusFuncionario,
+};
+
+export const catalogoRepositorio: CatalogoRepositorio = {
+  listarCategorias: listarCategoriasPersonalizadas,
+  criarCategoria: criarCategoriaPersonalizada,
+  listarFormasPagamento: listarFormasPagamentoPersonalizadas,
+  criarFormaPagamento: criarFormaPagamentoPersonalizada,
+};
 
 export type {
   CatalogoRepositorio,

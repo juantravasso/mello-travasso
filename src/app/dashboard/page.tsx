@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ContaFinanceira, Obra } from "@/types";
-import { contasRepositorio, garantirDadosDeExemplo, obrasRepositorio } from "@/services/data";
+import { contasRepositorio, obrasRepositorio } from "@/services/data";
 import { useCatalogoCategorias } from "@/hooks/useCatalogo";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -30,7 +30,6 @@ export default function DashboardPage() {
   const categoriasCatalogo = useCatalogoCategorias("pagar");
 
   useEffect(() => {
-    garantirDadosDeExemplo();
     void (async () => {
       const [listaObras, listaContas] = await Promise.all([obrasRepositorio.listar(), contasRepositorio.listar()]);
       setObras(listaObras);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FiltrosItemProduto, ItemProduto } from "@/types";
-import { itensProdutoRepositorio, garantirDadosDeExemplo } from "@/services/data";
+import { itensProdutoRepositorio } from "@/services/data";
 
 export function useItensProduto(filtros?: FiltrosItemProduto) {
   const [itens, setItens] = useState<ItemProduto[]>([]);
@@ -21,7 +21,6 @@ export function useItensProduto(filtros?: FiltrosItemProduto) {
   }, [filtrosChave]);
 
   useEffect(() => {
-    garantirDadosDeExemplo();
     void recarregar();
   }, [recarregar]);
 

@@ -18,7 +18,17 @@ interface SelectProps {
 interface OpcaoInterna {
   valor: string;
   rotulo: ReactNode;
+  textoBusca: string;
   desabilitada: boolean;
+}
+
+// Abaixo disso não vale a pena mostrar a busca — a lista já cabe de vista.
+const LIMITE_PARA_BUSCA = 6;
+
+function textoDe(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textoDe).join(" ");
+  return "";
 }
 
 function extrairOpcoes(children: ReactNode): OpcaoInterna[] {
@@ -29,6 +39,7 @@ function extrairOpcoes(children: ReactNode): OpcaoInterna[] {
     opcoes.push({
       valor: props.value !== undefined ? String(props.value) : "",
       rotulo: props.children,
+      textoBusca: textoDe(props.children).toLowerCase(),
       desabilitada: !!props.disabled,
     });
   });
@@ -47,10 +58,18 @@ export function Select({ label, value, onChange, children, id, className, disabl
   const ehPlaceholder = !selecionada || selecionada.desabilitada;
 
   const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buscaRef = useRef<HTMLInputElement>(null);
   const idGerado = useId();
   const idFinal = id ?? idGerado;
+
+  const mostrarBusca = opcoes.length > LIMITE_PARA_BUSCA;
+  const opcoesFiltradas =
+    mostrarBusca && busca.trim() !== ""
+      ? opcoes.filter((o) => o.textoBusca.includes(busca.trim().toLowerCase()) || o.textoBusca.startsWith("+"))
+      : opcoes;
 
   useEffect(() => {
     if (!aberto) return;
@@ -76,7 +95,11 @@ export function Select({ label, value, onChange, children, id, className, disabl
         duration: 150,
         ease: "outQuad",
       });
+      if (mostrarBusca) buscaRef.current?.focus();
+    } else {
+      setBusca("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
 
   function selecionar(opcao: OpcaoInterna) {
@@ -114,27 +137,44 @@ export function Select({ label, value, onChange, children, id, className, disabl
         {aberto && (
           <div
             ref={menuRef}
-            role="listbox"
-            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 max-h-60 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg"
+            className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
           >
-            {opcoes.map((opcao, indice) => (
-              <button
-                key={`${opcao.valor}-${indice}`}
-                type="button"
-                role="option"
-                aria-selected={opcao.valor === selecionada?.valor}
-                disabled={opcao.desabilitada}
-                onClick={() => selecionar(opcao)}
-                className={cn(
-                  "flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors disabled:cursor-default disabled:text-muted",
-                  !opcao.desabilitada && opcao.valor === selecionada?.valor
-                    ? "bg-primary/15 text-primary"
-                    : !opcao.desabilitada && "text-foreground hover:bg-surface-2",
-                )}
-              >
-                {opcao.rotulo}
-              </button>
-            ))}
+            {mostrarBusca && (
+              <div className="border-b border-border p-1.5">
+                <input
+                  ref={buscaRef}
+                  type="text"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Buscar…"
+                  className="h-8 w-full rounded-md border border-border bg-surface px-2.5 text-sm text-foreground outline-none focus:border-primary"
+                />
+              </div>
+            )}
+            <div role="listbox" className="max-h-56 overflow-y-auto p-1">
+              {opcoesFiltradas.length === 0 && (
+                <p className="px-3 py-2 text-sm text-muted">Nenhuma opção encontrada.</p>
+              )}
+              {opcoesFiltradas.map((opcao, indice) => (
+                <button
+                  key={`${opcao.valor}-${indice}`}
+                  type="button"
+                  role="option"
+                  aria-selected={opcao.valor === selecionada?.valor}
+                  disabled={opcao.desabilitada}
+                  onClick={() => selecionar(opcao)}
+                  className={cn(
+                    "flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors disabled:cursor-default disabled:text-muted",
+                    !opcao.desabilitada && opcao.valor === selecionada?.valor
+                      ? "bg-primary/15 text-primary"
+                      : !opcao.desabilitada && "text-foreground hover:bg-surface-2",
+                  )}
+                >
+                  {opcao.rotulo}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

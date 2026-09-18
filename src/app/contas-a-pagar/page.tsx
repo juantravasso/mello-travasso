@@ -53,7 +53,7 @@ export default function ContasAPagarPage() {
       </div>
 
       {modalAberto && (
-        <Modal titulo="Nova conta a pagar" onFechar={() => setModalAberto(false)}>
+        <Modal titulo="Nova conta a pagar" tamanho="lg" onFechar={() => setModalAberto(false)}>
           <ContaForm
             tipo="pagar"
             obras={obras}

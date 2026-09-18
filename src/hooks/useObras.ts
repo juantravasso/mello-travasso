@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { NovaObraInput, Obra } from "@/types";
-import { garantirDadosDeExemplo, obrasRepositorio } from "@/services/data";
+import { obrasRepositorio } from "@/services/data";
 
 export function useObras() {
   const [obras, setObras] = useState<Obra[]>([]);
@@ -14,7 +14,6 @@ export function useObras() {
   }, []);
 
   useEffect(() => {
-    garantirDadosDeExemplo();
     void recarregar();
   }, [recarregar]);
 

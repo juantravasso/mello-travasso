@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { FiltrosFuncionario, Funcionario, NovoFuncionarioInput } from "@/types";
-import { funcionariosRepositorio, garantirDadosDeExemplo } from "@/services/data";
+import { funcionariosRepositorio } from "@/services/data";
 
 export function useFuncionarios(filtros?: FiltrosFuncionario) {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -15,7 +15,6 @@ export function useFuncionarios(filtros?: FiltrosFuncionario) {
   }, [filtrosChave]);
 
   useEffect(() => {
-    garantirDadosDeExemplo();
     void recarregar();
   }, [recarregar]);
 

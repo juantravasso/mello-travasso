@@ -8,11 +8,18 @@ interface ModalProps {
   titulo: string;
   onFechar: () => void;
   children: ReactNode;
+  /** "lg" dá mais espaço lateral no desktop — use em formulários com vários campos. */
+  tamanho?: "md" | "lg";
 }
 
 const DURACAO_SAIDA_MS = 140;
 
-export function Modal({ titulo, onFechar, children }: ModalProps) {
+const LARGURAS: Record<NonNullable<ModalProps["tamanho"]>, string> = {
+  md: "max-w-md",
+  lg: "max-w-md md:max-w-2xl",
+};
+
+export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
   const [saindo, setSaindo] = useState(false);
@@ -58,7 +65,7 @@ export function Modal({ titulo, onFechar, children }: ModalProps) {
     >
       <div
         ref={painelRef}
-        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg"
+        className={`max-h-[85vh] w-full overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg ${LARGURAS[tamanho]}`}
         style={{ opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
       >

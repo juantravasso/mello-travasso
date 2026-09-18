@@ -19,10 +19,9 @@ import type {
 } from "@/types";
 
 /**
- * Contratos da camada de dados. Hoje implementados sobre localStorage
- * (ver localStorage/*Repositorio.ts); quando o backend existir, basta criar
- * uma implementação HTTP destas mesmas interfaces e trocar o import em
- * services/data/index.ts — hooks e componentes não mudam.
+ * Contratos da camada de dados. Implementados via Server Actions que falam
+ * com o Postgres (Prisma) — ver ./server/*Actions.ts. Hooks e componentes só
+ * conhecem estas interfaces, nunca o Prisma diretamente.
  */
 export interface ObrasRepositorio {
   listar(): Promise<Obra[]>;

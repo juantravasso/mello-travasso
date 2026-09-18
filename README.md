@@ -8,19 +8,21 @@ comprovantes e notas fiscais.
 ## Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript estrito** (sem `any`)
-- **Tailwind CSS v4** — identidade visual "navy + dourado" em [src/app/globals.css](src/app/globals.css), componentes base em [src/components/ui](src/components/ui)
+- **Postgres (Neon, via integração nativa da Vercel) + Prisma 6** — banco real, compartilhado entre todos os dispositivos/usuários (ver seção própria abaixo)
+- **Tailwind CSS v4** — identidade visual "navy + dourado" com tema claro alternável em [src/app/globals.css](src/app/globals.css), componentes base em [src/components/ui](src/components/ui)
+- **anime.js** para as animações de modal e dropdown
 - **Recharts** para os gráficos do dashboard (fluxo financeiro, gastos por categoria) e de evolução de preço
 - Roteamento: **file-based routing do Next.js** (App Router) — substitui o React Router; cada pasta em `src/app` é uma tela
-- Layout responsivo: sidebar fixa em telas ≥768px ([Sidebar.tsx](src/components/layout/Sidebar.tsx)), bottom nav abaixo disso ([BottomNav.tsx](src/components/layout/BottomNav.tsx)) — ver [ShellWrapper.tsx](src/components/layout/ShellWrapper.tsx)
+- Layout responsivo: sidebar colapsada em ícones em telas ≥768px ([Sidebar.tsx](src/components/layout/Sidebar.tsx)), bottom nav abaixo disso ([BottomNav.tsx](src/components/layout/BottomNav.tsx)) — ver [ShellWrapper.tsx](src/components/layout/ShellWrapper.tsx)
 - IA de leitura de imagem: **Anthropic Claude (API de visão + tool use)**, chamada apenas server-side
 - Gerenciador de pacotes: **yarn**
 - Hospedagem alvo: **Vercel**
 
-Por que Next.js em vez de uma SPA com Vite: as rotas de API (`src/app/api/**`)
-rodam no mesmo projeto e mesmo deploy da Vercel, o que resolve de graça o
-requisito "manter a chave de IA fora do cliente" sem precisar de um backend
-separado — e mantém a porta aberta para trocar por um backend dedicado depois
-(a camada `services/` já é agnóstica a isso).
+Por que Next.js em vez de uma SPA com Vite: as rotas de API e Server Actions
+(`src/app/api/**`, `src/services/data/server/**`) rodam no mesmo projeto e
+mesmo deploy da Vercel — isso resolve de graça tanto "manter a chave de IA
+fora do cliente" quanto "falar com o Postgres sem expor credenciais",
+sem precisar de um backend separado.
 
 ## Arquitetura de pastas
 
@@ -31,11 +33,12 @@ src/
   services/
     ai/              Camada de IA. reciboReader.ts é chamado pela UI;
                       provedor.server.ts e providers/* só rodam no servidor.
-    data/            Camada de dados (repositórios). Hoje implementada sobre
-                      localStorage (*.local.ts); trocar por HTTP/Prisma no
-                      futuro só exige criar uma nova implementação das
-                      interfaces em repositorios.ts — UI e hooks não mudam.
-    http/            (reservado para o client HTTP quando houver backend)
+    data/            Camada de dados (repositórios). repositorios.ts define as
+                      interfaces; server/*Actions.ts são Server Actions "use
+                      server" que falam com o Postgres via Prisma
+                      (src/lib/prisma.ts); index.ts monta os repositórios a
+                      partir dessas actions. UI e hooks só conhecem as
+                      interfaces — trocar de banco não toca em componente algum.
   hooks/             useObras, useContas, useConta, useItensProduto, useFuncionarios,
                      useFuncionario, useCamera, useIsDesktop
   components/
@@ -125,34 +128,57 @@ commitar a chave real nem chamar a API de IA a partir do cliente — por isso
 `anthropicProvider.ts` só é importado por `provedor.server.ts`, que só é
 importado pela API route.
 
-## Armazenamento de dados (estado atual → próximo passo)
+## Banco de dados
 
-Ainda não há banco de dados. `services/data/*.local.ts` implementa as
-interfaces de repositório (`ObrasRepositorio`, `ContasRepositorio`,
-`ItensProdutoRepositorio`) sobre `localStorage`, incluindo o comprovante
-fotografado (guardado como data URL). Isso é suficiente para usar e
-demonstrar o sistema, mas **não substitui um backend real**:
+Postgres real (Neon, provisionado via `vercel integration add neon` e
+conectado ao projeto), não mais `localStorage` — os dados são compartilhados
+entre todos os dispositivos e usuários, o que era o motivo de contas
+lançadas pelo celular não aparecerem no computador antes desta migração.
 
-- Dados ficam só no navegador do usuário (não sincronizam entre dispositivos).
-- Fotos em base64 no localStorage não escalam bem.
+- Schema em [prisma/schema.prisma](prisma/schema.prisma). Datas
+  (`dataVencimento`, `criadoEm`, etc.) ficam como `String` ISO, não `DateTime`
+  nativo — decisão deliberada, ver comentário no topo do schema.
+- `historico` de cada conta (quem criou/editou/baixou/cancelou) é um array
+  JSON na própria linha, não uma tabela separada.
+- Categorias e formas de pagamento criadas pelos usuários (além das opções
+  padrão fixas em `src/lib/categorias.ts`) ficam em
+  `CategoriaPersonalizada`/`FormaPagamentoPersonalizada`.
+- `src/lib/prisma.ts` mantém um único `PrismaClient` (evita esgotar conexões
+  a cada hot-reload em dev).
 
-**Próximo passo sugerido:** Postgres (Neon/Supabase, ambos com bom suporte
-Vercel) + Prisma, com upload de comprovantes para um object storage (Vercel
-Blob ou S3) em vez de data URL. Como a UI só depende das interfaces em
-[src/services/data/repositorios.ts](src/services/data/repositorios.ts), a
-troca é: implementar `ObrasRepositorioHttp`, `ContasRepositorioHttp`,
-`ItensProdutoRepositorioHttp` chamando rotas `/api/obras`, `/api/contas`,
-`/api/itens-produto`, e trocar as instâncias em
-[src/services/data/index.ts](src/services/data/index.ts). Nenhum componente
-ou hook muda.
+### Rodando migrações / seed
+
+```bash
+npx prisma db push     # aplica o schema no Postgres (sem histórico de migrations)
+node prisma/seed.mjs   # dados de exemplo — só roda se o banco estiver vazio
+```
+
+O Prisma CLI lê `.env` (não `.env.local`, que é uma convenção só do Next.js)
+— por isso existe um `.env` além do `.env.local`, ambos gitignorados. Rode
+`vercel env pull .env.local` para trazer as variáveis de conexão do projeto
+Vercel (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, etc.) e copie as duas linhas
+`DATABASE_URL*` para um `.env` local.
+
+**Nota sobre a versão do Prisma:** o Prisma 7 reestruturou o CLI inteiro em
+torno da própria plataforma hospedada deles (`prisma deploy`, `prisma auth
+login`, etc.) e não tem mais `prisma generate`/`db push` como comandos de
+topo. Este projeto fica no **Prisma 6**, que é o ORM tradicional e funciona
+com qualquer Postgres — não instale a v7 por engano.
 
 ## Rodando localmente
 
 ```bash
-yarn install
-cp .env.example .env.local   # opcional — sem isso, IA roda em modo mock
+yarn install                 # roda "prisma generate" automaticamente (postinstall)
+cp .env.example .env.local   # preencha ANTHROPIC_API_KEY (opcional — sem isso, IA roda em modo mock)
+# preencha também DATABASE_URL e DATABASE_URL_UNPOOLED em .env.local e .env
+# (vercel env pull .env.local traz do projeto Vercel)
 yarn dev
 ```
+
+**Limitação conhecida:** o comprovante fotografado ainda é salvo como data
+URL (base64) numa coluna de texto (`ContaFinanceira.comprovanteUrl`), não em
+um object storage dedicado. Funciona, mas infla o tamanho das linhas no
+Postgres — mover para Vercel Blob/S3 é a melhoria óbvia seguinte.
 
 Abra http://localhost:3000. Em desktop sem câmera, a tela inicial cai
 automaticamente no fallback de upload/`capture=environment`.

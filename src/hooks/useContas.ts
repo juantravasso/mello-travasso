@@ -6,7 +6,7 @@ import type {
   NovaContaFinanceiraInput,
   TipoConta,
 } from "@/types";
-import { contasRepositorio, garantirDadosDeExemplo } from "@/services/data";
+import { contasRepositorio } from "@/services/data";
 
 export function useContas(tipo: TipoConta, filtros?: FiltrosContaFinanceira) {
   const [contas, setContas] = useState<ContaFinanceira[]>([]);
@@ -24,7 +24,6 @@ export function useContas(tipo: TipoConta, filtros?: FiltrosContaFinanceira) {
   }, [tipo, filtrosChave]);
 
   useEffect(() => {
-    garantirDadosDeExemplo();
     void recarregar();
   }, [recarregar]);
 

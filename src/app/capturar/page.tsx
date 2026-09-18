@@ -87,13 +87,14 @@ export default function PaginaCaptura() {
           if (indice === 0) primeiraConta = conta;
         }
       } else {
+        // Mesmo vindo de um comprovante (que em tese já foi pago), a conta
+        // nasce em aberto — só é marcada como paga quando alguém revisa e
+        // completa o cadastro (ver ContaDetalhe), para não assumir uma baixa
+        // que ninguém confirmou de fato.
         primeiraConta = await contasRepositorio.criar(
           { ...base, valor: dados.valor, dataVencimento: dados.data, descricao: dados.descricao },
           usuarioOuPadrao,
         );
-        if (dados.tipoDocumento === "comprovante") {
-          await contasRepositorio.baixar({ contaId: primeiraConta.id, dataBaixa: dados.data, usuario: usuarioOuPadrao });
-        }
       }
 
       if (dados.tipoDocumento === "nota_fiscal" && dados.itens.length > 0 && primeiraConta) {

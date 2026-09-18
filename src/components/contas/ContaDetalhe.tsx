@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { HistoricoConta } from "./HistoricoConta";
 import { ModalCancelarConta } from "./ModalCancelarConta";
+import { ModalConfirmarBaixa } from "./ModalConfirmarBaixa";
 import { SelectComCriacao } from "./SelectComCriacao";
 import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
@@ -26,6 +27,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   const [dataBaixa, setDataBaixa] = useState(hojeISO());
   const [baixando, setBaixando] = useState(false);
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
+  const [modalConfirmarBaixaAberto, setModalConfirmarBaixaAberto] = useState(false);
 
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -73,6 +75,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   }
 
   async function salvarEdicao() {
+    const estavaIncompleta = conta?.precisaCompletarCadastro ?? false;
     setSalvandoEdicao(true);
     try {
       await atualizar(
@@ -88,9 +91,19 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
         },
         usuarioOuPadrao,
       );
+      // Só faz sentido perguntar "já foi paga?" quando a conta estava
+      // marcada como incompleta (veio da câmera) e continua em aberto —
+      // uma edição comum num lançamento já completo não deve interromper
+      // com essa pergunta.
+      if (estavaIncompleta) setModalConfirmarBaixaAberto(true);
     } finally {
       setSalvandoEdicao(false);
     }
+  }
+
+  async function confirmarBaixaAoCompletar(data: string) {
+    await darBaixa({ contaId, dataBaixa: data, usuario: usuarioOuPadrao });
+    setModalConfirmarBaixaAberto(false);
   }
 
   return (
@@ -204,6 +217,14 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
 
       {modalCancelarAberto && (
         <ModalCancelarConta onFechar={() => setModalCancelarAberto(false)} onConfirmar={confirmarCancelamento} />
+      )}
+
+      {modalConfirmarBaixaAberto && (
+        <ModalConfirmarBaixa
+          tipo={conta.tipo}
+          onFechar={() => setModalConfirmarBaixaAberto(false)}
+          onConfirmar={confirmarBaixaAoCompletar}
+        />
       )}
     </div>
   );

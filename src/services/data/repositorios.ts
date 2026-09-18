@@ -69,4 +69,5 @@ export interface FornecedoresRepositorio {
   obterPorId(id: string): Promise<Fornecedor | null>;
   criar(input: NovoFornecedorInput): Promise<Fornecedor>;
   atualizar(id: string, input: Partial<NovoFornecedorInput>): Promise<Fornecedor>;
+  resolver(nome: string, documento?: string): Promise<Fornecedor>;
 }

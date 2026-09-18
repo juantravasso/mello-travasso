@@ -44,6 +44,7 @@ import {
   criarFornecedor,
   listarFornecedores,
   obterFornecedorPorId,
+  resolverFornecedor,
 } from "./server/fornecedoresActions";
 
 /**
@@ -95,6 +96,7 @@ export const fornecedoresRepositorio: FornecedoresRepositorio = {
   obterPorId: obterFornecedorPorId,
   criar: criarFornecedor,
   atualizar: atualizarFornecedor,
+  resolver: resolverFornecedor,
 };
 
 export type {

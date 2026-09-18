@@ -45,7 +45,11 @@ const ESQUEMA_EXTRACAO: Anthropic.Tool.InputSchema = {
     valor: { type: "number", description: "Valor total pago/da nota, em reais" },
     data: { type: "string", description: "Data do documento no formato ISO yyyy-mm-dd" },
     favorecido: { type: "string", description: "Nome do fornecedor/favorecido/emitente" },
-    cnpjFavorecido: { type: "string" },
+    cnpjFavorecido: {
+      type: "string",
+      description:
+        "CNPJ ou CPF do fornecedor/favorecido/emitente, só números ou formatado — procure em qualquer tipo de documento (cabeçalho, rodapé, ao lado do nome), não só em nota fiscal. Omita se não encontrar.",
+    },
     descricao: { type: "string", description: "Descrição curta do gasto" },
     categoriaSugerida: {
       type: "string",
@@ -85,6 +89,8 @@ const INSTRUCAO_EXTRACAO = `Analise a imagem e identifique primeiro se é uma NO
 
 Se for nota fiscal: extraia emitente, CNPJ, data de emissão, valor total e a lista completa de itens (descrição, quantidade, unidade, valor unitário e valor total de cada item).
 Se for comprovante simples: extraia valor pago, data, favorecido e uma descrição curta do gasto. Não é necessário listar itens.
+
+Em QUALQUER um dos dois casos, procure também o CNPJ ou CPF do fornecedor/favorecido/emitente em qualquer parte do documento (não só nota fiscal) e preencha em cnpjFavorecido — esse número é usado para identificar o fornecedor sem duplicar cadastro, então vale a pena procurar com atenção antes de desistir.
 
 Se não conseguir ler algum campo com segurança, OMITA o campo (não invente valores) e liste o nome dele em camposComBaixaConfianca.`;
 

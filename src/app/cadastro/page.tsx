@@ -17,16 +17,15 @@ const rotulos: Record<Aba, string> = {
   fornecedores: "Fornecedores",
 };
 
-const hrefsNovo: Record<Aba, string> = {
+// Fornecedores tem seu próprio botão "+ Novo" (abre modal, ver FornecedoresLista) — o header só cobre obras/funcionários.
+const hrefsNovo: Record<"obras" | "funcionarios", string> = {
   obras: "/obras/novo",
   funcionarios: "/funcionarios/novo",
-  fornecedores: "/fornecedores/novo",
 };
 
-const rotulosNovo: Record<Aba, string> = {
+const rotulosNovo: Record<"obras" | "funcionarios", string> = {
   obras: "+ Nova obra",
   funcionarios: "+ Novo funcionário",
-  fornecedores: "+ Novo fornecedor",
 };
 
 export default function CadastroPage() {
@@ -37,9 +36,11 @@ export default function CadastroPage() {
       <PageHeader
         titulo="Cadastro"
         acao={
-          <Link href={hrefsNovo[aba]}>
-            <Button tamanho="sm">{rotulosNovo[aba]}</Button>
-          </Link>
+          aba === "fornecedores" ? undefined : (
+            <Link href={hrefsNovo[aba]}>
+              <Button tamanho="sm">{rotulosNovo[aba]}</Button>
+            </Link>
+          )
         }
       />
 

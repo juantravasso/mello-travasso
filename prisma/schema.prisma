@@ -103,9 +103,17 @@ model ContaFinanceira {
 model Fornecedor {
   id           String  @id @default(uuid())
   nome         String
+  /// CNPJ ou CPF salvo só com dígitos — chave usada para não duplicar cadastro (ver resolverFornecedor).
   documento    String?
   telefone     String?
   email        String?
+  cep          String?
+  logradouro   String?
+  numero       String?
+  complemento  String?
+  bairro       String?
+  cidade       String?
+  estado       String?
   observacao   String?
   criadoEm     String
   atualizadoEm String
@@ -113,6 +121,7 @@ model Fornecedor {
   contas ContaFinanceira[]
 
   @@index([nome])
+  @@index([documento])
 }
 
 model ItemProduto {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { animate } from "animejs";
 
@@ -23,6 +24,13 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
   const backdropRef = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
   const [saindo, setSaindo] = useState(false);
+  // Só usa o portal depois de montar no client — evita mismatch de hidratação,
+  // já que document.body não existe durante o SSR.
+  const [montado, setMontado] = useState(false);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   useEffect(() => {
     if (backdropRef.current) {
@@ -54,7 +62,9 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
     window.setTimeout(onFechar, DURACAO_SAIDA_MS);
   }
 
-  return (
+  if (!montado) return null;
+
+  return createPortal(
     <div
       ref={backdropRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -65,11 +75,11 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
     >
       <div
         ref={painelRef}
-        className={`max-h-[85vh] w-full overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg ${LARGURAS[tamanho]}`}
+        className={`flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg ${LARGURAS[tamanho]}`}
         style={{ opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-border p-5 pb-4">
           <h2 className="text-lg font-semibold text-foreground">{titulo}</h2>
           <button
             type="button"
@@ -80,8 +90,9 @@ export function Modal({ titulo, onFechar, children, tamanho = "md" }: ModalProps
             ×
           </button>
         </div>
-        {children}
+        <div className="overflow-y-auto p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

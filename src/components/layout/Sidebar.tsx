@@ -4,9 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
 import { Logo } from "./Logo";
-import { SeletorUsuarioAtual } from "./SeletorUsuarioAtual";
 import {
   IconeCaixa,
   IconeCamera,
@@ -43,9 +41,8 @@ function ComTooltip({ rotulo, children }: { rotulo: string; children: ReactNode 
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ nomeUsuario }: { nomeUsuario: string }) {
   const pathname = usePathname();
-  const { usuario } = useUsuarioAtual();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[68px] flex-col items-center border-r border-border bg-sidebar md:flex">
@@ -83,8 +80,16 @@ export function Sidebar() {
       </nav>
 
       <div className="flex w-full flex-col items-center gap-1 border-t border-border px-2 py-3">
-        <ComTooltip rotulo={usuario || "Definir seu nome"}>
-          <SeletorUsuarioAtual compacto />
+        <ComTooltip rotulo={nomeUsuario}>
+          <Link
+            href="/configuracoes"
+            aria-label={nomeUsuario}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+          >
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
+              {nomeUsuario.slice(0, 1).toUpperCase()}
+            </span>
+          </Link>
         </ComTooltip>
         <ComTooltip rotulo="Configurações">
           <Link

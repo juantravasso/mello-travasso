@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { novoFuncionarioSchema, atualizarFuncionarioSchema, statusFuncionarioSchema } from "@/lib/validacao/funcionarios";
 import type { FiltrosFuncionario, Funcionario, NovoFuncionarioInput, StatusFuncionario } from "@/types";
 
 function paraFuncionario(registro: {
@@ -34,8 +36,10 @@ function paraFuncionario(registro: {
 }
 
 export async function listarFuncionarios(filtros?: FiltrosFuncionario): Promise<Funcionario[]> {
+  const sessao = await exigirSessaoAction();
   const registros = await prisma.funcionario.findMany({
     where: {
+      empresaId: sessao.empresaId,
       obraId: filtros?.obraId,
       status: filtros?.status,
       ...(filtros?.busca
@@ -53,30 +57,57 @@ export async function listarFuncionarios(filtros?: FiltrosFuncionario): Promise<
 }
 
 export async function obterFuncionarioPorId(id: string): Promise<Funcionario | null> {
-  const registro = await prisma.funcionario.findUnique({ where: { id } });
+  const sessao = await exigirSessaoAction();
+  const registro = await prisma.funcionario.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraFuncionario(registro) : null;
 }
 
+async function validarObraDaEmpresa(obraId: string | undefined, empresaId: string): Promise<void> {
+  if (!obraId) return;
+  const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId } });
+  if (!obra) throw new Error("Obra não encontrada.");
+}
+
 export async function criarFuncionario(input: NovoFuncionarioInput): Promise<Funcionario> {
+  const sessao = await exigirEscritaAction();
+  const parsed = novoFuncionarioSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+  await validarObraDaEmpresa(parsed.data.obraId, sessao.empresaId);
+
   const agora = new Date().toISOString();
   const registro = await prisma.funcionario.create({
-    data: { ...input, status: "ativo", criadoEm: agora, atualizadoEm: agora },
+    data: { ...parsed.data, empresaId: sessao.empresaId, status: "ativo", criadoEm: agora, atualizadoEm: agora },
   });
   return paraFuncionario(registro);
 }
 
 export async function atualizarFuncionario(id: string, input: Partial<NovoFuncionarioInput>): Promise<Funcionario> {
-  const registro = await prisma.funcionario.update({
-    where: { id },
-    data: { ...input, atualizadoEm: new Date().toISOString() },
+  const sessao = await exigirEscritaAction();
+  const parsed = atualizarFuncionarioSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+  await validarObraDaEmpresa(parsed.data.obraId, sessao.empresaId);
+
+  const resultado = await prisma.funcionario.updateMany({
+    where: { id, empresaId: sessao.empresaId },
+    data: { ...parsed.data, atualizadoEm: new Date().toISOString() },
   });
+  if (resultado.count === 0) throw new Error("Funcionário não encontrado.");
+
+  const registro = await prisma.funcionario.findFirstOrThrow({ where: { id, empresaId: sessao.empresaId } });
   return paraFuncionario(registro);
 }
 
 export async function definirStatusFuncionario(id: string, status: StatusFuncionario): Promise<Funcionario> {
-  const registro = await prisma.funcionario.update({
-    where: { id },
-    data: { status, atualizadoEm: new Date().toISOString() },
+  const sessao = await exigirEscritaAction();
+  const parsed = statusFuncionarioSchema.safeParse(status);
+  if (!parsed.success) throw new Error("Status inválido.");
+
+  const resultado = await prisma.funcionario.updateMany({
+    where: { id, empresaId: sessao.empresaId },
+    data: { status: parsed.data, atualizadoEm: new Date().toISOString() },
   });
+  if (resultado.count === 0) throw new Error("Funcionário não encontrado.");
+
+  const registro = await prisma.funcionario.findFirstOrThrow({ where: { id, empresaId: sessao.empresaId } });
   return paraFuncionario(registro);
 }

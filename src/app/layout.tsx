@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ShellWrapper } from "@/components/layout/ShellWrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,9 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Aplica o tema salvo antes da primeira pintura, evitando um flash do tema errado. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className="min-h-full bg-background text-foreground">
-        <ShellWrapper>{children}</ShellWrapper>
-      </body>
+      <body className="min-h-full bg-background text-foreground">{children}</body>
     </html>
   );
 }

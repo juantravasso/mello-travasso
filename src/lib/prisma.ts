@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import "./env.server";
 
 // Evita criar um novo PrismaClient a cada hot-reload em desenvolvimento
 // (cada instância abre seu próprio pool de conexões com o Postgres).

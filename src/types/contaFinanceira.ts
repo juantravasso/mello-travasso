@@ -81,11 +81,9 @@ export interface FiltrosContaFinanceira {
 export interface BaixarContaInput {
   contaId: string;
   dataBaixa: string; // ISO date
-  usuario: string;
 }
 
 export interface CancelarContaInput {
   contaId: string;
   motivo?: string;
-  usuario: string;
 }

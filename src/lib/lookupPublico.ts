@@ -37,11 +37,17 @@ export async function buscarEnderecoPorCep(cep: string): Promise<EnderecoPorCep 
 
 export interface EmpresaPorCnpj {
   nome: string;
+  /** Razão social e nome fantasia separados — usados no cadastro de conta (/criar-conta). */
+  razaoSocial?: string;
+  nomeFantasia?: string;
+  /** Ex.: "ATIVA", "BAIXADA" — ver RF-03. */
+  situacaoCadastral?: string;
   telefone?: string;
   email?: string;
   cep?: string;
   logradouro?: string;
   numero?: string;
+  complemento?: string;
   bairro?: string;
   cidade?: string;
   estado?: string;
@@ -54,24 +60,36 @@ function textoOuUndefined(valor: unknown): string | undefined {
 export async function buscarEmpresaPorCnpj(cnpj: string): Promise<EmpresaPorCnpj | null> {
   const digitos = cnpj.replace(/\D/g, "");
   if (digitos.length !== 14) return null;
+  // RF-01: timeout de 5s — sem isso, uma BrasilAPI lenta prende o formulário
+  // no estado "consultando" em vez de cair no preenchimento manual (RF-02).
+  const controlador = new AbortController();
+  const timeout = setTimeout(() => controlador.abort(), 5000);
   try {
-    const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
+    const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`, { signal: controlador.signal });
     if (!resposta.ok) return null;
     const dados = (await resposta.json()) as Record<string, unknown>;
-    const nome = textoOuUndefined(dados.nome_fantasia) ?? textoOuUndefined(dados.razao_social);
+    const razaoSocial = textoOuUndefined(dados.razao_social);
+    const nomeFantasia = textoOuUndefined(dados.nome_fantasia);
+    const nome = nomeFantasia ?? razaoSocial;
     if (!nome) return null;
     return {
       nome,
+      razaoSocial,
+      nomeFantasia,
+      situacaoCadastral: textoOuUndefined(dados.descricao_situacao_cadastral),
       telefone: textoOuUndefined(dados.ddd_telefone_1),
       email: textoOuUndefined(dados.email),
       cep: textoOuUndefined(dados.cep),
       logradouro: textoOuUndefined(dados.logradouro),
       numero: textoOuUndefined(dados.numero),
+      complemento: textoOuUndefined(dados.complemento),
       bairro: textoOuUndefined(dados.bairro),
       cidade: textoOuUndefined(dados.municipio),
       estado: textoOuUndefined(dados.uf),
     };
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }

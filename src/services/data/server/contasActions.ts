@@ -2,6 +2,13 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import {
+  novaContaSchema,
+  atualizarContaSchema,
+  baixarContaSchema,
+  cancelarContaSchema,
+} from "@/lib/validacao/contas";
 import type {
   BaixarContaInput,
   CancelarContaInput,
@@ -50,9 +57,12 @@ function evento(tipo: EventoHistorico["tipo"], usuario: string, detalhes?: strin
   return { id: crypto.randomUUID(), tipo, usuario, data: new Date().toISOString(), detalhes };
 }
 
-function paraWhere(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Prisma.ContaFinanceiraWhereInput {
-  if (!filtros) return {};
-  const where: Prisma.ContaFinanceiraWhereInput = {};
+function paraWhere(
+  empresaId: string,
+  filtros?: FiltrosContaFinanceira & { tipo?: TipoConta },
+): Prisma.ContaFinanceiraWhereInput {
+  const where: Prisma.ContaFinanceiraWhereInput = { empresaId };
+  if (!filtros) return where;
   if (filtros.tipo) where.tipo = filtros.tipo;
   if (filtros.obraId) where.obraId = filtros.obraId;
   if (filtros.status) where.status = filtros.status;
@@ -76,31 +86,49 @@ function paraWhere(filtros?: FiltrosContaFinanceira & { tipo?: TipoConta }): Pri
   return where;
 }
 
+/** Confere que obraId (e fornecedorId, se informado) pertencem à empresa da sessão antes de gravar. */
+async function validarReferencias(empresaId: string, obraId: string, fornecedorId?: string): Promise<void> {
+  const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId } });
+  if (!obra) throw new Error("Obra não encontrada.");
+  if (fornecedorId) {
+    const fornecedor = await prisma.fornecedor.findFirst({ where: { id: fornecedorId, empresaId } });
+    if (!fornecedor) throw new Error("Fornecedor não encontrado.");
+  }
+}
+
 export async function listarContas(
   filtros?: FiltrosContaFinanceira & { tipo?: TipoConta },
 ): Promise<ContaFinanceira[]> {
+  const sessao = await exigirSessaoAction();
   const registros = await prisma.contaFinanceira.findMany({
-    where: paraWhere(filtros),
+    where: paraWhere(sessao.empresaId, filtros),
     orderBy: { dataVencimento: "desc" },
   });
   return registros.map(paraConta);
 }
 
 export async function obterContaPorId(id: string): Promise<ContaFinanceira | null> {
-  const registro = await prisma.contaFinanceira.findUnique({ where: { id } });
+  const sessao = await exigirSessaoAction();
+  const registro = await prisma.contaFinanceira.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraConta(registro) : null;
 }
 
-export async function criarConta(input: NovaContaFinanceiraInput, usuario: string): Promise<ContaFinanceira> {
+export async function criarConta(input: NovaContaFinanceiraInput): Promise<ContaFinanceira> {
+  const sessao = await exigirEscritaAction();
+  const parsed = novaContaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+  await validarReferencias(sessao.empresaId, parsed.data.obraId, parsed.data.fornecedorId);
+
   const agora = new Date().toISOString();
-  const { parcela, ...resto } = input;
+  const { parcela, ...resto } = parsed.data;
   const registro = await prisma.contaFinanceira.create({
     data: {
       ...resto,
+      empresaId: sessao.empresaId,
       parcelaNumero: parcela?.numero,
       parcelaTotal: parcela?.totalParcelas,
       status: "em_aberto",
-      historico: [evento("criacao", usuario)] as unknown as Prisma.InputJsonValue,
+      historico: [evento("criacao", sessao.nome)] as unknown as Prisma.InputJsonValue,
       criadoEm: agora,
       atualizadoEm: agora,
     },
@@ -111,55 +139,92 @@ export async function criarConta(input: NovaContaFinanceiraInput, usuario: strin
 export async function atualizarConta(
   id: string,
   input: Partial<NovaContaFinanceiraInput>,
-  usuario: string,
 ): Promise<ContaFinanceira> {
-  const existente = await prisma.contaFinanceira.findUniqueOrThrow({ where: { id } });
+  const sessao = await exigirEscritaAction();
+  const parsed = atualizarContaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+
+  const existente = await prisma.contaFinanceira.findFirst({ where: { id, empresaId: sessao.empresaId } });
+  if (!existente) throw new Error("Conta não encontrada.");
   if (existente.status !== "em_aberto") {
     throw new Error("Só é possível editar lançamentos em aberto.");
   }
-  const { parcela, ...resto } = input;
+  if (parsed.data.obraId || parsed.data.fornecedorId) {
+    await validarReferencias(sessao.empresaId, parsed.data.obraId ?? existente.obraId, parsed.data.fornecedorId);
+  }
+
+  const { parcela, ...resto } = parsed.data;
   const historicoAtual = (existente.historico as unknown as EventoHistorico[]) ?? [];
-  const registro = await prisma.contaFinanceira.update({
-    where: { id },
+  const resultado = await prisma.contaFinanceira.updateMany({
+    where: { id, empresaId: sessao.empresaId },
     data: {
       ...resto,
       ...(parcela ? { parcelaNumero: parcela.numero, parcelaTotal: parcela.totalParcelas } : {}),
-      historico: [...historicoAtual, evento("edicao", usuario)] as unknown as Prisma.InputJsonValue,
+      historico: [...historicoAtual, evento("edicao", sessao.nome)] as unknown as Prisma.InputJsonValue,
       atualizadoEm: new Date().toISOString(),
     },
   });
+  if (resultado.count === 0) throw new Error("Conta não encontrada.");
+
+  const registro = await prisma.contaFinanceira.findFirstOrThrow({ where: { id, empresaId: sessao.empresaId } });
   return paraConta(registro);
 }
 
 export async function baixarConta(input: BaixarContaInput): Promise<ContaFinanceira> {
-  const existente = await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: input.contaId } });
+  const sessao = await exigirEscritaAction();
+  const parsed = baixarContaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+
+  const existente = await prisma.contaFinanceira.findFirst({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
+  });
+  if (!existente) throw new Error("Conta não encontrada.");
+
   const historicoAtual = (existente.historico as unknown as EventoHistorico[]) ?? [];
-  const registro = await prisma.contaFinanceira.update({
-    where: { id: input.contaId },
+  const resultado = await prisma.contaFinanceira.updateMany({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
     data: {
       status: "baixada",
-      dataBaixa: input.dataBaixa,
-      historico: [...historicoAtual, evento("baixa", input.usuario)] as unknown as Prisma.InputJsonValue,
+      dataBaixa: parsed.data.dataBaixa,
+      historico: [...historicoAtual, evento("baixa", sessao.nome)] as unknown as Prisma.InputJsonValue,
       atualizadoEm: new Date().toISOString(),
     },
+  });
+  if (resultado.count === 0) throw new Error("Conta não encontrada.");
+
+  const registro = await prisma.contaFinanceira.findFirstOrThrow({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
   });
   return paraConta(registro);
 }
 
 export async function cancelarConta(input: CancelarContaInput): Promise<ContaFinanceira> {
-  const existente = await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: input.contaId } });
+  const sessao = await exigirEscritaAction();
+  const parsed = cancelarContaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+
+  const existente = await prisma.contaFinanceira.findFirst({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
+  });
+  if (!existente) throw new Error("Conta não encontrada.");
   if (existente.status !== "em_aberto") {
     throw new Error("Só é possível cancelar lançamentos em aberto.");
   }
+
   const historicoAtual = (existente.historico as unknown as EventoHistorico[]) ?? [];
-  const registro = await prisma.contaFinanceira.update({
-    where: { id: input.contaId },
+  const resultado = await prisma.contaFinanceira.updateMany({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
     data: {
       status: "cancelada",
-      motivoCancelamento: input.motivo,
-      historico: [...historicoAtual, evento("cancelamento", input.usuario, input.motivo)] as unknown as Prisma.InputJsonValue,
+      motivoCancelamento: parsed.data.motivo,
+      historico: [...historicoAtual, evento("cancelamento", sessao.nome, parsed.data.motivo)] as unknown as Prisma.InputJsonValue,
       atualizadoEm: new Date().toISOString(),
     },
+  });
+  if (resultado.count === 0) throw new Error("Conta não encontrada.");
+
+  const registro = await prisma.contaFinanceira.findFirstOrThrow({
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
   });
   return paraConta(registro);
 }

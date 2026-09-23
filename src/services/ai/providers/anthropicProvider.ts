@@ -1,10 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type {
-  DadosExtraidosComprovante,
-  ProvedorExtracaoIA,
-  ResultadoExtracao,
-  SolicitacaoExtracao,
-} from "@/types";
+import type { DadosExtraidosComprovante, ProvedorExtracaoIA, ResultadoExtracao, SolicitacaoExtracao } from "@/types";
+import { dadosExtraidosComprovanteSchema } from "@/lib/validacao/comprovante";
 
 /**
  * Provedor de extração usando a API de visão da Anthropic (Claude).
@@ -145,14 +141,13 @@ export class AnthropicVisionProvider implements ProvedorExtracaoIA {
         return { sucesso: false, erro: "A IA não retornou dados estruturados." };
       }
 
-      const extraido = blocoFerramenta.input as DadosExtraidosComprovante;
+      const validado = dadosExtraidosComprovanteSchema.safeParse(blocoFerramenta.input);
 
-      const dados: DadosExtraidosComprovante = {
-        ...extraido,
-        tipoDocumento: extraido.tipoDocumento ?? "comprovante",
-        confiancaExtracao: extraido.confiancaExtracao ?? 0,
-        camposComBaixaConfianca: extraido.camposComBaixaConfianca ?? [],
-      };
+      if (!validado.success) {
+        return { sucesso: false, erro: "A IA retornou dados em um formato inesperado." };
+      }
+
+      const dados: DadosExtraidosComprovante = validado.data;
 
       return { sucesso: true, dados };
     } catch (erro) {

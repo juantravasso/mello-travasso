@@ -6,7 +6,7 @@ import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCa
 import { useConta } from "@/hooks/useConta";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { useObras } from "@/hooks/useObras";
-import { useUsuarioAtual } from "@/hooks/useUsuarioAtual";
+import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -24,7 +24,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   const { conta, carregando, darBaixa, cancelar, atualizar } = useConta(contaId);
   const { obras } = useObras();
   const { fornecedores, criarFornecedor } = useFornecedores();
-  const { usuarioOuPadrao } = useUsuarioAtual();
+  const { somenteLeitura } = useStatusPlano();
   const categoriasCatalogo = useCatalogoCategorias(conta?.tipo ?? "pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
 
@@ -71,14 +71,14 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   async function confirmarBaixa() {
     setBaixando(true);
     try {
-      await darBaixa({ contaId, dataBaixa, usuario: usuarioOuPadrao });
+      await darBaixa({ contaId, dataBaixa });
     } finally {
       setBaixando(false);
     }
   }
 
   async function confirmarCancelamento(motivo: string) {
-    await cancelar({ contaId, motivo: motivo || undefined, usuario: usuarioOuPadrao });
+    await cancelar({ contaId, motivo: motivo || undefined });
     setModalCancelarAberto(false);
   }
 
@@ -99,7 +99,6 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           observacao: observacao.trim() || undefined,
           precisaCompletarCadastro: categoria === "" || formaPagamento === "",
         },
-        usuarioOuPadrao,
       );
       // Só faz sentido perguntar "já foi paga?" quando a conta estava
       // marcada como incompleta (veio da câmera) e continua em aberto —
@@ -112,7 +111,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   }
 
   async function confirmarBaixaAoCompletar(data: string) {
-    await darBaixa({ contaId, dataBaixa: data, usuario: usuarioOuPadrao });
+    await darBaixa({ contaId, dataBaixa: data });
     setModalConfirmarBaixaAberto(false);
   }
 
@@ -168,9 +167,11 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
               {conta.precisaCompletarCadastro ? "Completar cadastro" : "Editar lançamento"}
             </p>
             <p className="text-sm text-muted">
-              {conta.precisaCompletarCadastro
-                ? "Este lançamento foi criado rapidamente pela câmera. Preencha o que faltar."
-                : "Só é possível editar enquanto o lançamento está em aberto."}
+              {somenteLeitura
+                ? "Teste encerrado — os dados continuam disponíveis para consulta."
+                : conta.precisaCompletarCadastro
+                  ? "Este lançamento foi criado rapidamente pela câmera. Preencha o que faltar."
+                  : "Só é possível editar enquanto o lançamento está em aberto."}
             </p>
           </div>
           <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
@@ -225,7 +226,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             tituloModal="Nova forma de pagamento"
           />
           <Textarea label="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
-          <Button onClick={salvarEdicao} disabled={salvandoEdicao}>
+          <Button onClick={salvarEdicao} disabled={salvandoEdicao || somenteLeitura}>
             {salvandoEdicao ? "Salvando…" : "Salvar alterações"}
           </Button>
         </div>
@@ -233,11 +234,14 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
 
       {conta.status === "em_aberto" && (
         <Card className="flex flex-col gap-3">
+          {somenteLeitura && (
+            <p className="text-sm text-muted">Teste encerrado — os dados continuam disponíveis para consulta.</p>
+          )}
           <Input label="Data" type="date" value={dataBaixa} onChange={(e) => setDataBaixa(e.target.value)} />
-          <Button onClick={confirmarBaixa} disabled={baixando}>
+          <Button onClick={confirmarBaixa} disabled={baixando || somenteLeitura}>
             {baixando ? "Salvando…" : rotuloAcao}
           </Button>
-          <Button variante="outline" onClick={() => setModalCancelarAberto(true)} disabled={baixando}>
+          <Button variante="outline" onClick={() => setModalCancelarAberto(true)} disabled={baixando || somenteLeitura}>
             Cancelar lançamento
           </Button>
         </Card>

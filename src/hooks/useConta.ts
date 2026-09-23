@@ -29,8 +29,8 @@ export function useConta(id: string) {
   }, []);
 
   const atualizar = useCallback(
-    async (input: Partial<NovaContaFinanceiraInput>, usuario: string) => {
-      const atualizada = await contasRepositorio.atualizar(id, input, usuario);
+    async (input: Partial<NovaContaFinanceiraInput>) => {
+      const atualizada = await contasRepositorio.atualizar(id, input);
       setConta(atualizada);
       return atualizada;
     },

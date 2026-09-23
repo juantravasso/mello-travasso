@@ -28,8 +28,8 @@ export function useContas(tipo: TipoConta, filtros?: FiltrosContaFinanceira) {
   }, [recarregar]);
 
   const criarConta = useCallback(
-    async (input: NovaContaFinanceiraInput, usuario: string) => {
-      const nova = await contasRepositorio.criar(input, usuario);
+    async (input: NovaContaFinanceiraInput) => {
+      const nova = await contasRepositorio.criar(input);
       await recarregar();
       return nova;
     },

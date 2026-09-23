@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { novaOpcaoPersonalizadaSchema, tipoContaSchema } from "@/lib/validacao/catalogo";
 import type { NovaOpcaoPersonalizadaInput, OpcaoPersonalizada, TipoConta } from "@/types";
 
 function paraOpcao(registro: { id: string; rotulo: string; criadoEm: string }): OpcaoPersonalizada {
@@ -8,8 +10,12 @@ function paraOpcao(registro: { id: string; rotulo: string; criadoEm: string }): 
 }
 
 export async function listarCategoriasPersonalizadas(tipo: TipoConta): Promise<OpcaoPersonalizada[]> {
+  const sessao = await exigirSessaoAction();
+  const tipoParsed = tipoContaSchema.safeParse(tipo);
+  if (!tipoParsed.success) throw new Error("Tipo inválido.");
+  const tipoValido = tipoParsed.data;
   const registros = await prisma.categoriaPersonalizada.findMany({
-    where: { tipoConta: tipo },
+    where: { tipoConta: tipoValido, empresaId: sessao.empresaId },
     orderBy: { criadoEm: "asc" },
   });
   return registros.map(paraOpcao);
@@ -19,22 +25,37 @@ export async function criarCategoriaPersonalizada(
   tipo: TipoConta,
   input: NovaOpcaoPersonalizadaInput,
 ): Promise<OpcaoPersonalizada> {
+  const sessao = await exigirEscritaAction();
+  const tipoParsed = tipoContaSchema.safeParse(tipo);
+  if (!tipoParsed.success) throw new Error("Tipo inválido.");
+  const tipoValido = tipoParsed.data;
+  const parsed = novaOpcaoPersonalizadaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+
   const registro = await prisma.categoriaPersonalizada.create({
-    data: { tipoConta: tipo, rotulo: input.rotulo, criadoEm: new Date().toISOString() },
+    data: { tipoConta: tipoValido, rotulo: parsed.data.rotulo, empresaId: sessao.empresaId, criadoEm: new Date().toISOString() },
   });
   return paraOpcao(registro);
 }
 
 export async function listarFormasPagamentoPersonalizadas(): Promise<OpcaoPersonalizada[]> {
-  const registros = await prisma.formaPagamentoPersonalizada.findMany({ orderBy: { criadoEm: "asc" } });
+  const sessao = await exigirSessaoAction();
+  const registros = await prisma.formaPagamentoPersonalizada.findMany({
+    where: { empresaId: sessao.empresaId },
+    orderBy: { criadoEm: "asc" },
+  });
   return registros.map(paraOpcao);
 }
 
 export async function criarFormaPagamentoPersonalizada(
   input: NovaOpcaoPersonalizadaInput,
 ): Promise<OpcaoPersonalizada> {
+  const sessao = await exigirEscritaAction();
+  const parsed = novaOpcaoPersonalizadaSchema.safeParse(input);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+
   const registro = await prisma.formaPagamentoPersonalizada.create({
-    data: { rotulo: input.rotulo, criadoEm: new Date().toISOString() },
+    data: { rotulo: parsed.data.rotulo, empresaId: sessao.empresaId, criadoEm: new Date().toISOString() },
   });
   return paraOpcao(registro);
 }

@@ -44,6 +44,8 @@ enum StatusFuncionarioDb {
 
 model Obra {
   id                String       @id @default(uuid())
+  empresaId         String
+  empresa           Empresa      @relation(fields: [empresaId], references: [id])
   nome              String
   cliente           String
   endereco          String?
@@ -58,10 +60,14 @@ model Obra {
   contas       ContaFinanceira[]
   itensProduto ItemProduto[]
   funcionarios Funcionario[]
+
+  @@index([empresaId])
 }
 
 model ContaFinanceira {
   id                       String        @id @default(uuid())
+  empresaId                String
+  empresa                  Empresa       @relation(fields: [empresaId], references: [id])
   tipo                     TipoContaDb
   obraId                   String
   obra                     Obra          @relation(fields: [obraId], references: [id])
@@ -92,6 +98,7 @@ model ContaFinanceira {
 
   itensProduto ItemProduto[]
 
+  @@index([empresaId])
   @@index([obraId])
   @@index([tipo, status])
   @@index([fornecedorId])
@@ -102,6 +109,8 @@ model ContaFinanceira {
 // identifica o fornecedor na leitura do comprovante).
 model Fornecedor {
   id           String  @id @default(uuid())
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id])
   nome         String
   /// CNPJ ou CPF salvo só com dígitos — chave usada para não duplicar cadastro (ver resolverFornecedor).
   documento    String?
@@ -120,12 +129,15 @@ model Fornecedor {
 
   contas ContaFinanceira[]
 
+  @@index([empresaId])
   @@index([nome])
   @@index([documento])
 }
 
 model ItemProduto {
   id                String          @id @default(uuid())
+  empresaId         String
+  empresa           Empresa         @relation(fields: [empresaId], references: [id])
   contaFinanceiraId String
   contaFinanceira   ContaFinanceira @relation(fields: [contaFinanceiraId], references: [id])
   obraId            String
@@ -139,12 +151,15 @@ model ItemProduto {
   fornecedor        String?
   criadoEm          String
 
+  @@index([empresaId])
   @@index([obraId])
   @@index([descricao])
 }
 
 model Funcionario {
   id           String              @id @default(uuid())
+  empresaId    String
+  empresa      Empresa             @relation(fields: [empresaId], references: [id])
   nome         String
   cargo        String
   telefone     String?
@@ -158,6 +173,7 @@ model Funcionario {
   criadoEm     String
   atualizadoEm String
 
+  @@index([empresaId])
   @@index([obraId])
 }
 
@@ -165,13 +181,140 @@ model Funcionario {
 // opções padrão (que ficam fixas em src/lib/categorias.ts).
 model CategoriaPersonalizada {
   id        String      @id @default(uuid())
+  empresaId String
+  empresa   Empresa     @relation(fields: [empresaId], references: [id])
   tipoConta TipoContaDb
   rotulo    String
   criadoEm  String
+
+  @@index([empresaId])
 }
 
 model FormaPagamentoPersonalizada {
-  id       String @id @default(uuid())
-  rotulo   String
-  criadoEm String
+  id        String  @id @default(uuid())
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  rotulo    String
+  criadoEm  String
+
+  @@index([empresaId])
+}
+
+// --- Auth / multiempresa (ver docs/prd/multiempresa-login-trial.md) --------
+// Base (login/sessão) da Fase 1; empresaId nas tabelas de dados acima, da
+// Fase 2; cadastro público (tipoPessoa/endereço/plano/termos) da Fase 3;
+// somente-leitura por fim de teste + EventoConta, da Fase 4.
+
+enum PapelDb {
+  dono
+  membro
+}
+
+enum TipoPessoaDb {
+  pj
+  pf
+}
+
+enum PlanoDb {
+  teste
+  cortesia
+  ativo
+  suspenso
+}
+
+model Empresa {
+  id           String @id @default(uuid())
+  documento    String @unique // CNPJ ou CPF, só dígitos
+  razaoSocial  String
+  criadoEm     String
+  atualizadoEm String
+
+  // Fase 3 (cadastro público). tipoPessoa/plano/aceiteTermos* são obrigatórios
+  // a partir daqui — backfill das empresas anteriores já rodou (ver
+  // scripts/backfill-cadastro-empresa.ts). Endereço e dados de contato
+  // continuam opcionais (BrasilAPI pode falhar; RF-02 permite preenchimento
+  // manual parcial).
+  tipoPessoa         TipoPessoaDb
+  nomeFantasia       String?
+  situacaoCadastral  String?
+  telefone           String?
+  emailContato       String?
+  cep                String?
+  logradouro         String?
+  numero             String?
+  complemento        String?
+  bairro             String?
+  cidade             String?
+  estado             String?
+  plano              PlanoDb
+  testeTerminaEm     String? // ISO datetime; null em cortesia/ativo (RF-07, RF-17)
+  aceiteTermosVersao String
+  aceiteTermosEm     String
+
+  usuarios Usuario[]
+
+  obras                         Obra[]
+  contas                        ContaFinanceira[]
+  fornecedores                  Fornecedor[]
+  itensProduto                  ItemProduto[]
+  funcionarios                  Funcionario[]
+  categoriasPersonalizadas      CategoriaPersonalizada[]
+  formasPagamentoPersonalizadas FormaPagamentoPersonalizada[]
+  eventos                       EventoConta[]
+}
+
+// Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
+// teste (RF-18), via scripts/estender-teste.ts. Nunca grava e-mail, senha,
+// token ou documento em claro em `detalhes` (só o necessário para a auditoria).
+model EventoConta {
+  id        String  @id @default(uuid())
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+  tipo      String
+  detalhes  Json
+  criadoEm  String
+
+  @@index([empresaId])
+}
+
+model Usuario {
+  id           String  @id @default(uuid())
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id])
+  nome         String
+  /// Normalizado em minúsculas antes de gravar/comparar.
+  email        String  @unique
+  senhaHash    String
+  papel        PapelDb @default(dono)
+  trocarSenha  Boolean @default(false)
+  falhasLogin  Int     @default(0)
+  bloqueadoAte String?
+  /// Data da última falha de login (RF-10) — separado de atualizadoEm, que
+  /// também muda em login OK e troca de senha e não serve como marca da janela.
+  ultimaFalhaLoginEm String?
+  criadoEm           String
+  atualizadoEm       String
+
+  sessoes Sessao[]
+
+  @@index([empresaId])
+}
+
+model Sessao {
+  id          String  @id // sha256(token) em hex — o token em si nunca é persistido
+  usuarioId   String
+  usuario     Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiraEm    String
+  criadoEm    String
+  ultimoUsoEm String
+
+  @@index([usuarioId])
+}
+
+// Rate limit de janela fixa (login, cadastro, IA). Chave composta em hash
+// (ex.: sha256("login:" + email + ":" + ip)) — nunca e-mail/IP em claro.
+model LimiteTaxa {
+  chave        String @id
+  janelaInicio String
+  contagem     Int
 }

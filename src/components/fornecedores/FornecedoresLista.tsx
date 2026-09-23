@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FiltrosFornecedor, Fornecedor } from "@/types";
 import { useFornecedores } from "@/hooks/useFornecedores";
+import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { fornecedoresRepositorio } from "@/services/data";
 import { FornecedorCard } from "./FornecedorCard";
 import { FornecedorForm } from "./FornecedorForm";
@@ -14,6 +15,7 @@ import { Modal } from "@/components/ui/Modal";
 export function FornecedoresLista() {
   const [filtros, setFiltros] = useState<FiltrosFornecedor>({});
   const { fornecedores, carregando, criarFornecedor, recarregar } = useFornecedores(filtros);
+  const { somenteLeitura } = useStatusPlano();
   const [modalNovoAberto, setModalNovoAberto] = useState(false);
   const [fornecedorEmEdicao, setFornecedorEmEdicao] = useState<Fornecedor | null>(null);
 
@@ -28,7 +30,12 @@ export function FornecedoresLista() {
             onChange={(e) => setFiltros({ ...filtros, busca: e.target.value || undefined })}
           />
         </Card>
-        <Button tamanho="sm" onClick={() => setModalNovoAberto(true)}>
+        <Button
+          tamanho="sm"
+          onClick={() => setModalNovoAberto(true)}
+          disabled={somenteLeitura}
+          title={somenteLeitura ? "Teste encerrado — os dados continuam disponíveis para consulta." : undefined}
+        >
           + Novo fornecedor
         </Button>
       </div>

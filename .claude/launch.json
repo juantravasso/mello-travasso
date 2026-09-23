@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "mello-travasso-dev",
-      "runtimeExecutable": "wsl.exe",
-      "runtimeArgs": ["-d", "Ubuntu", "--", "bash", "-lc", "cd /home/jntra/projetos/mello-travasso && yarn dev"],
-      "port": 3000
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": ["dev"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

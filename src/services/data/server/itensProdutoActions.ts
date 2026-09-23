@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { itensProdutoEmLoteSchema } from "@/lib/validacao/itensProduto";
 import type { FiltrosItemProduto, HistoricoPrecoProduto, ItemProduto, NovoItemProdutoInput } from "@/types";
 import { normalizarDescricao } from "@/lib/normalizarTexto";
 
@@ -33,8 +35,10 @@ function paraItem(registro: {
 }
 
 export async function listarItensProduto(filtros?: FiltrosItemProduto): Promise<ItemProduto[]> {
+  const sessao = await exigirSessaoAction();
   const registros = await prisma.itemProduto.findMany({
     where: {
+      empresaId: sessao.empresaId,
       obraId: filtros?.obraId,
       fornecedor: filtros?.fornecedor,
       dataCompra: {
@@ -51,16 +55,39 @@ export async function listarItensProduto(filtros?: FiltrosItemProduto): Promise<
 }
 
 export async function criarItensProdutoEmLote(itens: NovoItemProdutoInput[]): Promise<ItemProduto[]> {
+  const sessao = await exigirEscritaAction();
+  const parsed = itensProdutoEmLoteSchema.safeParse(itens);
+  if (!parsed.success) throw new Error("Dados inválidos.");
+  if (parsed.data.length === 0) return [];
+
+  // As contas/obras referenciadas precisam já pertencer à empresa da sessão —
+  // evita que um item entre vinculado a uma conta/obra de outra empresa.
+  const idsContas = [...new Set(parsed.data.map((i) => i.contaFinanceiraId))];
+  const idsObras = [...new Set(parsed.data.map((i) => i.obraId))];
+  const [contasValidas, obrasValidas] = await Promise.all([
+    prisma.contaFinanceira.findMany({ where: { id: { in: idsContas }, empresaId: sessao.empresaId }, select: { id: true } }),
+    prisma.obra.findMany({ where: { id: { in: idsObras }, empresaId: sessao.empresaId }, select: { id: true } }),
+  ]);
+  const idsContasValidas = new Set(contasValidas.map((c) => c.id));
+  const idsObrasValidas = new Set(obrasValidas.map((o) => o.id));
+  if (idsContas.some((id) => !idsContasValidas.has(id)) || idsObras.some((id) => !idsObrasValidas.has(id))) {
+    throw new Error("Conta ou obra não encontrada.");
+  }
+
   const agora = new Date().toISOString();
   const criados = await prisma.$transaction(
-    itens.map((item) => prisma.itemProduto.create({ data: { ...item, criadoEm: agora } })),
+    parsed.data.map((item) => prisma.itemProduto.create({ data: { ...item, empresaId: sessao.empresaId, criadoEm: agora } })),
   );
   return criados.map(paraItem);
 }
 
 export async function historicoPrecoPorDescricao(descricao: string): Promise<HistoricoPrecoProduto | null> {
+  const sessao = await exigirSessaoAction();
   const alvo = normalizarDescricao(descricao);
-  const registros = await prisma.itemProduto.findMany({ orderBy: { dataCompra: "asc" } });
+  const registros = await prisma.itemProduto.findMany({
+    where: { empresaId: sessao.empresaId },
+    orderBy: { dataCompra: "asc" },
+  });
   const ocorrencias = registros.map(paraItem).filter((item) => normalizarDescricao(item.descricao) === alvo);
   if (ocorrencias.length === 0) return null;
 
@@ -79,7 +106,11 @@ export async function historicoPrecoPorDescricao(descricao: string): Promise<His
 }
 
 export async function listarDescricoesUnicasProduto(): Promise<string[]> {
-  const registros = await prisma.itemProduto.findMany({ select: { descricao: true } });
+  const sessao = await exigirSessaoAction();
+  const registros = await prisma.itemProduto.findMany({
+    where: { empresaId: sessao.empresaId },
+    select: { descricao: true },
+  });
   const vistos = new Map<string, string>();
   for (const { descricao } of registros) {
     const chave = normalizarDescricao(descricao);

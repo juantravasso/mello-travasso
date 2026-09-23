@@ -14,6 +14,25 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    // Acesso ao Prisma só nas Server Actions e no DAL de auth — em qualquer
+    // outro arquivo é sinal de que uma query está sendo escrita fora do lugar
+    // que já aplica exigirSessao()/empresaId (ver Fase 2 do PRD multiempresa).
+    ignores: ["src/services/data/server/**", "src/lib/auth/**", "src/lib/prisma.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/prisma",
+              message: "Prisma só pode ser importado em src/services/data/server/*Actions.ts ou src/lib/auth/*.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

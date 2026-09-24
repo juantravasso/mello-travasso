@@ -6,3 +6,5 @@ export * from "./funcionario";
 export * from "./catalogo";
 export * from "./fornecedor";
 export * from "./auth";
+export * from "./produto";
+export * from "./movimentoEstoque";

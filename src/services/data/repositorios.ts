@@ -10,14 +10,20 @@ import type {
   Funcionario,
   HistoricoPrecoProduto,
   ItemProduto,
+  MovimentoEstoque,
   NovaContaFinanceiraInput,
   NovaObraInput,
   NovaOpcaoPersonalizadaInput,
   NovoFornecedorInput,
   NovoFuncionarioInput,
   NovoItemProdutoInput,
+  NovoMovimentoInput,
+  NovoProdutoInput,
   Obra,
   OpcaoPersonalizada,
+  Produto,
+  ProdutoComSaldo,
+  ProdutoDetalhado,
   TipoConta,
 } from "@/types";
 
@@ -70,4 +76,12 @@ export interface FornecedoresRepositorio {
   criar(input: NovoFornecedorInput): Promise<Fornecedor>;
   atualizar(id: string, input: Partial<NovoFornecedorInput>): Promise<Fornecedor>;
   resolver(nome: string, documento?: string): Promise<Fornecedor>;
+}
+
+export interface EstoqueRepositorio {
+  listarProdutos(): Promise<ProdutoComSaldo[]>;
+  obterProdutoPorId(id: string): Promise<ProdutoDetalhado | null>;
+  listarMovimentos(produtoId: string): Promise<MovimentoEstoque[]>;
+  criarProduto(input: NovoProdutoInput): Promise<Produto>;
+  registrarMovimento(input: NovoMovimentoInput): Promise<MovimentoEstoque>;
 }

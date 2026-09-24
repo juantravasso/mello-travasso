@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { HistoricoPrecoProduto } from "@/types";
 import { useItensProduto } from "@/hooks/useItensProduto";
 import { useObras } from "@/hooks/useObras";
@@ -14,13 +15,14 @@ import { formatarData, formatarMoeda } from "@/lib/formatadores";
 export default function CustosProdutosPage() {
   const { descricoes } = useItensProduto();
   const { obras } = useObras();
+  const searchParams = useSearchParams();
   const [busca, setBusca] = useState("");
   const [historico, setHistorico] = useState<HistoricoPrecoProduto | null>(null);
   const [buscando, setBuscando] = useState(false);
 
   const obraPorId = new Map(obras.map((o) => [o.id, o]));
 
-  async function buscar(descricao: string) {
+  const buscar = useCallback(async (descricao: string) => {
     setBusca(descricao);
     if (descricao.trim() === "") {
       setHistorico(null);
@@ -29,7 +31,15 @@ export default function CustosProdutosPage() {
     setBuscando(true);
     setHistorico(await itensProdutoRepositorio.historicoPorDescricao(descricao));
     setBuscando(false);
-  }
+  }, []);
+
+  // Suporta abrir a busca já preenchida, ex.: link "ver histórico de preço"
+  // a partir da ficha de um produto em /estoque/[id].
+  useEffect(() => {
+    const descricao = searchParams.get("descricao");
+    if (descricao) void buscar(descricao);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <div className="animar-entrada">

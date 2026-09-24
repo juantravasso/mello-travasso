@@ -1,6 +1,7 @@
 import type {
   CatalogoRepositorio,
   ContasRepositorio,
+  EstoqueRepositorio,
   FornecedoresRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
@@ -46,6 +47,13 @@ import {
   obterFornecedorPorId,
   resolverFornecedor,
 } from "./server/fornecedoresActions";
+import {
+  criarProduto,
+  listarMovimentos,
+  listarProdutos,
+  obterProdutoPorId,
+  registrarMovimento,
+} from "./server/estoqueActions";
 
 /**
  * Ponto único de acesso à camada de dados. Cada método aqui é uma Server
@@ -99,9 +107,18 @@ export const fornecedoresRepositorio: FornecedoresRepositorio = {
   resolver: resolverFornecedor,
 };
 
+export const estoqueRepositorio: EstoqueRepositorio = {
+  listarProdutos,
+  obterProdutoPorId,
+  listarMovimentos,
+  criarProduto,
+  registrarMovimento,
+};
+
 export type {
   CatalogoRepositorio,
   ContasRepositorio,
+  EstoqueRepositorio,
   FornecedoresRepositorio,
   FuncionariosRepositorio,
   ItensProdutoRepositorio,

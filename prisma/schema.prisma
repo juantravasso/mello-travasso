@@ -42,6 +42,12 @@ enum StatusFuncionarioDb {
   inativo
 }
 
+enum TipoMovimentoEstoqueDb {
+  entrada
+  saida
+  ajuste
+}
+
 model Obra {
   id                String       @id @default(uuid())
   empresaId         String
@@ -57,9 +63,11 @@ model Obra {
   criadoEm          String
   atualizadoEm      String
 
-  contas       ContaFinanceira[]
-  itensProduto ItemProduto[]
-  funcionarios Funcionario[]
+  contas            ContaFinanceira[]
+  itensProduto      ItemProduto[]
+  funcionarios      Funcionario[]
+  saldosEstoque     SaldoEstoque[]
+  movimentosEstoque MovimentoEstoque[]
 
   @@index([empresaId])
 }
@@ -150,6 +158,11 @@ model ItemProduto {
   dataCompra        String
   fornecedor        String?
   criadoEm          String
+
+  /// Nulo até a Fase 5.2 (integração com a captura por IA) resolver/criar o Produto do catálogo.
+  produtoId         String?
+  produto           Produto?           @relation(fields: [produtoId], references: [id])
+  movimentosEstoque MovimentoEstoque[]
 
   @@index([empresaId])
   @@index([obraId])
@@ -261,6 +274,9 @@ model Empresa {
   categoriasPersonalizadas      CategoriaPersonalizada[]
   formasPagamentoPersonalizadas FormaPagamentoPersonalizada[]
   eventos                       EventoConta[]
+  produtos                      Produto[]
+  saldosEstoque                 SaldoEstoque[]
+  movimentosEstoque             MovimentoEstoque[]
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -317,4 +333,83 @@ model LimiteTaxa {
   chave        String @id
   janelaInicio String
   contagem     Int
+}
+
+// --- Estoque (ver docs/prd/estoque.md) -------------------------------------
+// Fase 5.1: catálogo (Produto), saldo materializado por produto+obra
+// (SaldoEstoque) e movimentação manual (MovimentoEstoque). `itemProdutoId`
+// existe desde já porque MovimentoEstoque referencia ItemProduto, mas só é
+// usado a partir da Fase 5.2 (integração com a captura por nota fiscal).
+
+model Produto {
+  id            String  @id @default(uuid())
+  empresaId     String
+  empresa       Empresa @relation(fields: [empresaId], references: [id])
+  nome          String
+  /// Único por empresa quando informado — múltiplos produtos sem SKU
+  /// coexistem normalmente (Postgres não considera NULL == NULL num índice único).
+  sku           String?
+  categoria     String?
+  unidade       String?
+  /// Média ponderada pela quantidade, recalculada a cada entrada (RF-08 do PRD) — nunca em saída/ajuste.
+  custoMedio    Float?
+  estoqueMinimo Float?
+  observacao    String?
+  criadoEm      String
+  atualizadoEm  String
+
+  movimentos  MovimentoEstoque[]
+  saldos      SaldoEstoque[]
+  itensCompra ItemProduto[]
+
+  @@unique([empresaId, sku])
+  @@index([empresaId])
+  @@index([nome])
+}
+
+// Saldo materializado por (produto, obra) — nunca somado a partir de
+// MovimentoEstoque em runtime (ver mini-ADR do PRD). obraId é sempre
+// obrigatório: um "estoque central" não alocado a uma obra específica usa
+// uma Obra normal para representar isso, em vez de um obraId nulo (que
+// quebraria a unicidade abaixo, já que Postgres trata NULL como distinto).
+model SaldoEstoque {
+  id           String  @id @default(uuid())
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id])
+  produtoId    String
+  produto      Produto @relation(fields: [produtoId], references: [id])
+  obraId       String
+  obra         Obra    @relation(fields: [obraId], references: [id])
+  quantidade   Float   @default(0)
+  atualizadoEm String
+
+  @@unique([produtoId, obraId])
+  @@index([empresaId])
+  @@index([obraId])
+}
+
+model MovimentoEstoque {
+  id            String                 @id @default(uuid())
+  empresaId     String
+  empresa       Empresa                @relation(fields: [empresaId], references: [id])
+  produtoId     String
+  produto       Produto                @relation(fields: [produtoId], references: [id])
+  obraId        String
+  obra          Obra                   @relation(fields: [obraId], references: [id])
+  tipo          TipoMovimentoEstoqueDb
+  /// Sempre > 0 — o efeito no saldo (soma ou subtrai) depende de `tipo`, nunca do sinal.
+  quantidade    Float
+  valorUnitario Float?
+  /// "manual" | "item_produto" — rastreabilidade de onde a movimentação veio.
+  origem        String
+  itemProdutoId String?
+  itemProduto   ItemProduto?           @relation(fields: [itemProdutoId], references: [id])
+  /// Nome do usuário da sessão que registrou (não FK — sobrevive se o usuário for removido no futuro), mesmo padrão de ContaFinanceira.historico[].usuario.
+  lancadoPor    String
+  observacao    String?
+  criadoEm      String
+
+  @@index([empresaId])
+  @@index([produtoId])
+  @@index([obraId])
 }

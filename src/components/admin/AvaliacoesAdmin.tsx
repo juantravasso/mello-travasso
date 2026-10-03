@@ -31,6 +31,7 @@ export function AvaliacoesAdmin() {
   const [erro, setErro] = useState<string | null>(null);
   const [alvo, setAlvo] = useState<{ id: string; acao: AcaoModeracaoAvaliacao } | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [senha, setSenha] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   const carregar = useCallback(async (termo: string, filtro: string) => {
@@ -46,13 +47,14 @@ export function AvaliacoesAdmin() {
     setOcupado(true);
     setErro(null);
     try {
-      const resultado = await repo.moderar(alvo.id, alvo.acao, motivo);
+      const resultado = await repo.moderar(alvo.id, alvo.acao, motivo, senha || undefined);
       if (!resultado.ok) {
         setErro(resultado.mensagem);
         return;
       }
       setAlvo(null);
       setMotivo("");
+      setSenha("");
       await carregar(busca, status);
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -121,12 +123,20 @@ export function AvaliacoesAdmin() {
                       maxLength={500}
                       autoFocus
                     />
+                    <Input
+                      type="password"
+                      label="Confirme sua senha"
+                      autoComplete="current-password"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      maxLength={200}
+                    />
                     <div className="flex gap-2">
                       <Button
                         type="button"
                         tamanho="sm"
                         variante={alvo.acao === "restaurar" ? "primary" : "danger"}
-                        disabled={ocupado || motivo.trim().length < 5}
+                        disabled={ocupado || motivo.trim().length < 5 || senha.length === 0}
                         onClick={confirmar}
                       >
                         Confirmar: {ROTULO_ACAO[alvo.acao].toLowerCase()}

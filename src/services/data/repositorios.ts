@@ -1,4 +1,5 @@
 import type {
+  AcaoDecisaoDenuncia,
   AcaoModeracaoAvaliacao,
   AtualizarCategoriaInput,
   AtualizarProfissaoInput,
@@ -10,6 +11,7 @@ import type {
   CancelarContaInput,
   CategoriaItem,
   ContaFinanceira,
+  DenunciarInput,
   FiltrosContaFinanceira,
   FiltrosFornecedor,
   FiltrosFuncionario,
@@ -21,6 +23,7 @@ import type {
   IndicarEmpresaInput,
   ItemProduto,
   MeuPerfil,
+  MinhaDenuncia,
   MovimentoEstoque,
   NovaCategoriaInput,
   NovaContaFinanceiraInput,
@@ -35,6 +38,8 @@ import type {
   NovoProdutoInput,
   Obra,
   OpcaoPersonalizada,
+  PaginaDenunciasAdmin,
+  PaginaLogsAdmin,
   PerfilAdminItem,
   Produto,
   ProdutoComSaldo,
@@ -123,6 +128,9 @@ export interface RedeRepositorio {
   contarNotificacoesNaoLidas(): Promise<number>;
   marcarNotificacaoLida(id: string): Promise<void>;
   marcarTodasNotificacoesLidas(): Promise<void>;
+  denunciar(input: DenunciarInput): Promise<ResultadoAction<null>>;
+  listarMinhasDenuncias(): Promise<MinhaDenuncia[]>;
+  complementarDenuncia(denunciaId: string, texto: string): Promise<ResultadoAction<null>>;
 }
 
 export interface TaxonomiaAdminRepositorio {
@@ -137,11 +145,29 @@ export interface TaxonomiaAdminRepositorio {
 
 export interface AvaliacoesAdminRepositorio {
   listar(busca?: string, status?: string): Promise<AvaliacaoAdminItem[]>;
-  moderar(avaliacaoId: string, acao: AcaoModeracaoAvaliacao, motivo: string): Promise<ResultadoAction<null>>;
+  moderar(avaliacaoId: string, acao: AcaoModeracaoAvaliacao, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+export interface DenunciasAdminRepositorio {
+  listar(filtro?: string, pagina?: number): Promise<PaginaDenunciasAdmin>;
+  assumir(denunciaId: string): Promise<ResultadoAction<null>>;
+  solicitarInformacoes(denunciaId: string, mensagem: string): Promise<ResultadoAction<null>>;
+  decidir(
+    denunciaId: string,
+    acao: AcaoDecisaoDenuncia,
+    mensagem: string,
+    observacao?: string,
+    senha?: string,
+    versaoVista?: number,
+  ): Promise<ResultadoAction<null>>;
+}
+
+export interface LogsAdminRepositorio {
+  listar(pagina?: number): Promise<PaginaLogsAdmin>;
 }
 
 export interface PerfisAdminRepositorio {
   listar(busca?: string): Promise<PerfilAdminItem[]>;
-  suspender(slug: string, motivo: string): Promise<ResultadoAction<null>>;
-  reativar(slug: string): Promise<ResultadoAction<null>>;
+  suspender(slug: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+  reativar(slug: string, senha?: string): Promise<ResultadoAction<null>>;
 }

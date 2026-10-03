@@ -268,3 +268,90 @@ export interface AvaliacaoAdminItem {
 }
 
 export type AcaoModeracaoAvaliacao = "ocultar" | "remover" | "restaurar";
+
+export type TipoDenuncia =
+  | "fraude"
+  | "avaliacao_falsa"
+  | "nunca_trabalhou"
+  | "conteudo_ofensivo"
+  | "spam"
+  | "informacao_falsa"
+  | "conflito_interesse"
+  | "outro";
+
+export type StatusDenuncia = "aberta" | "em_analise" | "aguardando_informacoes" | "resolvida" | "rejeitada";
+
+export type DecisaoDenuncia = "mantida" | "avaliacao_ocultada" | "avaliacao_removida" | "perfil_suspenso";
+
+export type AcaoDecisaoDenuncia = "manter" | "ocultar_avaliacao" | "remover_avaliacao" | "suspender_perfil";
+
+/** Alvo da denúncia: uma avaliação (por id) ou um perfil (por slug). */
+export type AlvoDenuncia = { tipo: "avaliacao"; avaliacaoId: string } | { tipo: "perfil"; perfilSlug: string };
+
+export interface DenunciarInput {
+  alvo: AlvoDenuncia;
+  motivo: TipoDenuncia;
+  descricao: string;
+}
+
+export interface MinhaDenuncia {
+  id: string;
+  alvoRotulo: string;
+  alvoTipo: "avaliacao" | "perfil";
+  motivo: TipoDenuncia;
+  status: StatusDenuncia;
+  criadoEm: string;
+  /** Mensagem da administração (pedido de informação ou resultado). */
+  mensagem?: string;
+  complemento?: string;
+}
+
+export interface DenunciaAdminItem {
+  id: string;
+  alvoTipo: "avaliacao" | "perfil";
+  motivo: TipoDenuncia;
+  status: StatusDenuncia;
+  descricao: string;
+  complemento?: string;
+  criadoEm: string;
+  denuncianteNome: string;
+  adminResponsavelNome?: string;
+  decisao?: DecisaoDenuncia;
+  observacaoAdmin?: string;
+  mensagemAoDenunciante?: string;
+  avaliacao?: {
+    id: string;
+    nota: number;
+    comentario?: string;
+    status: StatusAvaliacao;
+    versao: number;
+    perfilNome: string;
+    perfilSlug: string;
+    avaliadorNome: string;
+  };
+  perfil?: { slug: string; nome: string; status: StatusPerfil };
+}
+
+export interface PaginaDenunciasAdmin {
+  itens: DenunciaAdminItem[];
+  pagina: number;
+  totalPaginas: number;
+  /** Denúncias ainda não encerradas (todas as páginas). */
+  abertas: number;
+}
+
+export interface LogAdminItem {
+  id: string;
+  acao: string;
+  alvoTipo: string;
+  alvoId?: string;
+  detalhes: string;
+  criadoEm: string;
+  adminNome: string;
+}
+
+export interface PaginaLogsAdmin {
+  itens: LogAdminItem[];
+  pagina: number;
+  totalPaginas: number;
+}

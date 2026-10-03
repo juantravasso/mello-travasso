@@ -20,7 +20,9 @@ export function PerfisAdmin() {
   const [perfis, setPerfis] = useState<PerfilAdminItem[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [suspendendo, setSuspendendo] = useState<string | null>(null);
+  const [reativando, setReativando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [senha, setSenha] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   const carregar = useCallback(async (termo: string) => {
@@ -41,7 +43,9 @@ export function PerfisAdmin() {
         return;
       }
       setSuspendendo(null);
+      setReativando(null);
       setMotivo("");
+      setSenha("");
       await carregar(busca);
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -101,16 +105,43 @@ export function PerfisAdmin() {
                       </Link>
                     )}
                     {perfil.status === "suspenso" ? (
-                      <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={() => executar(() => repo.reativar(perfil.slug))}>
+                      <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={() => { setReativando(perfil.slug); setSenha(""); }}>
                         Reativar
                       </Button>
                     ) : (
-                      <Button type="button" tamanho="sm" variante="danger" disabled={ocupado} onClick={() => { setSuspendendo(perfil.slug); setMotivo(""); }}>
+                      <Button type="button" tamanho="sm" variante="danger" disabled={ocupado} onClick={() => { setSuspendendo(perfil.slug); setMotivo(""); setSenha(""); }}>
                         Suspender
                       </Button>
                     )}
                   </span>
                 </div>
+
+                {reativando === perfil.slug && (
+                  <div className="flex flex-col gap-2 border-t border-border pt-3">
+                    <Input
+                      type="password"
+                      label={`Confirme sua senha para reativar ${perfil.nome}`}
+                      autoComplete="current-password"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      maxLength={200}
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        tamanho="sm"
+                        disabled={ocupado || senha.length === 0}
+                        onClick={() => executar(() => repo.reativar(perfil.slug, senha))}
+                      >
+                        Confirmar reativação
+                      </Button>
+                      <Button type="button" tamanho="sm" variante="ghost" onClick={() => setReativando(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {suspendendo === perfil.slug && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
@@ -121,13 +152,21 @@ export function PerfisAdmin() {
                       maxLength={500}
                       autoFocus
                     />
+                    <Input
+                      type="password"
+                      label="Confirme sua senha"
+                      autoComplete="current-password"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      maxLength={200}
+                    />
                     <div className="flex gap-2">
                       <Button
                         type="button"
                         tamanho="sm"
                         variante="danger"
-                        disabled={ocupado || motivo.trim().length < 5}
-                        onClick={() => executar(() => repo.suspender(perfil.slug, motivo))}
+                        disabled={ocupado || motivo.trim().length < 5 || senha.length === 0}
+                        onClick={() => executar(() => repo.suspender(perfil.slug, motivo, senha))}
                       >
                         Confirmar suspensão
                       </Button>

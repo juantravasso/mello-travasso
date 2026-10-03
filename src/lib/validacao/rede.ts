@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
 import { normalizarInstagram, normalizarSite, normalizarTelefone } from "@/lib/rede/texto";
-import { CHAVES_NEGATIVAS, CHAVES_POSITIVAS } from "@/lib/rede/aspectos";
+import { CHAVES_NEGATIVAS, CHAVES_POSITIVAS, motivosParaAlvo } from "@/lib/rede/aspectos";
 import { cnpjValido } from "./documento";
 
 const vazioParaUndefined = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : v);
@@ -170,5 +170,54 @@ export const moderarAvaliacaoSchema = z
     avaliacaoId: z.string().uuid(),
     acao: z.enum(["ocultar", "remover", "restaurar"]),
     motivo: z.string().trim().min(5, "Descreva o motivo (mínimo 5 letras).").max(500),
+  })
+  .strict();
+
+const MOTIVOS = [
+  "fraude",
+  "avaliacao_falsa",
+  "nunca_trabalhou",
+  "conteudo_ofensivo",
+  "spam",
+  "informacao_falsa",
+  "conflito_interesse",
+  "outro",
+] as const;
+
+export const denunciarSchema = z
+  .object({
+    alvo: z.discriminatedUnion("tipo", [
+      z.object({ tipo: z.literal("avaliacao"), avaliacaoId: z.string().uuid() }).strict(),
+      z.object({ tipo: z.literal("perfil"), perfilSlug: slugPerfil }).strict(),
+    ]),
+    motivo: z.enum(MOTIVOS, "Escolha o motivo."),
+    descricao: z.string().trim().min(10, "Descreva o problema (mínimo 10 letras).").max(1000),
+  })
+  .strict()
+  .refine((d) => motivosParaAlvo(d.alvo.tipo).some((m) => m.chave === d.motivo), {
+    message: "Esse motivo não vale para este tipo de denúncia.",
+    path: ["motivo"],
+  });
+
+export const complementarDenunciaSchema = z
+  .object({
+    denunciaId: z.string().uuid(),
+    texto: z.string().trim().min(5, "Escreva a informação (mínimo 5 letras).").max(1000),
+  })
+  .strict();
+
+export const solicitarInformacoesSchema = z
+  .object({
+    denunciaId: z.string().uuid(),
+    mensagem: z.string().trim().min(5, "Escreva o que precisa ser esclarecido (mínimo 5 letras).").max(500),
+  })
+  .strict();
+
+export const decidirDenunciaSchema = z
+  .object({
+    denunciaId: z.string().uuid(),
+    acao: z.enum(["manter", "ocultar_avaliacao", "remover_avaliacao", "suspender_perfil"]),
+    mensagem: z.string().trim().min(5, "Escreva a mensagem ao denunciante (mínimo 5 letras).").max(500),
+    observacao: z.preprocess(vazioParaUndefined, z.string().trim().max(1000).optional()),
   })
   .strict();

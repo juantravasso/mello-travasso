@@ -7,11 +7,16 @@ import type {
   ItensProdutoRepositorio,
   ObrasRepositorio,
   AvaliacoesAdminRepositorio,
+  DenunciasAdminRepositorio,
+  LogsAdminRepositorio,
   PerfisAdminRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
 } from "./repositorios";
 import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
+import { complementarDenuncia, denunciar, listarMinhasDenuncias } from "./server/denunciaActions";
+import { assumirDenuncia, decidirDenuncia, listarDenunciasAdmin, solicitarInformacoes } from "./server/denunciaAdminActions";
+import { listarLogsAdmin } from "./server/logAdminActions";
 import { listarPerfisAdmin, reativarPerfil, suspenderPerfil } from "./server/perfilAdminActions";
 import {
   atualizarCategoria,
@@ -166,6 +171,9 @@ export const redeRepositorio: RedeRepositorio = {
   contarNotificacoesNaoLidas,
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas,
+  denunciar,
+  listarMinhasDenuncias,
+  complementarDenuncia,
 };
 
 export const taxonomiaAdminRepositorio: TaxonomiaAdminRepositorio = {
@@ -183,6 +191,17 @@ export const avaliacoesAdminRepositorio: AvaliacoesAdminRepositorio = {
   moderar: moderarAvaliacao,
 };
 
+export const denunciasAdminRepositorio: DenunciasAdminRepositorio = {
+  listar: listarDenunciasAdmin,
+  assumir: assumirDenuncia,
+  solicitarInformacoes,
+  decidir: decidirDenuncia,
+};
+
+export const logsAdminRepositorio: LogsAdminRepositorio = {
+  listar: listarLogsAdmin,
+};
+
 export const perfisAdminRepositorio: PerfisAdminRepositorio = {
   listar: listarPerfisAdmin,
   suspender: suspenderPerfil,
@@ -198,6 +217,8 @@ export type {
   ItensProdutoRepositorio,
   ObrasRepositorio,
   AvaliacoesAdminRepositorio,
+  DenunciasAdminRepositorio,
+  LogsAdminRepositorio,
   PerfisAdminRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,

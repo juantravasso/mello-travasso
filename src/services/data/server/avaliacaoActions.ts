@@ -16,6 +16,7 @@ import type {
 import {
   criarNotificacao,
   criouPerfil,
+  IDADE_MINIMA_CONTA_MS,
   ehProprio,
   nomePublicoDaEmpresa,
   registrarRecomendacao,
@@ -28,7 +29,6 @@ const AVALIACOES_POR_DIA = 20;
 const AVALIACOES_POR_IP_POR_DIA = 30;
 const EDICOES_POR_DIA = 20;
 const AVALIACOES_POR_PERFIL_POR_DIA = 15;
-const IDADE_MINIMA_CONTA_MS = 24 * 60 * 60 * 1000;
 const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
 function ehConflito(erro: unknown): boolean {

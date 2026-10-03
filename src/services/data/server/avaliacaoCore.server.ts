@@ -11,6 +11,8 @@ import type {
 import { ErroDeNegocio } from "./resultado.server";
 
 export const TAMANHO_PAGINA_AVALIACOES = 10;
+export const IDADE_MINIMA_CONTA_MS = 24 * 60 * 60 * 1000;
+export const CANAL_CONTESTACAO = "contato@mellotravasso.com.br";
 const RECOMENDACOES_POR_DIA = 60;
 const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
@@ -50,6 +52,18 @@ export function nomePublicoDaEmpresa(empresa: EmpresaParaNome): { nome: string; 
     return { nome: PARECE_DOCUMENTO.test(nome) ? "Empresa da rede" : nome };
   }
   return { nome: "Profissional da rede" };
+}
+
+/**
+ * Nome de uma empresa para a administração (fila de denúncias): o suficiente
+ * para distinguir quem é, sem despejar CPF de MEI ou nome civil de autônomo.
+ * O sufixo curto do id separa homônimos.
+ */
+export function nomeParaAdmin(empresa: { id: string; tipoPessoa: "pj" | "pf"; nomeFantasia: string | null; razaoSocial: string }): string {
+  const sufixo = ` #${empresa.id.slice(0, 6)}`;
+  if (empresa.tipoPessoa === "pf") return `Autônomo${sufixo}`;
+  const nome = empresa.nomeFantasia ?? empresa.razaoSocial;
+  return `${PARECE_DOCUMENTO.test(nome) ? "Empresa (nome oculto)" : nome}${sufixo}`;
 }
 
 interface PerfilParaPosse {
@@ -193,13 +207,16 @@ export async function criarNotificacao(
   tipo: string,
   texto: string,
   href: string,
+  opcoes?: { semDedupe?: boolean },
 ): Promise<void> {
-  const desde = new Date(Date.now() - UM_DIA_MS).toISOString();
-  const repetida = await tx.notificacao.findFirst({
-    where: { empresaId, tipo, texto, criadoEm: { gte: desde } },
-    select: { id: true },
-  });
-  if (repetida) return;
+  if (!opcoes?.semDedupe) {
+    const desde = new Date(Date.now() - UM_DIA_MS).toISOString();
+    const repetida = await tx.notificacao.findFirst({
+      where: { empresaId, tipo, texto, criadoEm: { gte: desde } },
+      select: { id: true },
+    });
+    if (repetida) return;
+  }
   await tx.notificacao.create({
     data: { empresaId, tipo, texto, href, criadoEm: new Date().toISOString() },
   });

@@ -288,6 +288,8 @@ model Empresa {
   respostasAvaliacao            RespostaAvaliacao[]
   indicacoesFeitas              Indicacao[]
   notificacoes                  Notificacao[]
+  denuncias                     Denuncia[]
+  arquivos                      Arquivo[]
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -515,13 +517,17 @@ model PerfilPublico {
 
   /// CNPJ (só dígitos) informado por quem indicou uma empresa sem cadastro: serve
   /// para evitar perfis duplicados. Nunca é exibido.
-  documentoIndicado String? @unique
+  documentoIndicado    String? @unique
   /// Empresa que criou o perfil por indicação. Não pode avaliar o que criou.
   indicadoPorEmpresaId String?
 
   profissoes PerfilProfissao[]
   avaliacoes Avaliacao[]
   indicacoes Indicacao[]
+  denuncias  Denuncia[]
+  arquivos   Arquivo[]
+  servicos   Servico[]
+  trabalhos  Trabalho[]
 
   @@index([status, estado, cidadeBusca])
   @@index([status, criadoEm])
@@ -609,6 +615,7 @@ model Avaliacao {
 
   resposta  RespostaAvaliacao?
   historico AvaliacaoHistorico[]
+  denuncias Denuncia[]
 
   @@unique([avaliadorEmpresaId, perfilId])
   @@index([perfilId, status, criadoEm])
@@ -670,4 +677,142 @@ model Notificacao {
   criadoEm  String
 
   @@index([empresaId, lida, criadoEm])
+}
+
+// --- Denúncias e moderação (Fase 6.3) ---------------------------------------
+
+enum TipoDenunciaDb {
+  fraude
+  avaliacao_falsa
+  nunca_trabalhou
+  conteudo_ofensivo
+  spam
+  informacao_falsa
+  conflito_interesse
+  outro
+}
+
+enum StatusDenunciaDb {
+  aberta
+  em_analise
+  aguardando_informacoes
+  resolvida
+  rejeitada
+}
+
+enum DecisaoDenunciaDb {
+  mantida
+  avaliacao_ocultada
+  avaliacao_removida
+  perfil_suspenso
+}
+
+/// Denúncia de uma avaliação ou de um perfil (exatamente um dos dois alvos,
+/// garantido por CHECK na migration). Nunca remove nada sozinha: só a
+/// decisão de um administrador altera o conteúdo.
+model Denuncia {
+  id                    String             @id @default(uuid())
+  denuncianteEmpresaId  String
+  denunciante           Empresa            @relation(fields: [denuncianteEmpresaId], references: [id], onDelete: Cascade)
+  denuncianteUsuarioId  String
+  avaliacaoId           String?
+  avaliacao             Avaliacao?         @relation(fields: [avaliacaoId], references: [id], onDelete: Restrict)
+  perfilId              String?
+  perfil                PerfilPublico?     @relation(fields: [perfilId], references: [id], onDelete: Restrict)
+  motivo                TipoDenunciaDb
+  descricao             String             @db.Text
+  /// Informação adicional enviada pelo denunciante quando a administração pediu.
+  complemento           String?            @db.Text
+  status                StatusDenunciaDb   @default(aberta)
+  adminResponsavelId    String?
+  decisao               DecisaoDenunciaDb?
+  /// Anotação interna da administração (nunca exibida ao denunciante).
+  observacaoAdmin       String?            @db.Text
+  /// Mensagem que o denunciante vê (pedido de informação ou resultado).
+  mensagemAoDenunciante String?            @db.Text
+  criadoEm              String
+  atualizadoEm          String
+  resolvidaEm           String?
+
+  @@unique([denuncianteEmpresaId, avaliacaoId])
+  @@unique([denuncianteEmpresaId, perfilId])
+  @@index([status, criadoEm])
+  @@index([avaliacaoId])
+  @@index([perfilId])
+}
+
+// --- Portfólio, serviços e arquivos (Fase 6.4) ------------------------------
+
+enum FinalidadeArquivoDb {
+  logo
+  portfolio
+  /// Reservado para os documentos de comprovação (Fase 6.5): nunca públicos.
+  documento
+}
+
+/// Arquivo guardado no próprio Postgres (sem storage externo ainda). Todo acesso
+/// passa pelo módulo de armazenamento, para trocar por Blob/S3 sem mexer no resto.
+model Arquivo {
+  id         String              @id @default(uuid())
+  empresaId  String
+  empresa    Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  perfilId   String?
+  perfil     PerfilPublico?      @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  finalidade FinalidadeArquivoDb
+  mime       String
+  tamanho    Int
+  dados      Bytes
+  criadoEm   String
+
+  foto TrabalhoFoto?
+
+  @@index([perfilId, finalidade])
+  @@index([empresaId])
+}
+
+model Servico {
+  id        String        @id @default(uuid())
+  perfilId  String
+  perfil    PerfilPublico @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  nome      String
+  descricao String?
+  ordem     Int           @default(0)
+  criadoEm  String
+
+  trabalhos Trabalho[]
+
+  @@index([perfilId, ordem])
+}
+
+/// Um trabalho realizado, com fotos. `galeria` agrupa trabalhos no perfil público.
+model Trabalho {
+  id           String        @id @default(uuid())
+  perfilId     String
+  perfil       PerfilPublico @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  titulo       String
+  descricao    String?       @db.Text
+  servicoId    String?
+  servico      Servico?      @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  galeria      String?
+  /// Data opcional do trabalho (aaaa-mm-dd).
+  dataTrabalho String?
+  ordem        Int           @default(0)
+  criadoEm     String
+  atualizadoEm String
+
+  fotos TrabalhoFoto[]
+
+  @@index([perfilId, ordem])
+}
+
+model TrabalhoFoto {
+  id         String   @id @default(uuid())
+  trabalhoId String
+  trabalho   Trabalho @relation(fields: [trabalhoId], references: [id], onDelete: Cascade)
+  arquivoId  String   @unique
+  arquivo    Arquivo  @relation(fields: [arquivoId], references: [id], onDelete: Cascade)
+  ordem      Int      @default(0)
+  criadoEm   String
+
+  @@index([trabalhoId, ordem])
 }

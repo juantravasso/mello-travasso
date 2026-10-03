@@ -17,10 +17,22 @@ export default async function AdminPage() {
             <span className="text-sm text-muted">Crie, renomeie, organize e desative o que aparece na busca e nos perfis.</span>
           </Card>
         </Link>
+        <Link href="/admin/denuncias">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Denúncias</span>
+            <span className="text-sm text-muted">Fila de denúncias de avaliações e perfis: analise, peça informações e decida.</span>
+          </Card>
+        </Link>
         <Link href="/admin/avaliacoes">
           <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
             <span className="font-semibold text-foreground">Avaliações</span>
             <span className="text-sm text-muted">Oculte, remova ou restaure avaliações, com motivo registrado.</span>
+          </Card>
+        </Link>
+        <Link href="/admin/logs">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Registro de ações</span>
+            <span className="text-sm text-muted">Quem fez o quê na administração, em ordem cronológica.</span>
           </Card>
         </Link>
         <Link href="/admin/perfis">

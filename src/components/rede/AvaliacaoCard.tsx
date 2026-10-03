@@ -4,6 +4,7 @@ import { rotuloAspecto } from "@/lib/rede/aspectos";
 import { formatarDataBr } from "@/lib/rede/texto";
 import { Badge } from "@/components/ui/Badge";
 import { EstrelasNota } from "./EstrelasNota";
+import { MenuAvaliacao } from "./MenuAvaliacao";
 
 export function Aspectos({ pros, contras }: { pros: string[]; contras: string[] }) {
   if (pros.length === 0 && contras.length === 0) return null;
@@ -33,7 +34,15 @@ export function Aspectos({ pros, contras }: { pros: string[]; contras: string[] 
   );
 }
 
-export function AvaliacaoCard({ avaliacao }: { avaliacao: AvaliacaoPublica }) {
+export function AvaliacaoCard({
+  avaliacao,
+  slugDoPerfil,
+  logado,
+}: {
+  avaliacao: AvaliacaoPublica;
+  slugDoPerfil: string;
+  logado: boolean;
+}) {
   return (
     <article className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -51,6 +60,7 @@ export function AvaliacaoCard({ avaliacao }: { avaliacao: AvaliacaoPublica }) {
           {formatarDataBr(avaliacao.criadoEm)}
           {avaliacao.editadaEm && <> · editada em {formatarDataBr(avaliacao.editadaEm)}</>}
         </span>
+        <MenuAvaliacao avaliacaoId={avaliacao.id} slugDoPerfil={slugDoPerfil} logado={logado} />
       </header>
 
       {avaliacao.comentario && <p className="whitespace-pre-line text-sm text-foreground/90">{avaliacao.comentario}</p>}

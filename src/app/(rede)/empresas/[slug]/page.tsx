@@ -10,6 +10,7 @@ import { formatarTelefone } from "@/lib/rede/texto";
 import { jsonLdSeguro, urlDoSite } from "@/lib/rede/site";
 import { AcoesPerfil } from "@/components/rede/AcoesPerfil";
 import { AvaliacaoCard } from "@/components/rede/AvaliacaoCard";
+import { DenunciarPerfil } from "@/components/rede/DenunciarPerfil";
 import { AvatarIniciais } from "@/components/rede/AvatarIniciais";
 import { localizacao } from "@/components/rede/PerfilItem";
 import { ResumoNotas } from "@/components/rede/ResumoNotas";
@@ -223,7 +224,7 @@ export default async function PerfilPublicoPage({
               <>
                 <div className="flex flex-col gap-3">
                   {avaliacoes.itens.map((a) => (
-                    <AvaliacaoCard key={a.id} avaliacao={a} />
+                    <AvaliacaoCard key={a.id} avaliacao={a} slugDoPerfil={perfil.slug} logado={!!sessao} />
                   ))}
                 </div>
                 {avaliacoes.totalPaginas > 1 && (
@@ -306,6 +307,8 @@ export default async function PerfilPublicoPage({
               </p>
             )}
           </Card>
+
+          <DenunciarPerfil slug={perfil.slug} logado={!!sessao} proprio={estado.proprio} />
 
           {!sessao && !perfil.indicado && (
             <Card className="flex flex-col gap-2 text-sm">

@@ -8,3 +8,4 @@ export * from "./fornecedor";
 export * from "./auth";
 export * from "./produto";
 export * from "./movimentoEstoque";
+export * from "./rede";

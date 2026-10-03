@@ -21,10 +21,14 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Roda em tudo, exceto: assets do Next, favicon, as rotas públicas
-  // (landing "/", "/login", "/criar-conta", "/termos", "/privacidade") e
+  // (landing "/", "/login", "/criar-conta", "/termos", "/privacidade", a rede
+  // profissional pública "/rede" e "/empresas/<slug>", sitemap e robots) e
   // /api/**. Redirecionar uma chamada de API (fetch/XHR) para a página HTML
   // de login quebra o cliente, que espera JSON — cada rota de API chama
   // exigirSessaoAction() e responde 401 em JSON quando não há sessão (ver
-  // src/app/(app)/api/ai/extract-recibo).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|login|criar-conta|termos|privacidade|api|$).*)"],
+  // src/app/(app)/api/ai/extract-recibo). A área logada da rede fica em
+  // "/minha-rede" (não "/rede"), então continua protegida por este proxy.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|login|criar-conta|termos|privacidade|rede(?:/|$)|empresas/|sitemap.xml|robots.txt|api|$).*)",
+  ],
 };

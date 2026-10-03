@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { lerSessao, type SessaoValida } from "@/lib/auth/sessao";
 import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
@@ -12,6 +12,9 @@ import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
 
 const obterSessao = cache(async (): Promise<SessaoValida | null> => lerSessao());
 
+/** Sessão se houver, sem redirecionar nem lançar — para páginas públicas que mudam conforme o visitante está logado. */
+export const obterSessaoOpcional = obterSessao;
+
 /**
  * Garante que existe uma sessão válida. Fora de uma rota (ex.: em página),
  * redireciona para /login?next=<rota atual> quando não há sessão — quem
@@ -21,7 +24,7 @@ const obterSessao = cache(async (): Promise<SessaoValida | null> => lerSessao())
 export async function exigirSessao(next?: string): Promise<SessaoValida> {
   const sessao = await obterSessao();
   if (!sessao) {
-    const destino = next && /^\/(?!\/)/.test(next) ? `/login?next=${encodeURIComponent(next)}` : "/login";
+    const destino = next && /^\/(?![\/\\])/.test(next) ? `/login?next=${encodeURIComponent(next)}` : "/login";
     redirect(destino);
   }
   return sessao;
@@ -69,5 +72,68 @@ export async function exigirEscritaAction(): Promise<SessaoValida> {
   if (status.somenteLeitura) {
     throw new Error("SOMENTE_LEITURA");
   }
+  return sessao;
+}
+
+export type ChaveRecurso = "rede" | "gestao";
+
+/**
+ * Recursos que o plano da empresa libera (tabela PlanoRecurso, configurável
+ * pela administração). Falha fechada: plano sem linhas → nenhum recurso.
+ * cache() por request, como obterStatusPlano.
+ */
+export const obterRecursosDaEmpresa = cache(async (empresaId: string): Promise<ReadonlySet<string>> => {
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { plano: true } });
+  if (!empresa) return new Set();
+  const linhas = await prisma.planoRecurso.findMany({ where: { plano: empresa.plano }, select: { recursoChave: true } });
+  return new Set(linhas.map((l) => l.recursoChave));
+});
+
+/**
+ * Sessão + o plano da empresa precisa liberar os módulos de gestão (obras,
+ * contas, estoque…). Toda Server Action desses módulos usa esta função (ou a
+ * de escrita abaixo) em vez de exigirSessaoAction() — a barreira real do plano
+ * gratuito está aqui, no servidor; esconder o menu é só o complemento.
+ */
+export async function exigirGestaoAction(): Promise<SessaoValida> {
+  const sessao = await exigirSessaoAction();
+  const recursos = await obterRecursosDaEmpresa(sessao.empresaId);
+  if (!recursos.has("gestao")) throw new Error("PLANO_SEM_ACESSO");
+  return sessao;
+}
+
+/** Igual a exigirGestaoAction(), e também bloqueia quando o teste já venceu. */
+export async function exigirGestaoEscritaAction(): Promise<SessaoValida> {
+  const sessao = await exigirGestaoAction();
+  const status = await obterStatusPlano(sessao.empresaId);
+  if (status.somenteLeitura) throw new Error("SOMENTE_LEITURA");
+  return sessao;
+}
+
+/**
+ * Sessão + recurso "rede". Não olha o fim do teste: a rede profissional
+ * continua livre mesmo depois que o teste dos módulos de gestão vence.
+ */
+export async function exigirRedeAction(): Promise<SessaoValida> {
+  const sessao = await exigirSessaoAction();
+  const recursos = await obterRecursosDaEmpresa(sessao.empresaId);
+  if (!recursos.has("rede")) throw new Error("PLANO_SEM_ACESSO");
+  return sessao;
+}
+
+/** Administrador da plataforma, para Server Actions. */
+export async function exigirAdminAction(): Promise<SessaoValida> {
+  const sessao = await exigirSessaoAction();
+  if (!sessao.admin) throw new Error("SEM_PERMISSAO");
+  return sessao;
+}
+
+/**
+ * Administrador, para páginas. Quem não é admin recebe 404 (e não um
+ * redirecionamento ou "acesso negado") para não confirmar que /admin existe.
+ */
+export async function exigirAdmin(): Promise<SessaoValida> {
+  const sessao = await exigirSessao();
+  if (!sessao.admin) notFound();
   return sessao;
 }

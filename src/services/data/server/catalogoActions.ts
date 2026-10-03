@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
 import { novaOpcaoPersonalizadaSchema, tipoContaSchema } from "@/lib/validacao/catalogo";
 import type { NovaOpcaoPersonalizadaInput, OpcaoPersonalizada, TipoConta } from "@/types";
 
@@ -10,7 +10,7 @@ function paraOpcao(registro: { id: string; rotulo: string; criadoEm: string }): 
 }
 
 export async function listarCategoriasPersonalizadas(tipo: TipoConta): Promise<OpcaoPersonalizada[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const tipoParsed = tipoContaSchema.safeParse(tipo);
   if (!tipoParsed.success) throw new Error("Tipo inválido.");
   const tipoValido = tipoParsed.data;
@@ -25,7 +25,7 @@ export async function criarCategoriaPersonalizada(
   tipo: TipoConta,
   input: NovaOpcaoPersonalizadaInput,
 ): Promise<OpcaoPersonalizada> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const tipoParsed = tipoContaSchema.safeParse(tipo);
   if (!tipoParsed.success) throw new Error("Tipo inválido.");
   const tipoValido = tipoParsed.data;
@@ -39,7 +39,7 @@ export async function criarCategoriaPersonalizada(
 }
 
 export async function listarFormasPagamentoPersonalizadas(): Promise<OpcaoPersonalizada[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registros = await prisma.formaPagamentoPersonalizada.findMany({
     where: { empresaId: sessao.empresaId },
     orderBy: { criadoEm: "asc" },
@@ -50,7 +50,7 @@ export async function listarFormasPagamentoPersonalizadas(): Promise<OpcaoPerson
 export async function criarFormaPagamentoPersonalizada(
   input: NovaOpcaoPersonalizadaInput,
 ): Promise<OpcaoPersonalizada> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = novaOpcaoPersonalizadaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 

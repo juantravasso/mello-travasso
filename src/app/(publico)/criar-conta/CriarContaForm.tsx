@@ -12,6 +12,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 type TipoPessoa = "pj" | "pf";
+type ModoCadastro = "teste" | "rede";
+
+const OPCOES_MODO: { valor: ModoCadastro; titulo: string; descricao: string }[] = [
+  { valor: "teste", titulo: "Teste de 30 dias", descricao: "Todos os módulos: obras, contas, estoque e a rede profissional." },
+  { valor: "rede", titulo: "Só a rede profissional", descricao: "Perfil público, busca e avaliações. Grátis, sem prazo." },
+];
 
 interface EstadoCadastro {
   erroGeral?: string;
@@ -23,6 +29,7 @@ const ESTADO_INICIAL: EstadoCadastro = {};
 export function CriarContaForm() {
   const router = useRouter();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa>("pj");
+  const [modo, setModo] = useState<ModoCadastro>("teste");
   const [documento, setDocumento] = useState("");
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [avisoCnpj, setAvisoCnpj] = useState<string | null>(null);
@@ -115,6 +122,7 @@ export function CriarContaForm() {
         nomeUsuario: String(formData.get("nomeUsuario") ?? ""),
         email: String(formData.get("email") ?? ""),
         senha: String(formData.get("senha") ?? ""),
+        modo,
         aceiteTermos: formData.get("aceiteTermos") === "on",
         empresaConfirmacao: String(formData.get("empresaConfirmacao") ?? ""),
       });
@@ -126,7 +134,7 @@ export function CriarContaForm() {
       }
       return { erroGeral: resultado.mensagem, campos: resultado.campos };
     },
-    [tipoPessoa, situacaoCadastral, router],
+    [tipoPessoa, situacaoCadastral, modo, router],
   );
 
   const [estadoForm, formAction, emAndamento] = useActionState(acao, ESTADO_INICIAL);
@@ -254,6 +262,29 @@ export function CriarContaForm() {
           erro={estadoForm.campos?.senha}
         />
 
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium text-foreground">Como quer começar?</legend>
+          {OPCOES_MODO.map((opcao) => (
+            <label
+              key={opcao.valor}
+              className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${modo === opcao.valor ? "border-primary bg-primary/10" : "border-border bg-surface hover:bg-surface-2"}`}
+            >
+              <input
+                type="radio"
+                name="modo"
+                value={opcao.valor}
+                checked={modo === opcao.valor}
+                onChange={() => setModo(opcao.valor)}
+                className="mt-0.5 h-4 w-4"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium text-foreground">{opcao.titulo}</span>
+                <span className="text-xs text-muted">{opcao.descricao}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
         <label className="flex items-start gap-2 text-sm text-muted">
           <input type="checkbox" name="aceiteTermos" required className="mt-0.5 h-4 w-4 rounded border-border" />
           <span>
@@ -276,9 +307,11 @@ export function CriarContaForm() {
         )}
 
         <Button type="submit" variante="primary" className="w-full shadow-none" aria-busy={emAndamento} disabled={emAndamento}>
-          {emAndamento ? "Criando conta…" : "Criar conta e começar o teste"}
+          {emAndamento ? "Criando conta…" : modo === "rede" ? "Criar conta grátis" : "Criar conta e começar o teste"}
         </Button>
-        <p className="text-center text-xs text-muted">30 dias grátis. Sem cartão de crédito.</p>
+        <p className="text-center text-xs text-muted">
+          {modo === "rede" ? "Grátis, sem prazo. Dá para testar os módulos de gestão depois." : "30 dias grátis. Sem cartão de crédito."}
+        </p>
       </div>
     </form>
   );

@@ -233,6 +233,12 @@ enum PlanoDb {
   cortesia
   ativo
   suspenso
+  /// Só a rede profissional (Fase 6): sem módulos de gestão.
+  gratuito
+}
+
+enum PapelPlataformaDb {
+  admin
 }
 
 model Empresa {
@@ -277,6 +283,7 @@ model Empresa {
   produtos                      Produto[]
   saldosEstoque                 SaldoEstoque[]
   movimentosEstoque             MovimentoEstoque[]
+  perfilPublico                 PerfilPublico?
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -308,6 +315,9 @@ model Usuario {
   /// Data da última falha de login (RF-10) — separado de atualizadoEm, que
   /// também muda em login OK e troca de senha e não serve como marca da janela.
   ultimaFalhaLoginEm String?
+  /// Administrador da plataforma (Fase 6) — independente de `papel`, que é por
+  /// empresa. Só é concedido por script (admin:promover), nunca pela interface.
+  papelPlataforma    PapelPlataformaDb?
   criadoEm           String
   atualizadoEm       String
 
@@ -412,4 +422,138 @@ model MovimentoEstoque {
   @@index([empresaId])
   @@index([produtoId])
   @@index([obraId])
+}
+
+// --- Rede profissional (Fase 6) --------------------------------------------
+// PerfilPublico é separado de Empresa de propósito: empresas ainda sem cadastro
+// poderão ter perfil (indicação, Fase 6.2) e depois reivindicá-lo. `empresaId`
+// é opcional e único (1 empresa → no máximo 1 perfil).
+
+enum TipoPerfilDb {
+  pj
+  pf
+}
+
+enum StatusPerfilDb {
+  rascunho
+  publicado
+  /// Escondido pela administração; o dono não consegue republicar.
+  suspenso
+}
+
+model Categoria {
+  id           String      @id @default(uuid())
+  nome         String
+  slug         String      @unique
+  paiId        String?
+  pai          Categoria?  @relation("CategoriaArvore", fields: [paiId], references: [id])
+  filhas       Categoria[] @relation("CategoriaArvore")
+  ordem        Int         @default(0)
+  ativo        Boolean     @default(true)
+  criadoEm     String
+  atualizadoEm String
+
+  profissoes Profissao[]
+
+  @@index([paiId])
+}
+
+model Profissao {
+  id           String    @id @default(uuid())
+  nome         String
+  slug         String    @unique
+  categoriaId  String
+  categoria    Categoria @relation(fields: [categoriaId], references: [id])
+  ativo        Boolean   @default(true)
+  criadoEm     String
+  atualizadoEm String
+
+  perfis PerfilProfissao[]
+
+  @@index([categoriaId])
+}
+
+model PerfilPublico {
+  id     String         @id @default(uuid())
+  slug   String         @unique
+  tipo   TipoPerfilDb
+  status StatusPerfilDb @default(rascunho)
+
+  nome         String
+  nomeFantasia String?
+  razaoSocial  String?
+  descricao    String? @db.Text
+
+  /// Texto normalizado (minúsculas, sem acento) só para busca — nunca exibido.
+  nomeBusca   String
+  cidadeBusca String?
+
+  pais             String   @default("BR")
+  estado           String?
+  cidade           String?
+  regiao           String?
+  areasAtendimento String[] @default([])
+
+  telefone         String?
+  telefonePublico  Boolean @default(false)
+  whatsapp         String?
+  whatsappPublico  Boolean @default(false)
+  instagram        String?
+  site             String?
+
+  empresaId String?  @unique
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+
+  criadoEm     String
+  atualizadoEm String
+
+  profissoes PerfilProfissao[]
+
+  @@index([status, estado, cidadeBusca])
+  @@index([status, criadoEm])
+}
+
+model PerfilProfissao {
+  perfilId    String
+  perfil      PerfilPublico @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  profissaoId String
+  profissao   Profissao     @relation(fields: [profissaoId], references: [id])
+
+  @@id([perfilId, profissaoId])
+  @@index([profissaoId])
+}
+
+/// Funcionalidades que um plano pode liberar (ex.: "rede", "gestao"). A
+/// administração decide quais recursos cada plano tem via PlanoRecurso.
+model Recurso {
+  chave     String @id
+  nome      String
+  descricao String?
+
+  planos PlanoRecurso[]
+}
+
+/// `plano` é a chave do plano (valores de PlanoDb) em texto, e não o enum,
+/// para permitir novos níveis de assinatura sem migration de enum.
+model PlanoRecurso {
+  plano        String
+  recursoChave String
+  recurso      Recurso @relation(fields: [recursoChave], references: [chave], onDelete: Cascade)
+
+  @@id([plano, recursoChave])
+}
+
+/// Trilha de auditoria das ações da administração da plataforma.
+model LogAdmin {
+  id             String  @id @default(uuid())
+  adminUsuarioId String
+  acao           String
+  alvoTipo       String
+  alvoId         String?
+  detalhes       Json
+  criadoEm       String
+
+  @@index([adminUsuarioId])
+  @@index([alvoTipo, alvoId])
+  @@index([criadoEm])
 }

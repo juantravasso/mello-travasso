@@ -11,13 +11,15 @@ import {
   IconeConfig,
   IconeDashboard,
   IconeEntrada,
+  IconeEscudo,
   IconeFornecedor,
   IconeObra,
   IconePessoas,
+  IconeRede,
   IconeSaida,
 } from "./icones";
 
-const itens = [
+const itensGestao = [
   { href: "/dashboard", rotulo: "Dashboard", Icone: IconeDashboard },
   { href: "/capturar", rotulo: "Captura de documentos", Icone: IconeCamera },
   { href: "/contas-a-pagar", rotulo: "Contas a pagar", Icone: IconeSaida },
@@ -27,6 +29,9 @@ const itens = [
   { href: "/funcionarios", rotulo: "Funcionários", Icone: IconePessoas },
   { href: "/fornecedores", rotulo: "Fornecedores", Icone: IconeFornecedor },
 ] as const;
+
+const itemRede = { href: "/minha-rede", rotulo: "Rede profissional", Icone: IconeRede } as const;
+const itemAdmin = { href: "/admin", rotulo: "Administração", Icone: IconeEscudo } as const;
 
 function ComTooltip({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
@@ -41,9 +46,23 @@ function ComTooltip({ rotulo, children }: { rotulo: string; children: ReactNode 
   );
 }
 
-export function Sidebar({ nomeUsuario }: { nomeUsuario: string }) {
+export function Sidebar({
+  nomeUsuario,
+  temGestao,
+  admin,
+}: {
+  nomeUsuario: string;
+  temGestao: boolean;
+  admin: boolean;
+}) {
   const pathname = usePathname();
-
+  // Sem o plano de gestão, os módulos continuam visíveis (apagados) e levam à
+  // página de apresentação — o gratuito vê o que existe sem bloqueio agressivo.
+  const itens = [
+    itemRede,
+    ...itensGestao.map((item) => ({ ...item, bloqueado: !temGestao })),
+    ...(admin ? [itemAdmin] : []),
+  ];
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[68px] flex-col items-center border-r border-border bg-sidebar md:flex">
       <div className="flex w-full justify-center border-b border-border py-4">
@@ -55,11 +74,13 @@ export function Sidebar({ nomeUsuario }: { nomeUsuario: string }) {
           direita do ícone. Com poucos itens, a lista não deve estourar a altura. */}
       <nav className="flex-1 px-2 py-4">
         <ul className="flex flex-col gap-1">
-          {itens.map(({ href, rotulo, Icone }) => {
+          {itens.map((item) => {
+            const { href, rotulo, Icone } = item;
+            const bloqueado = "bloqueado" in item && item.bloqueado;
             const ativo = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <li key={href}>
-                <ComTooltip rotulo={rotulo}>
+                <ComTooltip rotulo={bloqueado ? `${rotulo} (plano de gestão)` : rotulo}>
                   <Link
                     href={href}
                     aria-label={rotulo}
@@ -68,6 +89,7 @@ export function Sidebar({ nomeUsuario }: { nomeUsuario: string }) {
                       ativo
                         ? "bg-primary/15 text-primary"
                         : "text-muted hover:bg-surface-2 hover:text-foreground",
+                      bloqueado && "opacity-50",
                     )}
                   >
                     <Icone className="h-5 w-5 flex-shrink-0" />

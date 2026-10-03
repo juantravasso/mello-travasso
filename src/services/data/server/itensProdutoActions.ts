@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
 import { itensProdutoEmLoteSchema } from "@/lib/validacao/itensProduto";
 import type { FiltrosItemProduto, HistoricoPrecoProduto, ItemProduto, NovoItemProdutoInput } from "@/types";
 import { normalizarDescricao } from "@/lib/normalizarTexto";
@@ -38,7 +38,7 @@ function paraItem(registro: {
 }
 
 export async function listarItensProduto(filtros?: FiltrosItemProduto): Promise<ItemProduto[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registros = await prisma.itemProduto.findMany({
     where: {
       empresaId: sessao.empresaId,
@@ -58,7 +58,7 @@ export async function listarItensProduto(filtros?: FiltrosItemProduto): Promise<
 }
 
 export async function criarItensProdutoEmLote(itens: NovoItemProdutoInput[]): Promise<ItemProduto[]> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = itensProdutoEmLoteSchema.safeParse(itens);
   if (!parsed.success) throw new Error("Dados inválidos.");
   if (parsed.data.length === 0) return [];
@@ -110,7 +110,7 @@ export async function criarItensProdutoEmLote(itens: NovoItemProdutoInput[]): Pr
 }
 
 export async function historicoPrecoPorDescricao(descricao: string): Promise<HistoricoPrecoProduto | null> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const alvo = normalizarDescricao(descricao);
   const registros = await prisma.itemProduto.findMany({
     where: { empresaId: sessao.empresaId },
@@ -134,7 +134,7 @@ export async function historicoPrecoPorDescricao(descricao: string): Promise<His
 }
 
 export async function listarDescricoesUnicasProduto(): Promise<string[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registros = await prisma.itemProduto.findMany({
     where: { empresaId: sessao.empresaId },
     select: { descricao: true },

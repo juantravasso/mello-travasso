@@ -63,6 +63,8 @@ export interface SessaoValida {
   email: string;
   empresaId: string;
   papel: "dono" | "membro";
+  /** Administrador da plataforma (independente do papel na empresa). */
+  admin: boolean;
 }
 
 /**
@@ -89,18 +91,30 @@ export async function lerSessao(): Promise<SessaoValida | null> {
 
   const faltam = new Date(sessao.expiraEm).getTime() - Date.now();
   const agora = isoAgora();
+  let renovou = false;
   if (faltam < RENOVAR_QUANDO_FALTAM_MS) {
+    // Server Components não podem gravar cookie (lança). Só estende a sessão
+    // no banco se o cookie também foi renovado; senão o cookie venceria na data
+    // antiga mesmo com a sessão estendida. A renovação acontece na próxima
+    // chamada de Server Action, rota de API ou login, onde cookies().set vale.
+    try {
+      store.set(NOME_COOKIE, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: DURACAO_SESSAO_MS / 1000,
+      });
+      renovou = true;
+    } catch {
+      renovou = false;
+    }
+  }
+  if (renovou) {
     const novaExpiracao = new Date(Date.now() + DURACAO_SESSAO_MS).toISOString();
     await prisma.sessao.update({
       where: { id: sessao.id },
       data: { expiraEm: novaExpiracao, ultimoUsoEm: agora },
-    });
-    store.set(NOME_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: DURACAO_SESSAO_MS / 1000,
     });
   } else {
     await prisma.sessao.update({ where: { id: sessao.id }, data: { ultimoUsoEm: agora } });
@@ -112,6 +126,7 @@ export async function lerSessao(): Promise<SessaoValida | null> {
     email: sessao.usuario.email,
     empresaId: sessao.usuario.empresaId,
     papel: sessao.usuario.papel,
+    admin: sessao.usuario.papelPlataforma === "admin",
   };
 }
 

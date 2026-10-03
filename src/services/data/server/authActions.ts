@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { gerarHash, verificarSenha, verificarSenhaFicticia } from "@/lib/auth/senha";
 import { criarSessao, apagarSessaoAtual, apagarOutrasSessoes, limparSessoesExpiradas } from "@/lib/auth/sessao";
 import { exigirSessaoAction } from "@/lib/auth/dal";
+import { calcularFimDoTeste } from "@/lib/auth/plano";
 import { verificarLimite, extrairIpConfiavel, limparLimitesExpirados } from "@/lib/auth/limite";
 import { entrarSchema, trocarSenhaSchema } from "@/lib/validacao/auth";
 import { criarContaSchema } from "@/lib/validacao/cadastro";
@@ -27,20 +28,6 @@ function isoAgora(): string {
 
 async function obterIp(): Promise<string> {
   return extrairIpConfiavel(await headers());
-}
-
-/**
- * Hoje + 30 dias, 23:59 em America/Sao_Paulo (RF-07). O Brasil não tem
- * horário de verão desde 2019, então o fuso é um offset fixo -03:00 —
- * 23:59 -03:00 é sempre 02:59 UTC do dia seguinte. `Date.UTC` normaliza a
- * hora "26" (23+3) para o dia seguinte automaticamente.
- */
-function calcularFimDoTeste(): string {
-  const agora = new Date();
-  const fim = new Date(
-    Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate() + 30, 23 + 3, 59, 0, 0),
-  );
-  return fim.toISOString();
 }
 
 export async function entrar(input: unknown): Promise<ResultadoAction<{ redirecionarPara: string; trocaObrigatoria: boolean }>> {
@@ -107,10 +94,14 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
   });
   await criarSessao(usuario.id);
 
+  // Empresa só com a rede (plano gratuito) não tem dashboard: entra na rede.
+  const empresa = await prisma.empresa.findUnique({ where: { id: usuario.empresaId }, select: { plano: true } });
+  const inicio = empresa?.plano === "gratuito" ? "/rede" : "/dashboard";
+
   return {
     ok: true,
     dados: {
-      redirecionarPara: usuario.trocarSenha ? "/configuracoes?trocarSenha=1" : "/dashboard",
+      redirecionarPara: usuario.trocarSenha ? "/configuracoes?trocarSenha=1" : inicio,
       trocaObrigatoria: usuario.trocarSenha,
     },
   };
@@ -207,7 +198,8 @@ export async function criarConta(
 
   const senhaHash = await gerarHash(dadosForm.senha);
   const agora = isoAgora();
-  const testeTerminaEm = calcularFimDoTeste();
+  const soRede = dadosForm.modo === "rede";
+  const testeTerminaEm = soRede ? null : calcularFimDoTeste();
 
   try {
     const resultado = await prisma.$transaction(async (tx) => {
@@ -227,7 +219,7 @@ export async function criarConta(
           bairro: dadosForm.bairro,
           cidade: dadosForm.cidade,
           estado: dadosForm.estado,
-          plano: "teste",
+          plano: soRede ? "gratuito" : "teste",
           testeTerminaEm,
           aceiteTermosVersao: VERSAO_TERMOS_ATUAL,
           aceiteTermosEm: agora,
@@ -250,7 +242,10 @@ export async function criarConta(
     });
 
     await criarSessao(resultado.id);
-    return { ok: true, dados: { redirecionarPara: "/dashboard", trocaObrigatoria: false } };
+    return {
+      ok: true,
+      dados: { redirecionarPara: soRede ? "/minha-rede/perfil" : "/dashboard", trocaObrigatoria: false },
+    };
   } catch (erro) {
     // RF-06: documento ou e-mail já cadastrados (unique constraint) viram a
     // mesma mensagem genérica das duas — nunca dizer qual colidiu.

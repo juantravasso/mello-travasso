@@ -6,7 +6,22 @@ import type {
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,
+  PerfisAdminRepositorio,
+  RedeRepositorio,
+  TaxonomiaAdminRepositorio,
 } from "./repositorios";
+import { listarPerfisAdmin, reativarPerfil, suspenderPerfil } from "./server/perfilAdminActions";
+import {
+  atualizarCategoria,
+  atualizarProfissao,
+  criarCategoria,
+  criarProfissao,
+  excluirCategoria,
+  excluirProfissao,
+  listarTaxonomiaAdmin,
+  listarTaxonomiaAtiva,
+} from "./server/taxonomiaActions";
+import { definirPublicacao, obterMeuPerfil, salvarMeuPerfil } from "./server/perfilRedeActions";
 import {
   atualizarObra,
   criarObra,
@@ -115,6 +130,29 @@ export const estoqueRepositorio: EstoqueRepositorio = {
   registrarMovimento,
 };
 
+export const redeRepositorio: RedeRepositorio = {
+  listarTaxonomia: listarTaxonomiaAtiva,
+  obterMeuPerfil,
+  salvarMeuPerfil,
+  definirPublicacao,
+};
+
+export const taxonomiaAdminRepositorio: TaxonomiaAdminRepositorio = {
+  listar: listarTaxonomiaAdmin,
+  criarCategoria,
+  atualizarCategoria,
+  excluirCategoria,
+  criarProfissao,
+  atualizarProfissao,
+  excluirProfissao,
+};
+
+export const perfisAdminRepositorio: PerfisAdminRepositorio = {
+  listar: listarPerfisAdmin,
+  suspender: suspenderPerfil,
+  reativar: reativarPerfil,
+};
+
 export type {
   CatalogoRepositorio,
   ContasRepositorio,
@@ -123,4 +161,7 @@ export type {
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,
+  PerfisAdminRepositorio,
+  RedeRepositorio,
+  TaxonomiaAdminRepositorio,
 } from "./repositorios";

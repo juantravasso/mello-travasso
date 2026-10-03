@@ -116,3 +116,21 @@ export const IconeSino = (p: SVGProps<SVGSVGElement>) => (
     <path d="M10 20a2 2 0 0 0 4 0" />
   </Base>
 );
+
+export const IconeRede = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <circle cx="12" cy="5" r="2.4" />
+    <circle cx="5" cy="18" r="2.4" />
+    <circle cx="19" cy="18" r="2.4" />
+    <path d="M10.8 7.2 6.2 15.8" />
+    <path d="M13.2 7.2l4.6 8.6" />
+    <path d="M7.4 18h9.2" />
+  </Base>
+);
+
+export const IconeEscudo = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M12 3 4.5 6v5.5c0 4.4 3.1 8 7.5 9.5 4.4-1.5 7.5-5.1 7.5-9.5V6L12 3Z" />
+    <path d="m9 12 2.2 2.2L15.2 10" />
+  </Base>
+);

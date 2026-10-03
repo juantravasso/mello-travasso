@@ -24,6 +24,8 @@ export const criarContaSchema = z
     nomeUsuario: z.string().trim().min(1, "Informe seu nome").max(160),
     email: emailSchema,
     senha: senhaSchema,
+    /** "teste": 30 dias com todos os módulos. "rede": só a rede profissional, grátis. */
+    modo: z.enum(["teste", "rede"]).default("teste"),
     aceiteTermos: z.boolean().refine((v) => v === true, "É preciso aceitar os Termos e a Política de Privacidade."),
     empresaConfirmacao: z.string().max(500).optional(),
   })

@@ -2,7 +2,7 @@
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
 import {
   novaContaSchema,
   atualizarContaSchema,
@@ -101,7 +101,7 @@ async function validarReferencias(empresaId: string, obraId: string, fornecedorI
 export async function listarContas(
   filtros?: FiltrosContaFinanceira & { tipo?: TipoConta },
 ): Promise<ContaFinanceira[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registros = await prisma.contaFinanceira.findMany({
     where: paraWhere(sessao.empresaId, filtros),
     orderBy: { dataVencimento: "desc" },
@@ -110,13 +110,13 @@ export async function listarContas(
 }
 
 export async function obterContaPorId(id: string): Promise<ContaFinanceira | null> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registro = await prisma.contaFinanceira.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraConta(registro) : null;
 }
 
 export async function criarConta(input: NovaContaFinanceiraInput): Promise<ContaFinanceira> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = novaContaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
   await validarReferencias(sessao.empresaId, parsed.data.obraId, parsed.data.fornecedorId);
@@ -142,7 +142,7 @@ export async function atualizarConta(
   id: string,
   input: Partial<NovaContaFinanceiraInput>,
 ): Promise<ContaFinanceira> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = atualizarContaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -173,7 +173,7 @@ export async function atualizarConta(
 }
 
 export async function baixarConta(input: BaixarContaInput): Promise<ContaFinanceira> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = baixarContaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -201,7 +201,7 @@ export async function baixarConta(input: BaixarContaInput): Promise<ContaFinance
 }
 
 export async function cancelarConta(input: CancelarContaInput): Promise<ResultadoCancelamentoConta> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = cancelarContaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 

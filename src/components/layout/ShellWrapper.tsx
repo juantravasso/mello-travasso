@@ -13,15 +13,19 @@ export function ShellWrapper({
   children,
   nomeUsuario,
   statusPlano,
+  temGestao,
+  admin,
 }: {
   children: ReactNode;
   nomeUsuario: string;
   statusPlano: StatusPlano;
+  temGestao: boolean;
+  admin: boolean;
 }) {
   return (
     <StatusPlanoProvider status={statusPlano}>
       <div className="flex min-h-full">
-        <Sidebar nomeUsuario={nomeUsuario} />
+        <Sidebar nomeUsuario={nomeUsuario} temGestao={temGestao} admin={admin} />
         {/* min-w-0: sem isso, um item flex não encolhe abaixo do min-content dos
             descendentes (ex.: um <select>/<input type="date">), o que forçava
             overflow horizontal da página inteira no mobile. FaixaTeste fica
@@ -33,7 +37,7 @@ export function ShellWrapper({
           <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-6">
             {children}
           </main>
-          <BottomNav />
+          <BottomNav temGestao={temGestao} admin={admin} />
         </div>
       </div>
     </StatusPlanoProvider>

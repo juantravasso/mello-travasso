@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
 import { novoFuncionarioSchema, atualizarFuncionarioSchema, statusFuncionarioSchema } from "@/lib/validacao/funcionarios";
 import type { FiltrosFuncionario, Funcionario, NovoFuncionarioInput, StatusFuncionario } from "@/types";
 
@@ -36,7 +36,7 @@ function paraFuncionario(registro: {
 }
 
 export async function listarFuncionarios(filtros?: FiltrosFuncionario): Promise<Funcionario[]> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registros = await prisma.funcionario.findMany({
     where: {
       empresaId: sessao.empresaId,
@@ -57,7 +57,7 @@ export async function listarFuncionarios(filtros?: FiltrosFuncionario): Promise<
 }
 
 export async function obterFuncionarioPorId(id: string): Promise<Funcionario | null> {
-  const sessao = await exigirSessaoAction();
+  const sessao = await exigirGestaoAction();
   const registro = await prisma.funcionario.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraFuncionario(registro) : null;
 }
@@ -69,7 +69,7 @@ async function validarObraDaEmpresa(obraId: string | undefined, empresaId: strin
 }
 
 export async function criarFuncionario(input: NovoFuncionarioInput): Promise<Funcionario> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = novoFuncionarioSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
   await validarObraDaEmpresa(parsed.data.obraId, sessao.empresaId);
@@ -82,7 +82,7 @@ export async function criarFuncionario(input: NovoFuncionarioInput): Promise<Fun
 }
 
 export async function atualizarFuncionario(id: string, input: Partial<NovoFuncionarioInput>): Promise<Funcionario> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = atualizarFuncionarioSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
   await validarObraDaEmpresa(parsed.data.obraId, sessao.empresaId);
@@ -98,7 +98,7 @@ export async function atualizarFuncionario(id: string, input: Partial<NovoFuncio
 }
 
 export async function definirStatusFuncionario(id: string, status: StatusFuncionario): Promise<Funcionario> {
-  const sessao = await exigirEscritaAction();
+  const sessao = await exigirGestaoEscritaAction();
   const parsed = statusFuncionarioSchema.safeParse(status);
   if (!parsed.success) throw new Error("Status inválido.");
 

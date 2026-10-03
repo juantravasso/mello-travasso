@@ -10,31 +10,51 @@ import {
   IconeConfig,
   IconeDashboard,
   IconeEntrada,
+  IconeEscudo,
+  IconeRede,
   IconeSaida,
 } from "./icones";
 
-const itens = [
-  { href: "/dashboard", rotulo: "Início", Icone: IconeDashboard },
-  { href: "/capturar", rotulo: "Capturar", Icone: IconeCamera },
-  { href: "/contas-a-pagar", rotulo: "A Pagar", Icone: IconeSaida },
-  { href: "/contas-a-receber", rotulo: "A Receber", Icone: IconeEntrada },
-  { href: "/estoque", rotulo: "Estoque", Icone: IconeCaixa },
-  { href: "/cadastro", rotulo: "Cadastro", Icone: IconeCadastro, tambem: ["/obras", "/funcionarios", "/fornecedores"] },
-  { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
-] as const;
+interface ItemNav {
+  href: string;
+  rotulo: string;
+  Icone: typeof IconeDashboard;
+  tambem?: readonly string[];
+  gestao?: boolean;
+}
 
-export function BottomNav() {
+const itens: readonly ItemNav[] = [
+  { href: "/minha-rede", rotulo: "Rede", Icone: IconeRede },
+  { href: "/dashboard", rotulo: "Início", Icone: IconeDashboard, gestao: true },
+  { href: "/capturar", rotulo: "Capturar", Icone: IconeCamera, gestao: true },
+  { href: "/contas-a-pagar", rotulo: "A Pagar", Icone: IconeSaida, gestao: true },
+  { href: "/contas-a-receber", rotulo: "A Receber", Icone: IconeEntrada, gestao: true },
+  { href: "/estoque", rotulo: "Estoque", Icone: IconeCaixa, gestao: true },
+  {
+    href: "/cadastro",
+    rotulo: "Cadastro",
+    Icone: IconeCadastro,
+    tambem: ["/obras", "/funcionarios", "/fornecedores"],
+    gestao: true,
+  },
+  { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
+];
+
+const itemAdmin: ItemNav = { href: "/admin", rotulo: "Admin", Icone: IconeEscudo };
+
+export function BottomNav({ temGestao, admin }: { temGestao: boolean; admin: boolean }) {
   const pathname = usePathname();
+  const lista = admin ? [...itens, itemAdmin] : itens;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/85 md:hidden">
       <ul className="flex overflow-x-auto">
-        {itens.map(({ href, rotulo, Icone, ...resto }) => {
-          const prefixosExtras = "tambem" in resto ? resto.tambem : [];
+        {lista.map(({ href, rotulo, Icone, tambem = [], gestao }) => {
           const ativo =
             pathname === href ||
             pathname.startsWith(`${href}/`) ||
-            prefixosExtras.some((prefixo) => pathname === prefixo || pathname.startsWith(`${prefixo}/`));
+            tambem.some((prefixo) => pathname === prefixo || pathname.startsWith(`${prefixo}/`));
+          const bloqueado = gestao && !temGestao;
           return (
             <li key={href} className="flex-1">
               <Link
@@ -42,6 +62,7 @@ export function BottomNav() {
                 className={cn(
                   "flex min-w-[72px] flex-col items-center gap-1 px-2 py-3 text-[11px] font-medium transition-colors",
                   ativo ? "text-primary" : "text-muted",
+                  bloqueado && "opacity-50",
                 )}
               >
                 <Icone className="h-5 w-5" />

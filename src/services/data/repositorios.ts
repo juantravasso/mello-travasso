@@ -1,6 +1,9 @@
 import type {
+  AtualizarCategoriaInput,
+  AtualizarProfissaoInput,
   BaixarContaInput,
   CancelarContaInput,
+  CategoriaItem,
   ContaFinanceira,
   FiltrosContaFinanceira,
   FiltrosFornecedor,
@@ -10,10 +13,13 @@ import type {
   Funcionario,
   HistoricoPrecoProduto,
   ItemProduto,
+  MeuPerfil,
   MovimentoEstoque,
+  NovaCategoriaInput,
   NovaContaFinanceiraInput,
   NovaObraInput,
   NovaOpcaoPersonalizadaInput,
+  NovaProfissaoInput,
   NovoFornecedorInput,
   NovoFuncionarioInput,
   NovoItemProdutoInput,
@@ -21,10 +27,13 @@ import type {
   NovoProdutoInput,
   Obra,
   OpcaoPersonalizada,
+  PerfilAdminItem,
   Produto,
   ProdutoComSaldo,
   ProdutoDetalhado,
+  ResultadoAction,
   ResultadoCancelamentoConta,
+  SalvarPerfilInput,
   TipoConta,
 } from "@/types";
 
@@ -85,4 +94,27 @@ export interface EstoqueRepositorio {
   listarMovimentos(produtoId: string): Promise<MovimentoEstoque[]>;
   criarProduto(input: NovoProdutoInput): Promise<Produto>;
   registrarMovimento(input: NovoMovimentoInput): Promise<MovimentoEstoque>;
+}
+
+export interface RedeRepositorio {
+  listarTaxonomia(): Promise<CategoriaItem[]>;
+  obterMeuPerfil(): Promise<ResultadoAction<MeuPerfil>>;
+  salvarMeuPerfil(input: SalvarPerfilInput): Promise<ResultadoAction<MeuPerfil>>;
+  definirPublicacao(publicar: boolean): Promise<ResultadoAction<MeuPerfil>>;
+}
+
+export interface TaxonomiaAdminRepositorio {
+  listar(): Promise<CategoriaItem[]>;
+  criarCategoria(input: NovaCategoriaInput): Promise<ResultadoAction<null>>;
+  atualizarCategoria(id: string, input: AtualizarCategoriaInput): Promise<ResultadoAction<null>>;
+  excluirCategoria(id: string): Promise<ResultadoAction<null>>;
+  criarProfissao(input: NovaProfissaoInput): Promise<ResultadoAction<null>>;
+  atualizarProfissao(id: string, input: AtualizarProfissaoInput): Promise<ResultadoAction<null>>;
+  excluirProfissao(id: string): Promise<ResultadoAction<null>>;
+}
+
+export interface PerfisAdminRepositorio {
+  listar(busca?: string): Promise<PerfilAdminItem[]>;
+  suspender(slug: string, motivo: string): Promise<ResultadoAction<null>>;
+  reativar(slug: string): Promise<ResultadoAction<null>>;
 }

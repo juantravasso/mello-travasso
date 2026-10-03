@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { ResultadoExtracao, SolicitacaoExtracao } from "@/types";
 import { obterProvedorExtracaoIA } from "@/services/ai/provedor.server";
-import { exigirEscritaAction } from "@/lib/auth/dal";
+import { exigirGestaoEscritaAction } from "@/lib/auth/dal";
 import { verificarLimite } from "@/lib/auth/limite";
 
 export const runtime = "nodejs";
@@ -57,11 +57,17 @@ async function lerCorpoComLimite(request: Request, limiteBytes: number): Promise
 export async function POST(request: Request): Promise<NextResponse<ResultadoExtracao>> {
   let sessao;
   try {
-    sessao = await exigirEscritaAction();
+    sessao = await exigirGestaoEscritaAction();
   } catch (erro) {
     if (erro instanceof Error && erro.message === "SOMENTE_LEITURA") {
       return NextResponse.json(
         { sucesso: false, erro: "Teste encerrado — os dados continuam disponíveis para consulta." },
+        { status: 403 },
+      );
+    }
+    if (erro instanceof Error && erro.message === "PLANO_SEM_ACESSO") {
+      return NextResponse.json(
+        { sucesso: false, erro: "Este recurso faz parte dos planos pagos." },
         { status: 403 },
       );
     }

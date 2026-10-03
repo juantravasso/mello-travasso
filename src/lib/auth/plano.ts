@@ -1,7 +1,7 @@
 // Cálculo puro do status do plano — sem I/O, para ser testável e reusável
 // tanto no servidor (DAL, actions) quanto exposto ao client via ação.
 
-export type Plano = "teste" | "cortesia" | "ativo" | "suspenso";
+export type Plano = "teste" | "cortesia" | "ativo" | "suspenso" | "gratuito";
 
 export interface StatusPlano {
   plano: Plano;
@@ -17,6 +17,20 @@ export interface StatusPlano {
 }
 
 const DIA_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Hoje + 30 dias, 23:59 em America/Sao_Paulo (RF-07). O Brasil não tem
+ * horário de verão desde 2019, então o fuso é um offset fixo -03:00 —
+ * 23:59 -03:00 é sempre 02:59 UTC do dia seguinte. `Date.UTC` normaliza a
+ * hora "26" (23+3) para o dia seguinte automaticamente.
+ */
+export function calcularFimDoTeste(): string {
+  const agora = new Date();
+  const fim = new Date(
+    Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate() + 30, 23 + 3, 59, 0, 0),
+  );
+  return fim.toISOString();
+}
 
 export function calcularStatusPlano(empresa: { plano: Plano; testeTerminaEm: string | null }): StatusPlano {
   if (empresa.plano !== "teste" || !empresa.testeTerminaEm) {

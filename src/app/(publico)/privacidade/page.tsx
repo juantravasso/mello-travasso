@@ -52,7 +52,17 @@ export default function PrivacidadePage() {
             Você pode pedir a correção ou exclusão dos seus dados a qualquer momento, entrando em contato com quem
             administra sua conta.
           </p>
-          <h2 className="text-base font-semibold">6. Termos de Uso</h2>
+          <h2 className="text-base font-semibold">6. Rede profissional (perfil público)</h2>
+          <p>
+            Se você criar e publicar um perfil na rede profissional, os dados que você escolher mostrar passam a ser
+            públicos: nome do perfil, descrição, profissões, cidade, estado, áreas de atendimento, Instagram, site e,
+            somente se você marcar, telefone e WhatsApp. Qualquer pessoa pode ver, e buscadores podem indexar a página.
+            O perfil nasce como rascunho e só é publicado por ação sua. Você pode despublicar a qualquer momento — a
+            página deixa de abrir e o perfil sai das buscas — e pedir a exclusão definitiva do perfil. Os dados de
+            gestão (obras, contas, estoque, funcionários, fornecedores) nunca fazem parte do perfil público. A
+            administração pode suspender perfis que violem os Termos de Uso.
+          </p>
+          <h2 className="text-base font-semibold">7. Termos de Uso</h2>
           <p>
             Esta política complementa os{" "}
             <Link href="/termos" className="text-primary underline underline-offset-2">

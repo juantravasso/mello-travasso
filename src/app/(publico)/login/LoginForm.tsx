@@ -30,7 +30,7 @@ export function LoginForm() {
       // da senha temporária, que RF-17 exige no primeiro login.
       const next = searchParams.get("next");
       const destino =
-        !resultado.dados.trocaObrigatoria && next && /^\/(?!\/)/.test(next) ? next : resultado.dados.redirecionarPara;
+        !resultado.dados.trocaObrigatoria && next && /^\/(?![\/\\])/.test(next) ? next : resultado.dados.redirecionarPara;
       router.push(destino);
       router.refresh();
       return ESTADO_INICIAL;

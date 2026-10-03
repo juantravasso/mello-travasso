@@ -16,8 +16,10 @@ import type {
   EventoHistorico,
   FiltrosContaFinanceira,
   NovaContaFinanceiraInput,
+  ResultadoCancelamentoConta,
   TipoConta,
 } from "@/types";
+import { reverterEstoqueDaConta } from "./estoqueCore.server";
 
 type ContaRegistro = Prisma.ContaFinanceiraGetPayload<Record<string, never>>;
 
@@ -198,7 +200,7 @@ export async function baixarConta(input: BaixarContaInput): Promise<ContaFinance
   return paraConta(registro);
 }
 
-export async function cancelarConta(input: CancelarContaInput): Promise<ContaFinanceira> {
+export async function cancelarConta(input: CancelarContaInput): Promise<ResultadoCancelamentoConta> {
   const sessao = await exigirEscritaAction();
   const parsed = cancelarContaSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
@@ -213,7 +215,11 @@ export async function cancelarConta(input: CancelarContaInput): Promise<ContaFin
 
   const historicoAtual = (existente.historico as unknown as EventoHistorico[]) ?? [];
   const resultado = await prisma.contaFinanceira.updateMany({
-    where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
+    // status: "em_aberto" no where (não só no pré-check acima) fecha a
+    // corrida de dois cancelamentos concorrentes da mesma conta: sem isso,
+    // os dois passariam no pré-check e os dois chamariam
+    // reverterEstoqueDaConta, estornando o mesmo estoque duas vezes.
+    where: { id: parsed.data.contaId, empresaId: sessao.empresaId, status: "em_aberto" },
     data: {
       status: "cancelada",
       motivoCancelamento: parsed.data.motivo,
@@ -221,10 +227,28 @@ export async function cancelarConta(input: CancelarContaInput): Promise<ContaFin
       atualizadoEm: new Date().toISOString(),
     },
   });
-  if (resultado.count === 0) throw new Error("Conta não encontrada.");
+  if (resultado.count === 0) throw new Error("Conta não encontrada ou já não está em aberto.");
+
+  // RF-07 (PRD de estoque): melhor esforço, nunca bloqueia o cancelamento —
+  // a conta já foi marcada como cancelada acima; se reverter o estoque falhar
+  // por qualquer motivo (não só saldo insuficiente), avisa em vez de deixar o
+  // cliente sem resposta com a conta já cancelada no banco.
+  let avisoEstoque: string | undefined;
+  try {
+    const { naoRevertidos } = await reverterEstoqueDaConta(sessao.empresaId, sessao.nome, parsed.data.contaId);
+    if (naoRevertidos > 0) {
+      avisoEstoque = "Estoque já consumido nesta obra — ajuste manual necessário para os itens desta conta.";
+    }
+  } catch (erro) {
+    console.error("[contasActions] falha ao reverter estoque no cancelamento", parsed.data.contaId, erro);
+    avisoEstoque = "Não foi possível conferir o estoque automaticamente — confira manualmente.";
+  }
 
   const registro = await prisma.contaFinanceira.findFirstOrThrow({
     where: { id: parsed.data.contaId, empresaId: sessao.empresaId },
   });
-  return paraConta(registro);
+  return {
+    conta: paraConta(registro),
+    avisoEstoque,
+  };
 }

@@ -32,6 +32,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   const [baixando, setBaixando] = useState(false);
   const [modalCancelarAberto, setModalCancelarAberto] = useState(false);
   const [modalConfirmarBaixaAberto, setModalConfirmarBaixaAberto] = useState(false);
+  const [avisoEstoque, setAvisoEstoque] = useState<string | null>(null);
 
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -78,8 +79,9 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   }
 
   async function confirmarCancelamento(motivo: string) {
-    await cancelar({ contaId, motivo: motivo || undefined });
+    const resultado = await cancelar({ contaId, motivo: motivo || undefined });
     setModalCancelarAberto(false);
+    setAvisoEstoque(resultado.avisoEstoque ?? null);
   }
 
   async function salvarEdicao() {
@@ -117,6 +119,9 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {avisoEstoque && (
+        <div className="rounded-xl border border-warning bg-warning-bg p-4 text-sm text-warning">{avisoEstoque}</div>
+      )}
       {conta.comprovanteUrl && (
         // eslint-disable-next-line @next/next/no-img-element
         <img

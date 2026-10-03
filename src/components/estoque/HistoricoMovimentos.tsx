@@ -37,7 +37,8 @@ export function HistoricoMovimentos({
               <p className="text-foreground">{rotulo(movimento, unidade)}</p>
               <p className="text-xs text-muted">
                 {obraPorId.get(movimento.obraId)?.nome ?? "Obra não encontrada"}
-                {movimento.origem === "item_produto" && " · item de nota fiscal"} · {movimento.lancadoPor}
+                {movimento.origem === "item_produto" && " · item de nota fiscal"}
+                {movimento.origem === "estorno" && " · estorno de conta cancelada"} · {movimento.lancadoPor}
               </p>
               {movimento.observacao && <p className="text-xs text-muted">{movimento.observacao}</p>}
             </div>

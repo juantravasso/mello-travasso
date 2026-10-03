@@ -87,3 +87,13 @@ export interface CancelarContaInput {
   contaId: string;
   motivo?: string;
 }
+
+/**
+ * RF-07 do PRD de estoque: cancelar uma conta tenta reverter o estoque que
+ * entrou pelos itens dela. `avisoEstoque`, quando presente, é uma mensagem
+ * pronta para exibir — o cancelamento em si nunca é bloqueado por isso.
+ */
+export interface ResultadoCancelamentoConta {
+  conta: ContaFinanceira;
+  avisoEstoque?: string;
+}

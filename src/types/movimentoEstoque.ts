@@ -7,7 +7,7 @@ export interface MovimentoEstoque {
   tipo: TipoMovimentoEstoque;
   quantidade: number; // sempre > 0; o efeito no saldo depende de `tipo`
   valorUnitario?: number;
-  origem: "manual" | "item_produto";
+  origem: "manual" | "item_produto" | "estorno";
   itemProdutoId?: string;
   /** Nome do usuário da sessão que registrou — não é o usuário atual, é quem lançou. */
   lancadoPor: string;

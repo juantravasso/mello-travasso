@@ -5,6 +5,7 @@ import { exigirEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
 import { itensProdutoEmLoteSchema } from "@/lib/validacao/itensProduto";
 import type { FiltrosItemProduto, HistoricoPrecoProduto, ItemProduto, NovoItemProdutoInput } from "@/types";
 import { normalizarDescricao } from "@/lib/normalizarTexto";
+import { registrarMovimentoComTx, resolverProdutoComTx } from "./estoqueCore.server";
 
 function paraItem(registro: {
   id: string;
@@ -17,6 +18,7 @@ function paraItem(registro: {
   valorTotal: number;
   dataCompra: string;
   fornecedor: string | null;
+  produtoId: string | null;
   criadoEm: string;
 }): ItemProduto {
   return {
@@ -30,6 +32,7 @@ function paraItem(registro: {
     valorTotal: registro.valorTotal,
     dataCompra: registro.dataCompra,
     fornecedor: registro.fornecedor ?? undefined,
+    produtoId: registro.produtoId ?? undefined,
     criadoEm: registro.criadoEm,
   };
 }
@@ -75,9 +78,34 @@ export async function criarItensProdutoEmLote(itens: NovoItemProdutoInput[]): Pr
   }
 
   const agora = new Date().toISOString();
-  const criados = await prisma.$transaction(
-    parsed.data.map((item) => prisma.itemProduto.create({ data: { ...item, empresaId: sessao.empresaId, criadoEm: agora } })),
-  );
+  // Transação única para o lote inteiro (não uma por item): criar o
+  // ItemProduto, resolver/criar o Produto do catálogo e gerar a entrada de
+  // estoque são a mesma operação lógica (RF-06 do PRD de estoque) — se
+  // qualquer parte falhar, nada deste lote fica gravado pela metade.
+  const criados = await prisma.$transaction(async (tx) => {
+    const resultados = [];
+    for (const item of parsed.data) {
+      const criado = await tx.itemProduto.create({
+        data: { ...item, empresaId: sessao.empresaId, criadoEm: agora },
+      });
+
+      const produto = await resolverProdutoComTx(tx, sessao.empresaId, item.descricao);
+      await tx.itemProduto.update({ where: { id: criado.id }, data: { produtoId: produto.id } });
+      await registrarMovimentoComTx(tx, sessao.empresaId, {
+        produtoId: produto.id,
+        obraId: item.obraId,
+        tipo: "entrada",
+        quantidadeInformada: item.quantidade,
+        valorUnitario: item.valorUnitario,
+        origem: "item_produto",
+        itemProdutoId: criado.id,
+        lancadoPor: sessao.nome,
+      });
+
+      resultados.push({ ...criado, produtoId: produto.id });
+    }
+    return resultados;
+  });
   return criados.map(paraItem);
 }
 

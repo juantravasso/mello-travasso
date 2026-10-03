@@ -9,10 +9,14 @@ export interface ItemProduto {
   valorTotal: number;
   dataCompra: string; // ISO date
   fornecedor?: string;
+  /** Produto do catálogo de estoque resolvido/criado a partir da descrição (Fase 5.2). */
+  produtoId?: string;
   criadoEm: string; // ISO datetime
 }
 
-export type NovoItemProdutoInput = Omit<ItemProduto, "id" | "criadoEm">;
+// produtoId nunca vem do client — é resolvido/criado no servidor a partir da
+// descrição (ver resolverProdutoComTx em estoqueActions.ts).
+export type NovoItemProdutoInput = Omit<ItemProduto, "id" | "criadoEm" | "produtoId">;
 
 export interface HistoricoPrecoProduto {
   descricaoNormalizada: string;

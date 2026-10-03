@@ -23,9 +23,9 @@ export function useConta(id: string) {
   }, []);
 
   const cancelar = useCallback(async (input: CancelarContaInput) => {
-    const atualizada = await contasRepositorio.cancelar(input);
-    setConta(atualizada);
-    return atualizada;
+    const resultado = await contasRepositorio.cancelar(input);
+    setConta(resultado.conta);
+    return resultado;
   }, []);
 
   const atualizar = useCallback(

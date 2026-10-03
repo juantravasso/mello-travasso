@@ -24,6 +24,7 @@ import type {
   Produto,
   ProdutoComSaldo,
   ProdutoDetalhado,
+  ResultadoCancelamentoConta,
   TipoConta,
 } from "@/types";
 
@@ -45,7 +46,7 @@ export interface ContasRepositorio {
   criar(input: NovaContaFinanceiraInput): Promise<ContaFinanceira>;
   atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira>;
   baixar(input: BaixarContaInput): Promise<ContaFinanceira>;
-  cancelar(input: CancelarContaInput): Promise<ContaFinanceira>;
+  cancelar(input: CancelarContaInput): Promise<ResultadoCancelamentoConta>;
 }
 
 export interface ItensProdutoRepositorio {

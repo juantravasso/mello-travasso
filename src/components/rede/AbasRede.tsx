@@ -5,8 +5,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 const abas = [
-  { href: "/minha-rede/perfil", rotulo: "Meu perfil público" },
-  { href: "/rede", rotulo: "Encontrar profissionais", externa: true },
+  { href: "/minha-rede/perfil", rotulo: "Meu perfil público", tambem: [] },
+  { href: "/minha-rede/avaliacoes", rotulo: "Avaliações", tambem: ["/minha-rede/avaliar"] },
+  { href: "/minha-rede/indicacoes", rotulo: "Indicações", tambem: [] },
+  { href: "/minha-rede/notificacoes", rotulo: "Notificações", tambem: [] },
+  { href: "/rede", rotulo: "Encontrar profissionais", externa: true, tambem: [] },
 ] as const;
 
 export function AbasRede() {
@@ -14,7 +17,8 @@ export function AbasRede() {
   return (
     <nav aria-label="Rede profissional" className="mb-5 flex gap-1 overflow-x-auto border-b border-border">
       {abas.map((aba) => {
-        const ativa = pathname === aba.href || pathname.startsWith(`${aba.href}/`);
+        const prefixos: readonly string[] = [aba.href, ...aba.tambem];
+        const ativa = prefixos.some((p) => pathname === p || pathname.startsWith(`${p}/`));
         return (
           <Link
             key={aba.href}

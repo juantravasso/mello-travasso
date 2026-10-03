@@ -17,6 +17,7 @@ function montarQuery(f: FiltrosBuscaPerfil): string {
   if (f.estado) params.set("estado", f.estado);
   if (f.cidade) params.set("cidade", f.cidade);
   if (f.tipo) params.set("tipo", f.tipo);
+  if (f.notaMin) params.set("notaMin", String(f.notaMin));
   const texto = params.toString();
   return texto ? `?${texto}` : "";
 }
@@ -35,6 +36,7 @@ export function BuscaRedeForm({
   const [estado, setEstado] = useState(inicial.estado ?? "");
   const [cidade, setCidade] = useState(inicial.cidade ?? "");
   const [tipo, setTipo] = useState<string>(inicial.tipo ?? "");
+  const [notaMin, setNotaMin] = useState<string>(inicial.notaMin ? String(inicial.notaMin) : "");
   const [sugestoes, setSugestoes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -68,6 +70,7 @@ export function BuscaRedeForm({
         estado: estado || undefined,
         cidade: cidade.trim() || undefined,
         tipo: tipo === "pj" || tipo === "pf" ? tipo : undefined,
+        notaMin: notaMin ? Number(notaMin) : undefined,
       })}`,
     );
   }
@@ -124,7 +127,13 @@ export function BuscaRedeForm({
         <option value="pj">Só empresas</option>
         <option value="pf">Só autônomos</option>
       </Select>
-      <div className="flex items-end sm:col-span-2 lg:col-span-3 lg:justify-end">
+      <Select id="rede-nota" label="Avaliação" value={notaMin} onChange={(e) => setNotaMin(e.target.value)}>
+        <option value="">Qualquer nota</option>
+        <option value="3">3 estrelas ou mais</option>
+        <option value="4">4 estrelas ou mais</option>
+        <option value="4.5">4,5 estrelas ou mais</option>
+      </Select>
+      <div className="flex items-end sm:col-span-2 lg:col-span-2 lg:justify-end">
         <Button type="submit" className="w-full sm:w-auto sm:min-w-40">
           Pesquisar
         </Button>

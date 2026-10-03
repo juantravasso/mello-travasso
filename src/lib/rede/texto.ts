@@ -50,3 +50,8 @@ export function normalizarSite(valor: string): string | null {
     return null;
   }
 }
+
+/** dd/mm/aaaa no fuso de Brasília (o servidor pode estar em UTC). */
+export function formatarDataBr(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+}

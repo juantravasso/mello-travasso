@@ -16,6 +16,11 @@ function primeiro(valor: string | string[] | undefined): string | undefined {
   return v && v.trim() !== "" ? v.trim() : undefined;
 }
 
+function lerNotaMin(valor: string | undefined): number | undefined {
+  const nota = Number.parseFloat((valor ?? "").replace(",", "."));
+  return Number.isFinite(nota) && nota >= 1 && nota <= 5 ? nota : undefined;
+}
+
 function lerFiltros(params: Record<string, string | string[] | undefined>): FiltrosBuscaPerfil {
   const estado = primeiro(params.estado)?.toUpperCase();
   const tipo = primeiro(params.tipo);
@@ -27,6 +32,7 @@ function lerFiltros(params: Record<string, string | string[] | undefined>): Filt
     estado: estado && SIGLAS_UF.includes(estado) ? estado : undefined,
     cidade: primeiro(params.cidade)?.slice(0, 100),
     tipo: tipo === "pj" || tipo === "pf" ? tipo : undefined,
+    notaMin: lerNotaMin(primeiro(params.notaMin)),
     pagina: Number.isFinite(pagina) && pagina >= 1 ? Math.min(pagina, 500) : 1,
   };
 }
@@ -44,7 +50,7 @@ function hrefPagina(filtros: FiltrosBuscaPerfil, pagina: number): string {
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const filtros = lerFiltros(await searchParams);
-  const temFiltro = Boolean(filtros.q || filtros.profissao || filtros.categoria || filtros.estado || filtros.cidade || filtros.tipo);
+  const temFiltro = Boolean(filtros.q || filtros.profissao || filtros.categoria || filtros.estado || filtros.cidade || filtros.tipo || filtros.notaMin);
   return {
     title: "Resultados da pesquisa | Mello e Travasso",
     description: "Empresas e profissionais da construção civil e de serviços.",
@@ -57,7 +63,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 export default async function BuscarPage({ searchParams }: { searchParams: SearchParams }) {
   const filtros = lerFiltros(await searchParams);
   const [taxonomia, resultado] = await Promise.all([listarTaxonomia(false), buscarPerfisPublicos(filtros)]);
-  const temFiltro = Boolean(filtros.q || filtros.profissao || filtros.categoria || filtros.estado || filtros.cidade || filtros.tipo);
+  const temFiltro = Boolean(filtros.q || filtros.profissao || filtros.categoria || filtros.estado || filtros.cidade || filtros.tipo || filtros.notaMin);
 
   return (
     <div className="flex flex-col gap-6 animar-entrada">

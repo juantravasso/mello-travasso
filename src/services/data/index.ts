@@ -6,10 +6,12 @@ import type {
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,
+  AvaliacoesAdminRepositorio,
   PerfisAdminRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
 } from "./repositorios";
+import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
 import { listarPerfisAdmin, reativarPerfil, suspenderPerfil } from "./server/perfilAdminActions";
 import {
   atualizarCategoria,
@@ -22,6 +24,22 @@ import {
   listarTaxonomiaAtiva,
 } from "./server/taxonomiaActions";
 import { definirPublicacao, obterMeuPerfil, salvarMeuPerfil } from "./server/perfilRedeActions";
+import {
+  listarAvaliacoesFeitas,
+  listarAvaliacoesRecebidas,
+  obterAvaliacaoParaEditar,
+  recomendarPerfil,
+  removerRecomendacao,
+  responderAvaliacao,
+  salvarAvaliacao,
+} from "./server/avaliacaoActions";
+import { indicarEmpresa, listarMinhasIndicacoes } from "./server/indicacaoActions";
+import {
+  contarNotificacoesNaoLidas,
+  listarNotificacoes,
+  marcarNotificacaoLida,
+  marcarTodasNotificacoesLidas,
+} from "./server/notificacaoActions";
 import {
   atualizarObra,
   criarObra,
@@ -135,6 +153,19 @@ export const redeRepositorio: RedeRepositorio = {
   obterMeuPerfil,
   salvarMeuPerfil,
   definirPublicacao,
+  obterAvaliacaoParaEditar,
+  salvarAvaliacao,
+  listarAvaliacoesFeitas,
+  listarAvaliacoesRecebidas,
+  responderAvaliacao,
+  recomendarPerfil,
+  removerRecomendacao,
+  indicarEmpresa,
+  listarMinhasIndicacoes,
+  listarNotificacoes,
+  contarNotificacoesNaoLidas,
+  marcarNotificacaoLida,
+  marcarTodasNotificacoesLidas,
 };
 
 export const taxonomiaAdminRepositorio: TaxonomiaAdminRepositorio = {
@@ -145,6 +176,11 @@ export const taxonomiaAdminRepositorio: TaxonomiaAdminRepositorio = {
   criarProfissao,
   atualizarProfissao,
   excluirProfissao,
+};
+
+export const avaliacoesAdminRepositorio: AvaliacoesAdminRepositorio = {
+  listar: listarAvaliacoesAdmin,
+  moderar: moderarAvaliacao,
 };
 
 export const perfisAdminRepositorio: PerfisAdminRepositorio = {
@@ -161,6 +197,7 @@ export type {
   FuncionariosRepositorio,
   ItensProdutoRepositorio,
   ObrasRepositorio,
+  AvaliacoesAdminRepositorio,
   PerfisAdminRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,

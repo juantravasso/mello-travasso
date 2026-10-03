@@ -8,13 +8,13 @@ import type { PerfilAdminItem, ResultadoAction } from "@/types";
 import { registrarLogAdmin } from "./adminLog.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
-/** Perfis publicados ou suspensos (rascunhos são privados do dono), com busca por nome ou endereço. */
+/** Perfis publicados, indicados ou suspensos (rascunhos são privados do dono), com busca por nome ou endereço. */
 export async function listarPerfisAdmin(busca?: string): Promise<PerfilAdminItem[]> {
   await exigirAdminAction();
   const termo = typeof busca === "string" ? normalizarBusca(busca).replace(/[%_\\]/g, " ").trim().slice(0, 80) : "";
   const perfis = await prisma.perfilPublico.findMany({
     where: {
-      status: { in: ["publicado", "suspenso"] },
+      status: { in: ["publicado", "indicado", "suspenso"] },
       ...(termo ? { OR: [{ nomeBusca: { contains: termo } }, { slug: { contains: termo.replace(/\s+/g, "-") } }] } : {}),
     },
     orderBy: [{ atualizadoEm: "desc" }, { id: "asc" }],
@@ -56,17 +56,19 @@ export async function suspenderPerfil(slug: string, motivo: string): Promise<Res
   });
 }
 
-/** Tira o perfil da suspensão. Volta como rascunho: o dono republica quando quiser. */
+/** Tira o perfil da suspensão. */
 export async function reativarPerfil(slug: string): Promise<ResultadoAction<null>> {
   const admin = await exigirAdminAction();
   return executar(async () => {
     if (typeof slug !== "string" || !/^[a-z0-9-]{1,80}$/.test(slug)) throw new ErroDeNegocio("Perfil não encontrado.");
     await prisma.$transaction(async (tx) => {
-      const perfil = await tx.perfilPublico.findUnique({ where: { slug }, select: { id: true } });
+      const perfil = await tx.perfilPublico.findUnique({ where: { slug }, select: { id: true, empresaId: true } });
       if (!perfil) throw new ErroDeNegocio("Perfil não encontrado.");
+      // Perfil com dono volta como rascunho (ele republica); perfil indicado, que
+      // não tem dono, volta a ser público como indicado.
       const atualizados = await tx.perfilPublico.updateMany({
         where: { id: perfil.id, status: "suspenso" },
-        data: { status: "rascunho", atualizadoEm: new Date().toISOString() },
+        data: { status: perfil.empresaId ? "rascunho" : "indicado", atualizadoEm: new Date().toISOString() },
       });
       if (atualizados.count === 0) throw new ErroDeNegocio("Este perfil não está suspenso.");
       await registrarLogAdmin(tx, admin.usuarioId, "perfil.reativar", "PerfilPublico", perfil.id, { slug });

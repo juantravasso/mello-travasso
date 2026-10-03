@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
 import { normalizarInstagram, normalizarSite, normalizarTelefone } from "@/lib/rede/texto";
+import { CHAVES_NEGATIVAS, CHAVES_POSITIVAS } from "@/lib/rede/aspectos";
+import { cnpjValido } from "./documento";
 
 const vazioParaUndefined = (v: unknown) => (typeof v === "string" && v.trim() === "" ? undefined : v);
 
@@ -100,6 +102,7 @@ export const filtrosBuscaSchema = z
     estado: z.enum(SIGLAS_UF).optional(),
     cidade: z.string().trim().max(100).optional(),
     tipo: z.enum(["pj", "pf"]).optional(),
+    notaMin: z.number().min(1).max(5).optional(),
     pagina: z.number().int().min(1).max(500).optional(),
   })
   .strict();
@@ -107,6 +110,65 @@ export const filtrosBuscaSchema = z
 export const suspenderPerfilSchema = z
   .object({
     slug: z.string().regex(/^[a-z0-9-]{1,80}$/),
+    motivo: z.string().trim().min(5, "Descreva o motivo (mínimo 5 letras).").max(500),
+  })
+  .strict();
+
+const slugPerfil = z.string().regex(/^[a-z0-9-]{1,80}$/);
+
+export const salvarAvaliacaoSchema = z
+  .object({
+    perfilSlug: slugPerfil,
+    nota: z.number().int("Escolha uma nota de 1 a 5.").min(1, "Escolha uma nota de 1 a 5.").max(5, "Escolha uma nota de 1 a 5."),
+    comentario: textoOpcional(1500),
+    pros: z
+      .array(z.enum(CHAVES_POSITIVAS))
+      .max(CHAVES_POSITIVAS.length)
+      .transform((lista) => [...new Set(lista)]),
+    contras: z
+      .array(z.enum(CHAVES_NEGATIVAS))
+      .max(CHAVES_NEGATIVAS.length)
+      .transform((lista) => [...new Set(lista)]),
+  })
+  .strict();
+
+export const responderAvaliacaoSchema = z
+  .object({
+    avaliacaoId: z.string().uuid(),
+    texto: z.string().trim().min(5, "Escreva a resposta (mínimo 5 letras).").max(1500),
+  })
+  .strict();
+
+export const indicarEmpresaSchema = z
+  .object({
+    nome: z
+      .string()
+      .trim()
+      .min(2, "Informe o nome.")
+      .max(120)
+      .refine((v) => !/https?:|www[.]|@|[0-9]{5,}/i.test(v), "O nome não pode ter endereço, e-mail ou número de telefone."),
+    tipo: z.enum(["pj", "pf"]),
+    profissaoId: z.string().uuid("Escolha a profissão."),
+    estado: z.enum(SIGLAS_UF, "Escolha o estado."),
+    cidade: z.string().trim().min(2, "Informe a cidade.").max(100),
+    documento: z.preprocess(vazioParaUndefined, z.string().trim().max(30).optional()),
+  })
+  .strict()
+  .superRefine((dados, ctx) => {
+    if (dados.tipo === "pf" && dados.documento) {
+      ctx.addIssue({ code: "custom", path: ["documento"], message: "Não pedimos CPF: deixe em branco para autônomos." });
+    }
+    if (dados.tipo === "pj" && dados.documento && !cnpjValido(dados.documento)) {
+      ctx.addIssue({ code: "custom", path: ["documento"], message: "CNPJ inválido — confira os 14 dígitos." });
+    }
+  });
+
+export const slugSchema = slugPerfil;
+
+export const moderarAvaliacaoSchema = z
+  .object({
+    avaliacaoId: z.string().uuid(),
+    acao: z.enum(["ocultar", "remover", "restaurar"]),
     motivo: z.string().trim().min(5, "Descreva o motivo (mínimo 5 letras).").max(500),
   })
   .strict();

@@ -1,6 +1,11 @@
 import type {
+  AcaoModeracaoAvaliacao,
   AtualizarCategoriaInput,
   AtualizarProfissaoInput,
+  AvaliacaoAdminItem,
+  AvaliacaoFeita,
+  AvaliacaoParaEditar,
+  AvaliacaoRecebida,
   BaixarContaInput,
   CancelarContaInput,
   CategoriaItem,
@@ -12,6 +17,8 @@ import type {
   Fornecedor,
   Funcionario,
   HistoricoPrecoProduto,
+  IndicacaoItem,
+  IndicarEmpresaInput,
   ItemProduto,
   MeuPerfil,
   MovimentoEstoque,
@@ -24,6 +31,7 @@ import type {
   NovoFuncionarioInput,
   NovoItemProdutoInput,
   NovoMovimentoInput,
+  NotificacaoItem,
   NovoProdutoInput,
   Obra,
   OpcaoPersonalizada,
@@ -33,6 +41,7 @@ import type {
   ProdutoDetalhado,
   ResultadoAction,
   ResultadoCancelamentoConta,
+  SalvarAvaliacaoInput,
   SalvarPerfilInput,
   TipoConta,
 } from "@/types";
@@ -101,6 +110,19 @@ export interface RedeRepositorio {
   obterMeuPerfil(): Promise<ResultadoAction<MeuPerfil>>;
   salvarMeuPerfil(input: SalvarPerfilInput): Promise<ResultadoAction<MeuPerfil>>;
   definirPublicacao(publicar: boolean): Promise<ResultadoAction<MeuPerfil>>;
+  obterAvaliacaoParaEditar(slug: string): Promise<ResultadoAction<AvaliacaoParaEditar>>;
+  salvarAvaliacao(input: SalvarAvaliacaoInput): Promise<ResultadoAction<null>>;
+  listarAvaliacoesFeitas(): Promise<AvaliacaoFeita[]>;
+  listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]>;
+  responderAvaliacao(avaliacaoId: string, texto: string): Promise<ResultadoAction<null>>;
+  recomendarPerfil(slug: string): Promise<ResultadoAction<null>>;
+  removerRecomendacao(slug: string): Promise<ResultadoAction<null>>;
+  indicarEmpresa(input: IndicarEmpresaInput): Promise<ResultadoAction<{ slug: string; jaExistia: boolean }>>;
+  listarMinhasIndicacoes(): Promise<IndicacaoItem[]>;
+  listarNotificacoes(): Promise<NotificacaoItem[]>;
+  contarNotificacoesNaoLidas(): Promise<number>;
+  marcarNotificacaoLida(id: string): Promise<void>;
+  marcarTodasNotificacoesLidas(): Promise<void>;
 }
 
 export interface TaxonomiaAdminRepositorio {
@@ -111,6 +133,11 @@ export interface TaxonomiaAdminRepositorio {
   criarProfissao(input: NovaProfissaoInput): Promise<ResultadoAction<null>>;
   atualizarProfissao(id: string, input: AtualizarProfissaoInput): Promise<ResultadoAction<null>>;
   excluirProfissao(id: string): Promise<ResultadoAction<null>>;
+}
+
+export interface AvaliacoesAdminRepositorio {
+  listar(busca?: string, status?: string): Promise<AvaliacaoAdminItem[]>;
+  moderar(avaliacaoId: string, acao: AcaoModeracaoAvaliacao, motivo: string): Promise<ResultadoAction<null>>;
 }
 
 export interface PerfisAdminRepositorio {

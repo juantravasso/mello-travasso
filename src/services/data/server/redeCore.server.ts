@@ -13,19 +13,22 @@ import type {
   PerfilPublicoResumo,
   ResultadoBuscaPerfil,
 } from "@/types";
+import { obterResumo, resumosPorPerfil, STATUS_VISIVEIS } from "./avaliacaoCore.server";
 
 // Leitura pública da rede. É o único lugar do app que lê dados de empresas
 // diferentes sem filtrar por empresaId da sessão — por isso só devolve DTOs
 // montados campo a campo (lista branca), nunca o registro do Prisma, e só de
-// perfis com status "publicado". Telefone e WhatsApp só saem quando o dono os
-// marcou como públicos.
+// perfis visíveis (publicado ou indicado). Telefone e WhatsApp só saem quando o
+// dono os marcou como públicos; perfis indicados nunca têm contato.
 
 export const TAMANHO_PAGINA_BUSCA = 12;
+const BUSCAS_POR_MINUTO = 60;
+
+const statusVisiveis = [...STATUS_VISIVEIS];
 
 function termoLiteral(texto: string): string {
   return normalizarBusca(texto).replace(/[%_\\]/g, " ").replace(/\s+/g, " ").trim();
 }
-const BUSCAS_POR_MINUTO = 60;
 
 type PerfilComProfissoes = Prisma.PerfilPublicoGetPayload<{
   include: { profissoes: { include: { profissao: true } } };
@@ -45,7 +48,10 @@ function resumir(texto: string | null, max: number): string | undefined {
   return texto.length > max ? `${texto.slice(0, max).trimEnd()}…` : texto;
 }
 
-function paraResumo(perfil: PerfilComProfissoes): PerfilPublicoResumo {
+function paraResumo(
+  perfil: PerfilComProfissoes,
+  avaliacao?: { media: number; total: number },
+): PerfilPublicoResumo {
   return {
     slug: perfil.slug,
     tipo: perfil.tipo,
@@ -55,24 +61,28 @@ function paraResumo(perfil: PerfilComProfissoes): PerfilPublicoResumo {
     cidade: perfil.cidade ?? undefined,
     estado: perfil.estado ?? undefined,
     profissoes: nomesDeProfissoesAtivas(perfil),
+    indicado: perfil.status === "indicado",
+    avaliacao,
   };
 }
 
-function paraCompleto(perfil: PerfilComProfissoes): PerfilPublicoCompleto {
+function paraCompleto(perfil: PerfilComProfissoes, resumo: PerfilPublicoCompleto["resumo"]): PerfilPublicoCompleto {
+  const publicado = perfil.status === "publicado";
   return {
     ...paraResumo(perfil),
     descricao: perfil.descricao ?? undefined,
     regiao: perfil.regiao ?? undefined,
     areasAtendimento: perfil.areasAtendimento,
-    telefone: perfil.telefonePublico ? (perfil.telefone ?? undefined) : undefined,
-    whatsapp: perfil.whatsappPublico ? (perfil.whatsapp ?? undefined) : undefined,
-    instagram: perfil.instagram ?? undefined,
-    site: perfil.site ?? undefined,
+    telefone: publicado && perfil.telefonePublico ? (perfil.telefone ?? undefined) : undefined,
+    whatsapp: publicado && perfil.whatsappPublico ? (perfil.whatsapp ?? undefined) : undefined,
+    instagram: publicado ? (perfil.instagram ?? undefined) : undefined,
+    site: publicado ? (perfil.site ?? undefined) : undefined,
     profissoesDetalhe: perfil.profissoes
       .filter((pp) => pp.profissao.ativo)
       .map((pp) => ({ nome: pp.profissao.nome, slug: pp.profissao.slug }))
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     criadoEm: perfil.criadoEm,
+    resumo,
   };
 }
 
@@ -112,9 +122,9 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
 
   const parsed = filtrosBuscaSchema.safeParse(filtrosBrutos);
   if (!parsed.success) return vazio;
-  const { q, profissao, categoria, estado, cidade, tipo, pagina = 1 } = parsed.data;
+  const { q, profissao, categoria, estado, cidade, tipo, notaMin, pagina = 1 } = parsed.data;
 
-  const condicoes: Prisma.PerfilPublicoWhereInput[] = [{ status: "publicado" }];
+  const condicoes: Prisma.PerfilPublicoWhereInput[] = [{ status: { in: statusVisiveis } }];
 
   // % e _ são curingas do LIKE (o Prisma não os escapa em `contains`): sem
   // tirá-los, "%" casaria todos os perfis e padrões longos pesariam no banco.
@@ -143,6 +153,21 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
   const termoCidade = cidade ? termoLiteral(cidade) : "";
   if (termoCidade) condicoes.push({ cidadeBusca: { contains: termoCidade } });
   if (tipo) condicoes.push({ tipo });
+  // Sem nenhum filtro, a listagem (indexável) não mostra autônomo indicado por
+  // terceiros: o nome civil de uma pessoa não entra numa lista aberta sem que
+  // ela tenha publicado nada. O perfil continua acessível pelo link e pela busca.
+  if (!termo && !profissao && !categoria && !estado && !termoCidade && !tipo && !notaMin) {
+    condicoes.push({ NOT: { status: "indicado", tipo: "pf" } });
+  }
+  if (notaMin) {
+    // Média calculada sobre as avaliações publicadas — nunca um número gravado.
+    const grupos = await prisma.avaliacao.groupBy({
+      by: ["perfilId"],
+      where: { status: "publicada" },
+      having: { nota: { _avg: { gte: notaMin } } },
+    });
+    condicoes.push({ id: { in: grupos.map((g) => g.perfilId) } });
+  }
 
   const where: Prisma.PerfilPublicoWhereInput = { AND: condicoes };
   const [total, perfis] = await Promise.all([
@@ -155,35 +180,55 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
       take: TAMANHO_PAGINA_BUSCA,
     }),
   ]);
+  const resumos = await resumosPorPerfil(perfis.map((p) => p.id));
 
   return {
-    itens: perfis.map(paraResumo),
+    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id))),
     total,
     pagina,
     totalPaginas: Math.ceil(total / TAMANHO_PAGINA_BUSCA),
   };
 }
 
+export interface PerfilPublicoComContexto {
+  perfil: PerfilPublicoCompleto;
+  /** Só para uso no servidor (consultas de avaliação e estado do visitante); nunca vai para o client. */
+  id: string;
+  empresaId: string | null;
+  documentoIndicado: string | null;
+  indicadoPorEmpresaId: string | null;
+}
+
 // cache() por request: generateMetadata e a página chamam isto com o mesmo slug.
-export const obterPerfilPublicoPorSlug = cache(async (slug: string): Promise<PerfilPublicoCompleto | null> => {
+export const obterPerfilPublicoPorSlug = cache(async (slug: string): Promise<PerfilPublicoComContexto | null> => {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null;
-  const perfil = await prisma.perfilPublico.findFirst({
-    where: { slug, status: "publicado" },
+  const registro = await prisma.perfilPublico.findFirst({
+    where: { slug, status: { in: statusVisiveis } },
     include: incluirProfissoes,
   });
-  return perfil ? paraCompleto(perfil) : null;
+  if (!registro) return null;
+  const resumo = await obterResumo(registro.id);
+  return {
+    perfil: paraCompleto(registro, resumo),
+    id: registro.id,
+    empresaId: registro.empresaId,
+    documentoIndicado: registro.documentoIndicado,
+    indicadoPorEmpresaId: registro.indicadoPorEmpresaId,
+  };
 });
 
 export async function listarPerfisRecentes(quantidade: number): Promise<PerfilPublicoResumo[]> {
   const perfis = await prisma.perfilPublico.findMany({
-    where: { status: "publicado" },
+    where: { status: { in: statusVisiveis }, NOT: { status: "indicado", tipo: "pf" } },
     include: incluirProfissoes,
     orderBy: [{ criadoEm: "desc" }, { id: "asc" }],
     take: quantidade,
   });
-  return perfis.map(paraResumo);
+  const resumos = await resumosPorPerfil(perfis.map((p) => p.id));
+  return perfis.map((p) => paraResumo(p, resumos.get(p.id)));
 }
 
+/** Só perfis publicados pelo próprio dono entram no sitemap; indicados por terceiros ficam de fora. */
 export async function listarSlugsPublicados(): Promise<{ slug: string; atualizadoEm: string }[]> {
   return prisma.perfilPublico.findMany({
     where: { status: "publicado" },
@@ -193,12 +238,12 @@ export async function listarSlugsPublicados(): Promise<{ slug: string; atualizad
   });
 }
 
-/** Cidades (nomes como digitados pelos perfis publicados) — sem lista fixa embutida. */
+/** Cidades (nomes como digitados pelos perfis visíveis) — sem lista fixa embutida. */
 export async function listarCidadesPublicas(estado: string | undefined, termo: string): Promise<string[]> {
   const busca = termoLiteral(termo);
   const linhas = await prisma.perfilPublico.findMany({
     where: {
-      status: "publicado",
+      status: { in: statusVisiveis },
       cidade: { not: null },
       ...(estado ? { estado } : {}),
       ...(busca ? { cidadeBusca: { contains: busca } } : {}),

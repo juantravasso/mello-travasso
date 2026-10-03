@@ -79,7 +79,7 @@ export function PerfisAdmin() {
           {null}
         </Card>
       ) : perfis.length === 0 ? (
-        <Card className="text-sm text-muted">Nenhum perfil publicado ou suspenso encontrado.</Card>
+        <Card className="text-sm text-muted">Nenhum perfil publicado, indicado ou suspenso encontrado.</Card>
       ) : (
         <ul className="flex flex-col gap-3">
           {perfis.map((perfil) => (
@@ -87,15 +87,15 @@ export function PerfisAdmin() {
               <Card className="flex flex-col gap-3">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="font-semibold text-foreground">{perfil.nome}</span>
-                  <Badge tom={perfil.status === "suspenso" ? "warning" : "success"}>
-                    {perfil.status === "suspenso" ? "Suspenso" : "Publicado"}
+                  <Badge tom={perfil.status === "suspenso" ? "warning" : perfil.status === "indicado" ? "info" : "success"}>
+                    {perfil.status === "suspenso" ? "Suspenso" : perfil.status === "indicado" ? "Indicado" : "Publicado"}
                   </Badge>
                   <Badge tom="neutral">{perfil.tipo === "pj" ? "Empresa" : "Autônomo"}</Badge>
                   <span className="text-sm text-muted">
                     {[perfil.cidade, perfil.estado].filter(Boolean).join("/") || "Sem localização"}
                   </span>
                   <span className="ml-auto flex items-center gap-2">
-                    {perfil.status === "publicado" && (
+                    {(perfil.status === "publicado" || perfil.status === "indicado") && (
                       <Link href={`/empresas/${perfil.slug}`} className="text-sm font-medium text-primary underline underline-offset-4">
                         Ver página
                       </Link>

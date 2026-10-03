@@ -284,6 +284,10 @@ model Empresa {
   saldosEstoque                 SaldoEstoque[]
   movimentosEstoque             MovimentoEstoque[]
   perfilPublico                 PerfilPublico?
+  avaliacoesFeitas              Avaliacao[]
+  respostasAvaliacao            RespostaAvaliacao[]
+  indicacoesFeitas              Indicacao[]
+  notificacoes                  Notificacao[]
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -301,17 +305,17 @@ model EventoConta {
 }
 
 model Usuario {
-  id           String  @id @default(uuid())
-  empresaId    String
-  empresa      Empresa @relation(fields: [empresaId], references: [id])
-  nome         String
+  id                 String             @id @default(uuid())
+  empresaId          String
+  empresa            Empresa            @relation(fields: [empresaId], references: [id])
+  nome               String
   /// Normalizado em minúsculas antes de gravar/comparar.
-  email        String  @unique
-  senhaHash    String
-  papel        PapelDb @default(dono)
-  trocarSenha  Boolean @default(false)
-  falhasLogin  Int     @default(0)
-  bloqueadoAte String?
+  email              String             @unique
+  senhaHash          String
+  papel              PapelDb            @default(dono)
+  trocarSenha        Boolean            @default(false)
+  falhasLogin        Int                @default(0)
+  bloqueadoAte       String?
   /// Data da última falha de login (RF-10) — separado de atualizadoEm, que
   /// também muda em login OK e troca de senha e não serve como marca da janela.
   ultimaFalhaLoginEm String?
@@ -437,6 +441,8 @@ enum TipoPerfilDb {
 enum StatusPerfilDb {
   rascunho
   publicado
+  /// Perfil básico criado por indicação de outra empresa, sem dono (empresaId nulo).
+  indicado
   /// Escondido pela administração; o dono não consegue republicar.
   suspenso
 }
@@ -494,12 +500,12 @@ model PerfilPublico {
   regiao           String?
   areasAtendimento String[] @default([])
 
-  telefone         String?
-  telefonePublico  Boolean @default(false)
-  whatsapp         String?
-  whatsappPublico  Boolean @default(false)
-  instagram        String?
-  site             String?
+  telefone        String?
+  telefonePublico Boolean @default(false)
+  whatsapp        String?
+  whatsappPublico Boolean @default(false)
+  instagram       String?
+  site            String?
 
   empresaId String?  @unique
   empresa   Empresa? @relation(fields: [empresaId], references: [id])
@@ -507,7 +513,15 @@ model PerfilPublico {
   criadoEm     String
   atualizadoEm String
 
+  /// CNPJ (só dígitos) informado por quem indicou uma empresa sem cadastro: serve
+  /// para evitar perfis duplicados. Nunca é exibido.
+  documentoIndicado String? @unique
+  /// Empresa que criou o perfil por indicação. Não pode avaliar o que criou.
+  indicadoPorEmpresaId String?
+
   profissoes PerfilProfissao[]
+  avaliacoes Avaliacao[]
+  indicacoes Indicacao[]
 
   @@index([status, estado, cidadeBusca])
   @@index([status, criadoEm])
@@ -526,7 +540,7 @@ model PerfilProfissao {
 /// Funcionalidades que um plano pode liberar (ex.: "rede", "gestao"). A
 /// administração decide quais recursos cada plano tem via PlanoRecurso.
 model Recurso {
-  chave     String @id
+  chave     String  @id
   nome      String
   descricao String?
 
@@ -556,4 +570,104 @@ model LogAdmin {
   @@index([adminUsuarioId])
   @@index([alvoTipo, alvoId])
   @@index([criadoEm])
+}
+
+// --- Avaliações, indicações e notificações (Fase 6.2) -----------------------
+
+enum StatusAvaliacaoDb {
+  publicada
+  /// Escondida pela moderação (Fase 6.3); some da página pública e das médias.
+  oculta
+  removida
+}
+
+enum StatusVerificacaoDb {
+  nao_verificada
+  relacao_confirmada
+  relacao_comprovada
+}
+
+/// Uma avaliação por par (empresa avaliadora, perfil avaliado).
+model Avaliacao {
+  id                 String              @id @default(uuid())
+  perfilId           String
+  perfil             PerfilPublico       @relation(fields: [perfilId], references: [id])
+  avaliadorEmpresaId String
+  avaliador          Empresa             @relation(fields: [avaliadorEmpresaId], references: [id])
+  avaliadorUsuarioId String
+  nota               Int
+  comentario         String?             @db.Text
+  /// Chaves da lista fechada de aspectos (src/lib/rede/aspectos.ts).
+  pros               String[]            @default([])
+  contras            String[]            @default([])
+  status             StatusAvaliacaoDb   @default(publicada)
+  statusVerificacao  StatusVerificacaoDb @default(nao_verificada)
+  versao             Int                 @default(1)
+  criadoEm           String
+  atualizadoEm       String
+  editadaEm          String?
+
+  resposta  RespostaAvaliacao?
+  historico AvaliacaoHistorico[]
+
+  @@unique([avaliadorEmpresaId, perfilId])
+  @@index([perfilId, status, criadoEm])
+  @@index([status, perfilId])
+  @@index([avaliadorEmpresaId])
+}
+
+/// Versão anterior de uma avaliação, gravada a cada edição (auditoria).
+model AvaliacaoHistorico {
+  id                     String    @id @default(uuid())
+  avaliacaoId            String
+  avaliacao              Avaliacao @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  versao                 Int
+  nota                   Int
+  comentario             String?   @db.Text
+  pros                   String[]  @default([])
+  contras                String[]  @default([])
+  registradoPorUsuarioId String
+  registradoEm           String
+
+  @@unique([avaliacaoId, versao])
+}
+
+/// Direito de resposta do avaliado. Uma por avaliação; não apaga a avaliação.
+model RespostaAvaliacao {
+  id             String    @id @default(uuid())
+  avaliacaoId    String    @unique
+  avaliacao      Avaliacao @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  autorEmpresaId String
+  autorEmpresa   Empresa   @relation(fields: [autorEmpresaId], references: [id])
+  autorUsuarioId String
+  texto          String    @db.Text
+  criadoEm       String
+  atualizadoEm   String
+}
+
+/// Recomendação de um perfil por uma empresa (uma por par).
+model Indicacao {
+  id                   String        @id @default(uuid())
+  perfilId             String
+  perfil               PerfilPublico @relation(fields: [perfilId], references: [id])
+  indicadoPorEmpresaId String
+  indicadoPor          Empresa       @relation(fields: [indicadoPorEmpresaId], references: [id], onDelete: Cascade)
+  criadoEm             String
+
+  @@unique([indicadoPorEmpresaId, perfilId])
+  @@index([perfilId])
+}
+
+model Notificacao {
+  id        String  @id @default(uuid())
+  empresaId String
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo      String
+  texto     String
+  /// Caminho interno para onde a notificação leva.
+  href      String
+  lida      Boolean @default(false)
+  criadoEm  String
+
+  @@index([empresaId, lida, criadoEm])
 }

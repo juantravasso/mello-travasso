@@ -7,7 +7,26 @@ function iniciais(nome: string): string {
   return `${primeira}${ultima}`.toUpperCase();
 }
 
-export function AvatarIniciais({ nome, className }: { nome: string; className?: string }) {
+/** Logo do perfil quando existe; senão as iniciais do nome. */
+export function AvatarIniciais({
+  nome,
+  logoUrl,
+  className,
+}: {
+  nome: string;
+  logoUrl?: string;
+  className?: string;
+}) {
+  if (logoUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={logoUrl}
+        alt={`Logo de ${nome}`}
+        className={cn("h-12 w-12 flex-shrink-0 rounded-lg border border-border bg-surface object-cover", className)}
+      />
+    );
+  }
   return (
     <span
       aria-hidden

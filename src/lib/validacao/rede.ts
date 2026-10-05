@@ -221,3 +221,37 @@ export const decidirDenunciaSchema = z
     observacao: z.preprocess(vazioParaUndefined, z.string().trim().max(1000).optional()),
   })
   .strict();
+
+export const LIMITES_PORTFOLIO = { servicos: 20, trabalhos: 30, fotosPorTrabalho: 8 } as const;
+
+export const servicosSchema = z
+  .array(
+    z
+      .object({
+        id: z.string().uuid().optional(),
+        nome: z.string().trim().min(2, "Dê um nome ao serviço (mínimo 2 letras).").max(60),
+        descricao: textoOpcional(200),
+      })
+      .strict(),
+  )
+  .max(LIMITES_PORTFOLIO.servicos, `No máximo ${LIMITES_PORTFOLIO.servicos} serviços.`);
+
+export const trabalhoSchema = z
+  .object({
+    titulo: z.string().trim().min(2, "Dê um título ao trabalho (mínimo 2 letras).").max(80),
+    descricao: textoOpcional(1000),
+    servicoId: z.preprocess(vazioParaUndefined, z.string().uuid().optional()),
+    galeria: textoOpcional(60),
+    dataTrabalho: z.preprocess(
+      vazioParaUndefined,
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida.")
+        .refine((v) => !Number.isNaN(Date.parse(`${v}T00:00:00Z`)), "Data inválida.")
+        .optional(),
+    ),
+  })
+  .strict();
+
+export const idSchema = z.string().uuid();
+export const direcaoSchema = z.enum(["subir", "descer"]);

@@ -54,6 +54,8 @@ export interface PerfilPublicoResumo {
   profissoes: string[];
   /** true quando é um perfil básico criado por indicação (sem cadastro). */
   indicado: boolean;
+  /** URL da logo (só perfil publicado). */
+  logoUrl?: string;
   /** Média e total de avaliações publicadas; ausente quando não há nenhuma. */
   avaliacao?: { media: number; total: number };
 }
@@ -69,6 +71,8 @@ export interface PerfilPublicoCompleto extends PerfilPublicoResumo {
   profissoesDetalhe: { nome: string; slug: string }[];
   criadoEm: string;
   resumo: ResumoAvaliacoes;
+  servicos: ServicoPublico[];
+  galerias: GaleriaPublica[];
 }
 
 export interface FiltrosBuscaPerfil {
@@ -355,3 +359,68 @@ export interface PaginaLogsAdmin {
   pagina: number;
   totalPaginas: number;
 }
+
+export interface ServicoItem {
+  id: string;
+  nome: string;
+  descricao?: string;
+}
+
+export interface FotoTrabalho {
+  id: string;
+  arquivoId: string;
+}
+
+export interface TrabalhoItem {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  servicoId?: string;
+  galeria?: string;
+  dataTrabalho?: string;
+  fotos: FotoTrabalho[];
+}
+
+export interface MeuPortfolio {
+  logoArquivoId?: string;
+  servicos: ServicoItem[];
+  trabalhos: TrabalhoItem[];
+  totalArquivos: number;
+  limites: { servicos: number; trabalhos: number; fotosPorTrabalho: number; arquivos: number };
+}
+
+export interface ServicoInput {
+  id?: string;
+  nome: string;
+  descricao?: string;
+}
+
+export interface TrabalhoInput {
+  titulo: string;
+  descricao?: string;
+  servicoId?: string;
+  galeria?: string;
+  dataTrabalho?: string;
+}
+
+export interface ServicoPublico {
+  nome: string;
+  descricao?: string;
+}
+
+export interface TrabalhoPublico {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  servico?: string;
+  dataTrabalho?: string;
+  /** Ids dos arquivos (URL pública: /api/arquivos/<id>). */
+  fotos: string[];
+}
+
+export interface GaleriaPublica {
+  nome?: string;
+  trabalhos: TrabalhoPublico[];
+}
+
+export type DirecaoMovimento = "subir" | "descer";

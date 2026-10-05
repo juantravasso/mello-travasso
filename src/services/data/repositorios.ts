@@ -12,6 +12,7 @@ import type {
   CategoriaItem,
   ContaFinanceira,
   DenunciarInput,
+  DirecaoMovimento,
   FiltrosContaFinanceira,
   FiltrosFornecedor,
   FiltrosFuncionario,
@@ -23,6 +24,7 @@ import type {
   IndicarEmpresaInput,
   ItemProduto,
   MeuPerfil,
+  MeuPortfolio,
   MinhaDenuncia,
   MovimentoEstoque,
   NovaCategoriaInput,
@@ -47,6 +49,8 @@ import type {
   ResultadoAction,
   ResultadoCancelamentoConta,
   SalvarAvaliacaoInput,
+  ServicoInput,
+  TrabalhoInput,
   SalvarPerfilInput,
   TipoConta,
 } from "@/types";
@@ -141,6 +145,18 @@ export interface TaxonomiaAdminRepositorio {
   criarProfissao(input: NovaProfissaoInput): Promise<ResultadoAction<null>>;
   atualizarProfissao(id: string, input: AtualizarProfissaoInput): Promise<ResultadoAction<null>>;
   excluirProfissao(id: string): Promise<ResultadoAction<null>>;
+}
+
+export interface PortfolioRepositorio {
+  obter(): Promise<ResultadoAction<MeuPortfolio>>;
+  salvarServicos(lista: ServicoInput[]): Promise<ResultadoAction<null>>;
+  criarTrabalho(input: TrabalhoInput): Promise<ResultadoAction<{ id: string }>>;
+  atualizarTrabalho(id: string, input: TrabalhoInput): Promise<ResultadoAction<null>>;
+  excluirTrabalho(id: string): Promise<ResultadoAction<null>>;
+  moverTrabalho(id: string, direcao: DirecaoMovimento): Promise<ResultadoAction<null>>;
+  moverFoto(fotoId: string, direcao: DirecaoMovimento): Promise<ResultadoAction<null>>;
+  excluirFoto(fotoId: string): Promise<ResultadoAction<null>>;
+  removerLogo(): Promise<ResultadoAction<null>>;
 }
 
 export interface AvaliacoesAdminRepositorio {

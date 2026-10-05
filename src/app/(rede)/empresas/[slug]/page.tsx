@@ -12,6 +12,7 @@ import { AcoesPerfil } from "@/components/rede/AcoesPerfil";
 import { AvaliacaoCard } from "@/components/rede/AvaliacaoCard";
 import { DenunciarPerfil } from "@/components/rede/DenunciarPerfil";
 import { AvatarIniciais } from "@/components/rede/AvatarIniciais";
+import { GaleriaTrabalhos } from "@/components/rede/GaleriaTrabalhos";
 import { localizacao } from "@/components/rede/PerfilItem";
 import { ResumoNotas } from "@/components/rede/ResumoNotas";
 import { Badge } from "@/components/ui/Badge";
@@ -150,7 +151,7 @@ export default async function PerfilPublicoPage({
       )}
 
       <header className="flex items-start gap-4">
-        <AvatarIniciais nome={perfil.nome} className="h-16 w-16 text-xl" />
+        <AvatarIniciais nome={perfil.nome} logoUrl={perfil.logoUrl} className="h-16 w-16 text-xl" />
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">{perfil.nome}</h1>
           <div className="flex flex-wrap items-center gap-2">
@@ -187,6 +188,31 @@ export default async function PerfilPublicoPage({
               ) : (
                 <p className="text-sm text-muted">Este perfil ainda não tem descrição.</p>
               )}
+            </section>
+          )}
+
+          {perfil.servicos.length > 0 && (
+            <section className="flex flex-col gap-3" aria-labelledby="titulo-servicos">
+              <h2 id="titulo-servicos" className="text-lg font-semibold text-foreground">
+                Serviços oferecidos
+              </h2>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {perfil.servicos.map((servico) => (
+                  <li key={servico.nome} className="rounded-lg border border-border bg-card px-3 py-2">
+                    <p className="text-sm font-medium text-foreground">{servico.nome}</p>
+                    {servico.descricao && <p className="text-sm text-muted">{servico.descricao}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {perfil.galerias.length > 0 && (
+            <section className="flex flex-col gap-4" aria-labelledby="titulo-portfolio">
+              <h2 id="titulo-portfolio" className="text-lg font-semibold text-foreground">
+                Trabalhos realizados
+              </h2>
+              <GaleriaTrabalhos galerias={perfil.galerias} />
             </section>
           )}
 

@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 
 const abas = [
   { href: "/minha-rede/perfil", rotulo: "Meu perfil público", tambem: [] },
+  { href: "/minha-rede/portfolio", rotulo: "Portfólio", tambem: [] },
   { href: "/minha-rede/avaliacoes", rotulo: "Avaliações", tambem: ["/minha-rede/avaliar"] },
   { href: "/minha-rede/indicacoes", rotulo: "Indicações", tambem: [] },
   { href: "/minha-rede/denuncias", rotulo: "Denúncias", tambem: [] },

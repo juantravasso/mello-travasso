@@ -1,6 +1,14 @@
 "use client";
 
-export function ImageLightbox({ url, onFechar }: { url: string; onFechar: () => void }) {
+export function ImageLightbox({
+  url,
+  onFechar,
+  alt = "Comprovante em tamanho maior",
+}: {
+  url: string;
+  onFechar: () => void;
+  alt?: string;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
@@ -11,7 +19,7 @@ export function ImageLightbox({ url, onFechar }: { url: string; onFechar: () => 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
-        alt="Comprovante em tamanho maior"
+        alt={alt}
         className="max-h-full max-w-full rounded-lg object-contain"
         onClick={(e) => e.stopPropagation()}
       />

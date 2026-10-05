@@ -10,11 +10,23 @@ import type {
   DenunciasAdminRepositorio,
   LogsAdminRepositorio,
   PerfisAdminRepositorio,
+  PortfolioRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
 } from "./repositorios";
 import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
 import { complementarDenuncia, denunciar, listarMinhasDenuncias } from "./server/denunciaActions";
+import {
+  atualizarTrabalho,
+  criarTrabalho,
+  excluirFoto,
+  excluirTrabalho,
+  moverFoto,
+  moverTrabalho,
+  obterMeuPortfolio,
+  removerLogo,
+  salvarServicos,
+} from "./server/portfolioActions";
 import { assumirDenuncia, decidirDenuncia, listarDenunciasAdmin, solicitarInformacoes } from "./server/denunciaAdminActions";
 import { listarLogsAdmin } from "./server/logAdminActions";
 import { listarPerfisAdmin, reativarPerfil, suspenderPerfil } from "./server/perfilAdminActions";
@@ -191,6 +203,18 @@ export const avaliacoesAdminRepositorio: AvaliacoesAdminRepositorio = {
   moderar: moderarAvaliacao,
 };
 
+export const portfolioRepositorio: PortfolioRepositorio = {
+  obter: obterMeuPortfolio,
+  salvarServicos,
+  criarTrabalho,
+  atualizarTrabalho,
+  excluirTrabalho,
+  moverTrabalho,
+  moverFoto,
+  excluirFoto,
+  removerLogo,
+};
+
 export const denunciasAdminRepositorio: DenunciasAdminRepositorio = {
   listar: listarDenunciasAdmin,
   assumir: assumirDenuncia,
@@ -220,6 +244,7 @@ export type {
   DenunciasAdminRepositorio,
   LogsAdminRepositorio,
   PerfisAdminRepositorio,
+  PortfolioRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
 } from "./repositorios";

@@ -30,11 +30,12 @@ function termoLiteral(texto: string): string {
   return normalizarBusca(texto).replace(/[%_\\]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-type PerfilComProfissoes = Prisma.PerfilPublicoGetPayload<{
-  include: { profissoes: { include: { profissao: true } } };
-}>;
+const incluirProfissoes = {
+  profissoes: { include: { profissao: true } },
+  arquivos: { where: { finalidade: "logo" as const }, orderBy: { criadoEm: "desc" as const }, select: { id: true }, take: 1 },
+} as const;
 
-const incluirProfissoes = { profissoes: { include: { profissao: true } } } as const;
+type PerfilComProfissoes = Prisma.PerfilPublicoGetPayload<{ include: typeof incluirProfissoes }>;
 
 function nomesDeProfissoesAtivas(perfil: PerfilComProfissoes): string[] {
   return perfil.profissoes
@@ -62,11 +63,16 @@ function paraResumo(
     estado: perfil.estado ?? undefined,
     profissoes: nomesDeProfissoesAtivas(perfil),
     indicado: perfil.status === "indicado",
+    logoUrl: perfil.status === "publicado" && perfil.arquivos[0] ? `/api/arquivos/${perfil.arquivos[0].id}` : undefined,
     avaliacao,
   };
 }
 
-function paraCompleto(perfil: PerfilComProfissoes, resumo: PerfilPublicoCompleto["resumo"]): PerfilPublicoCompleto {
+function paraCompleto(
+  perfil: PerfilComProfissoes,
+  resumo: PerfilPublicoCompleto["resumo"],
+  portfolio: { servicos: PerfilPublicoCompleto["servicos"]; galerias: PerfilPublicoCompleto["galerias"] },
+): PerfilPublicoCompleto {
   const publicado = perfil.status === "publicado";
   return {
     ...paraResumo(perfil),
@@ -83,6 +89,8 @@ function paraCompleto(perfil: PerfilComProfissoes, resumo: PerfilPublicoCompleto
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     criadoEm: perfil.criadoEm,
     resumo,
+    servicos: portfolio.servicos,
+    galerias: portfolio.galerias,
   };
 }
 
@@ -190,6 +198,44 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
   };
 }
 
+/** Serviços e trabalhos (agrupados por galeria) de um perfil já verificado como publicado. */
+async function carregarPortfolioPublico(perfilId: string) {
+  const [servicos, trabalhos] = await Promise.all([
+    prisma.servico.findMany({ where: { perfilId }, orderBy: [{ ordem: "asc" }, { id: "asc" }], select: { nome: true, descricao: true } }),
+    prisma.trabalho.findMany({
+      where: { perfilId },
+      orderBy: [{ ordem: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        titulo: true,
+        descricao: true,
+        galeria: true,
+        dataTrabalho: true,
+        servico: { select: { nome: true } },
+        fotos: { orderBy: [{ ordem: "asc" }, { id: "asc" }], select: { arquivoId: true } },
+      },
+    }),
+  ]);
+  const porGaleria = new Map<string, PerfilPublicoCompleto["galerias"][number]>();
+  for (const t of trabalhos) {
+    const chave = t.galeria ?? "";
+    const galeria = porGaleria.get(chave) ?? { nome: t.galeria ?? undefined, trabalhos: [] };
+    galeria.trabalhos.push({
+      id: t.id,
+      titulo: t.titulo,
+      descricao: t.descricao ?? undefined,
+      servico: t.servico?.nome,
+      dataTrabalho: t.dataTrabalho ?? undefined,
+      fotos: t.fotos.map((f) => f.arquivoId),
+    });
+    porGaleria.set(chave, galeria);
+  }
+  return {
+    servicos: servicos.map((s) => ({ nome: s.nome, descricao: s.descricao ?? undefined })),
+    galerias: [...porGaleria.values()],
+  };
+}
+
 export interface PerfilPublicoComContexto {
   perfil: PerfilPublicoCompleto;
   /** Só para uso no servidor (consultas de avaliação e estado do visitante); nunca vai para o client. */
@@ -207,9 +253,12 @@ export const obterPerfilPublicoPorSlug = cache(async (slug: string): Promise<Per
     include: incluirProfissoes,
   });
   if (!registro) return null;
-  const resumo = await obterResumo(registro.id);
+  const [resumo, portfolio] = await Promise.all([
+    obterResumo(registro.id),
+    registro.status === "publicado" ? carregarPortfolioPublico(registro.id) : { servicos: [], galerias: [] },
+  ]);
   return {
-    perfil: paraCompleto(registro, resumo),
+    perfil: paraCompleto(registro, resumo, portfolio),
     id: registro.id,
     empresaId: registro.empresaId,
     documentoIndicado: registro.documentoIndicado,

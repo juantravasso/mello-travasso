@@ -17,7 +17,7 @@ export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
         href={`/empresas/${perfil.slug}`}
         className="group flex gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-surface-2 focus-visible:border-primary focus-visible:outline-none"
       >
-        <AvatarIniciais nome={perfil.nome} />
+        <AvatarIniciais nome={perfil.nome} logoUrl={perfil.logoUrl} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h3 className="truncate font-semibold text-foreground group-hover:text-primary">{perfil.nome}</h3>

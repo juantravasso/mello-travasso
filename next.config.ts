@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
       },
+      // Páginas cujo token fica na URL: nunca em cache nem em Referer (o cabeçalho vale mais que o meta).
+      {
+        source: "/(redefinir-senha|confirmar-email)",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
     ];
   },
 };

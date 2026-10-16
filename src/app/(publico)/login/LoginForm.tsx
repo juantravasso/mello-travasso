@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { entrar } from "@/services/data/server/authActions";
 import { Input } from "@/components/ui/Input";
@@ -81,6 +82,9 @@ export function LoginForm() {
             {estado.campos.senha}
           </span>
         )}
+        <Link href="/esqueci-senha" className="w-fit py-1 text-xs font-medium text-muted underline underline-offset-4 hover:text-foreground">
+          Esqueci minha senha
+        </Link>
       </div>
 
       {estado.erroGeral && (

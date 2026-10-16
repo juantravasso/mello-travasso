@@ -76,6 +76,9 @@ export async function limparLimitesExpirados(): Promise<void> {
 /**
  * Primeiro IP confiável da cadeia x-forwarded-for que a Vercel injeta.
  * Nunca aceite um IP vindo de um campo do formulário/client.
+ *
+ * Depende da Vercel: a borda sobrescreve o cabeçalho, então o cliente não o forja. Em outro host sem um
+ * proxy confiável na frente, o primeiro item é controlável pelo cliente e os tetos por IP deixam de valer.
  */
 export function extrairIpConfiavel(headers: Headers): string {
   const encaminhado = headers.get("x-forwarded-for");

@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { verificarLimite } from "@/lib/auth/limite";
+import { devolverTentativa, verificarLimite } from "@/lib/auth/limite";
 import { verificarSenha } from "@/lib/auth/senha";
 import { ErroDeNegocio } from "./resultado.server";
 
@@ -19,8 +19,12 @@ export async function exigirSenhaDoAdmin(usuarioId: string, senha: unknown): Pro
   if (typeof senha !== "string" || senha.length === 0 || senha.length > 200) {
     throw new ErroDeNegocio("Confirme sua senha para continuar.");
   }
-  const limite = await verificarLimite(`admin-senha:${usuarioId}`, TENTATIVAS_POR_JANELA, JANELA_MS);
-  const limiteDia = await verificarLimite(`admin-senha-dia:${usuarioId}`, TENTATIVAS_POR_DIA, UM_DIA_MS);
+  const chaveJanela = `admin-senha:${usuarioId}`;
+  const chaveDia = `admin-senha-dia:${usuarioId}`;
+  // A tentativa é contada antes de conferir a senha (palpites em paralelo não escapam do teto) e
+  // devolvida se a senha confere: o teto pesa sobre as falhas, não sobre quem trabalha na administração.
+  const limite = await verificarLimite(chaveJanela, TENTATIVAS_POR_JANELA, JANELA_MS);
+  const limiteDia = await verificarLimite(chaveDia, TENTATIVAS_POR_DIA, UM_DIA_MS);
   if (!limite.permitido || !limiteDia.permitido) throw new ErroDeNegocio("Muitas tentativas de senha. Tente de novo mais tarde.");
 
   const usuario = await prisma.usuario.findUnique({ where: { id: usuarioId }, select: { senhaHash: true } });
@@ -31,4 +35,5 @@ export async function exigirSenhaDoAdmin(usuarioId: string, senha: unknown): Pro
     });
     throw new ErroDeNegocio("Senha incorreta.");
   }
+  await Promise.all([devolverTentativa(chaveJanela), devolverTentativa(chaveDia)]);
 }

@@ -46,7 +46,10 @@ import type {
   Produto,
   ProdutoComSaldo,
   ProdutoDetalhado,
+  EmpresaAdminItem,
+  MatrizPlanos,
   ResultadoAction,
+  UsuarioAdminItem,
   ResultadoCancelamentoConta,
   SalvarAvaliacaoInput,
   ServicoInput,
@@ -189,4 +192,23 @@ export interface PerfisAdminRepositorio {
   listar(busca?: string): Promise<PerfilAdminItem[]>;
   suspender(slug: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
   reativar(slug: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+export interface EmpresasAdminRepositorio {
+  listar(busca?: string): Promise<EmpresaAdminItem[]>;
+  bloquear(empresaId: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+  desbloquear(empresaId: string, senha?: string): Promise<ResultadoAction<null>>;
+  alterarPlano(empresaId: string, plano: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+export interface UsuariosAdminRepositorio {
+  listar(busca?: string): Promise<UsuarioAdminItem[]>;
+  bloquear(usuarioId: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+  desbloquear(usuarioId: string, senha?: string): Promise<ResultadoAction<null>>;
+  encerrarSessoes(usuarioId: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+export interface PlanosAdminRepositorio {
+  obter(): Promise<MatrizPlanos>;
+  salvarRecursos(plano: string, recursos: string[], motivo: string, senha?: string): Promise<ResultadoAction<null>>;
 }

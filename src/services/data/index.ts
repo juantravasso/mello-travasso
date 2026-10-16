@@ -8,12 +8,18 @@ import type {
   ObrasRepositorio,
   AvaliacoesAdminRepositorio,
   DenunciasAdminRepositorio,
+  EmpresasAdminRepositorio,
   LogsAdminRepositorio,
   PerfisAdminRepositorio,
+  PlanosAdminRepositorio,
   PortfolioRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
+  UsuariosAdminRepositorio,
 } from "./repositorios";
+import { alterarPlanoEmpresa, bloquearEmpresa, desbloquearEmpresa, listarEmpresasAdmin } from "./server/empresaAdminActions";
+import { obterMatrizPlanos, salvarRecursosDoPlano } from "./server/planoAdminActions";
+import { bloquearUsuario, desbloquearUsuario, encerrarSessoesDoUsuario, listarUsuariosAdmin } from "./server/usuarioAdminActions";
 import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
 import { complementarDenuncia, denunciar, listarMinhasDenuncias } from "./server/denunciaActions";
 import {
@@ -237,6 +243,25 @@ export const perfisAdminRepositorio: PerfisAdminRepositorio = {
   reativar: reativarPerfil,
 };
 
+export const empresasAdminRepositorio: EmpresasAdminRepositorio = {
+  listar: listarEmpresasAdmin,
+  bloquear: bloquearEmpresa,
+  desbloquear: desbloquearEmpresa,
+  alterarPlano: alterarPlanoEmpresa,
+};
+
+export const usuariosAdminRepositorio: UsuariosAdminRepositorio = {
+  listar: listarUsuariosAdmin,
+  bloquear: bloquearUsuario,
+  desbloquear: desbloquearUsuario,
+  encerrarSessoes: encerrarSessoesDoUsuario,
+};
+
+export const planosAdminRepositorio: PlanosAdminRepositorio = {
+  obter: obterMatrizPlanos,
+  salvarRecursos: salvarRecursosDoPlano,
+};
+
 export type {
   CatalogoRepositorio,
   ContasRepositorio,
@@ -247,9 +272,12 @@ export type {
   ObrasRepositorio,
   AvaliacoesAdminRepositorio,
   DenunciasAdminRepositorio,
+  EmpresasAdminRepositorio,
   LogsAdminRepositorio,
   PerfisAdminRepositorio,
+  PlanosAdminRepositorio,
   PortfolioRepositorio,
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
+  UsuariosAdminRepositorio,
 } from "./repositorios";

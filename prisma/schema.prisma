@@ -269,6 +269,10 @@ model Empresa {
   testeTerminaEm     String? // ISO datetime; null em cortesia/ativo (RF-07, RF-17)
   aceiteTermosVersao String
   aceiteTermosEm     String
+  /// Bloqueio pela administração (Fase 6.6): ninguém da empresa entra e o perfil sai do ar.
+  /// O motivo é interno, nunca mostrado ao usuário.
+  bloqueadaEm        String?
+  bloqueioMotivo     String?
 
   usuarios Usuario[]
 
@@ -307,28 +311,32 @@ model EventoConta {
 }
 
 model Usuario {
-  id                 String             @id @default(uuid())
-  empresaId          String
-  empresa            Empresa            @relation(fields: [empresaId], references: [id])
-  nome               String
+  id                       String             @id @default(uuid())
+  empresaId                String
+  empresa                  Empresa            @relation(fields: [empresaId], references: [id])
+  nome                     String
   /// Normalizado em minúsculas antes de gravar/comparar.
-  email              String             @unique
-  senhaHash          String
-  papel              PapelDb            @default(dono)
-  trocarSenha        Boolean            @default(false)
-  falhasLogin        Int                @default(0)
-  bloqueadoAte       String?
+  email                    String             @unique
+  senhaHash                String
+  papel                    PapelDb            @default(dono)
+  trocarSenha              Boolean            @default(false)
+  falhasLogin              Int                @default(0)
+  bloqueadoAte             String?
   /// Data da última falha de login (RF-10) — separado de atualizadoEm, que
   /// também muda em login OK e troca de senha e não serve como marca da janela.
-  ultimaFalhaLoginEm String?
+  ultimaFalhaLoginEm       String?
   /// Administrador da plataforma (Fase 6) — independente de `papel`, que é por
   /// empresa. Só é concedido por script (admin:promover), nunca pela interface.
-  papelPlataforma    PapelPlataformaDb?
+  papelPlataforma          PapelPlataformaDb?
   /// Quando o titular provou controlar este e-mail (link enviado a ele). Sem
   /// isso a conta usa a gestão, mas não publica nem interage na rede.
-  emailConfirmadoEm  String?
-  criadoEm           String
-  atualizadoEm       String
+  emailConfirmadoEm        String?
+  /// Bloqueio pela administração (Fase 6.6). Distinto de `bloqueadoAte`, que é a trava
+  /// temporária por falhas de senha.
+  bloqueadoPlataformaEm    String?
+  bloqueioPlataformaMotivo String?
+  criadoEm                 String
+  atualizadoEm             String
 
   sessoes     Sessao[]
   tokensEmail TokenEmail[]

@@ -53,6 +53,16 @@ export async function verificarLimite(chaveBruta: string, maximo: number, janela
 }
 
 /**
+ * Devolve uma tentativa já contada (o contador nunca fica abaixo de zero). Para limites que só devem
+ * pesar sobre as falhas: a tentativa é contada antes, de forma atômica, e devolvida se deu certo.
+ */
+export async function devolverTentativa(chaveBruta: string): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE "LimiteTaxa" SET "contagem" = GREATEST("contagem" - 1, 0) WHERE "chave" = ${hashChave(chaveBruta)}
+  `;
+}
+
+/**
  * Apaga janelas de LimiteTaxa vencidas há mais de 1 dia (toda janela usada
  * hoje é <= 1h, então qualquer coisa mais velha que isso já não é consultada
  * por ninguém). Chamada com baixa probabilidade em `entrar()` — não é um job

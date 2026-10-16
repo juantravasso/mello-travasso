@@ -21,6 +21,7 @@ const LIMITE_CADASTROS_POR_HORA = 3;
 
 const MENSAGEM_LOGIN_INVALIDO = "E-mail ou senha incorretos.";
 const MENSAGEM_BLOQUEADO = "Muitas tentativas. Tente de novo em 15 minutos.";
+const MENSAGEM_CONTA_BLOQUEADA = "Esta conta está bloqueada. Fale com o suporte: contato@mellotravasso.com.br.";
 const MAX_FALHAS = 5;
 const BLOQUEIO_MS = 15 * 60 * 1000;
 
@@ -90,6 +91,13 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
     };
   }
 
+  // Bloqueio da administração (usuário ou empresa). Só depois de a senha conferir: quem erra a
+  // senha recebe a resposta de sempre, então a mensagem não serve para descobrir contas.
+  const empresa = await prisma.empresa.findUnique({ where: { id: usuario.empresaId }, select: { plano: true, bloqueadaEm: true } });
+  if (usuario.bloqueadoPlataformaEm || empresa?.bloqueadaEm) {
+    return { ok: false, erro: "VALIDACAO", mensagem: MENSAGEM_CONTA_BLOQUEADA };
+  }
+
   await prisma.usuario.update({
     where: { id: usuario.id },
     data: { falhasLogin: 0, bloqueadoAte: null, atualizadoEm: isoAgora() },
@@ -97,7 +105,6 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
   await criarSessao(usuario.id);
 
   // Empresa só com a rede (plano gratuito) não tem dashboard: entra na rede.
-  const empresa = await prisma.empresa.findUnique({ where: { id: usuario.empresaId }, select: { plano: true } });
   const inicio = empresa?.plano === "gratuito" ? "/rede" : "/dashboard";
 
   return {

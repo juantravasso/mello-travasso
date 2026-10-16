@@ -41,6 +41,24 @@ export default async function AdminPage() {
             <span className="text-sm text-muted">Suspenda um perfil publicado ou reative um suspenso.</span>
           </Card>
         </Link>
+        <Link href="/admin/empresas">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Empresas</span>
+            <span className="text-sm text-muted">Plano, bloqueio e desbloqueio de cada empresa.</span>
+          </Card>
+        </Link>
+        <Link href="/admin/usuarios">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Usuários</span>
+            <span className="text-sm text-muted">Bloqueie um usuário ou encerre as sessões abertas dele.</span>
+          </Card>
+        </Link>
+        <Link href="/admin/planos">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Planos e permissões</span>
+            <span className="text-sm text-muted">Quais recursos cada plano libera.</span>
+          </Card>
+        </Link>
       </div>
     </div>
   );

@@ -82,11 +82,18 @@ export async function lerSessao(): Promise<SessaoValida | null> {
 
   const sessao = await prisma.sessao.findUnique({
     where: { id: hashToken(token) },
-    include: { usuario: true },
+    include: { usuario: { include: { empresa: { select: { bloqueadaEm: true } } } } },
   });
 
   if (!sessao) return null;
   if (new Date(sessao.expiraEm).getTime() <= Date.now()) {
+    await prisma.sessao.delete({ where: { id: sessao.id } }).catch(ignorarSeNaoEncontrado);
+    return null;
+  }
+
+  // Bloqueio pela administração (usuário ou empresa): vale em toda página, ação e rota, porque
+  // todas leem a sessão por aqui. Falha fechada: a sessão é apagada e o visitante vira anônimo.
+  if (sessao.usuario.bloqueadoPlataformaEm || sessao.usuario.empresa.bloqueadaEm) {
     await prisma.sessao.delete({ where: { id: sessao.id } }).catch(ignorarSeNaoEncontrado);
     return null;
   }

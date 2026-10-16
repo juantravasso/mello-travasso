@@ -53,6 +53,25 @@ function RecebidaCard({ avaliacao, aoResponder }: { avaliacao: AvaliacaoRecebida
   const [texto, setTexto] = useState(avaliacao.resposta?.texto ?? "");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [respondendoRelacao, setRespondendoRelacao] = useState(false);
+  const [erroRelacao, setErroRelacao] = useState<string | null>(null);
+
+  async function definirRelacao(estado: "confirmada" | "contestada") {
+    setRespondendoRelacao(true);
+    setErroRelacao(null);
+    try {
+      const resultado = await redeRepositorio.responderRelacao(avaliacao.id, estado);
+      if (!resultado.ok) {
+        setErroRelacao(resultado.mensagem);
+        return;
+      }
+      await aoResponder();
+    } catch {
+      setErroRelacao("Não foi possível enviar agora. Tente de novo.");
+    } finally {
+      setRespondendoRelacao(false);
+    }
+  }
 
   async function enviar(evento: React.FormEvent) {
     evento.preventDefault();
@@ -85,6 +104,33 @@ function RecebidaCard({ avaliacao, aoResponder }: { avaliacao: AvaliacaoRecebida
       </div>
       {avaliacao.comentario && <p className="whitespace-pre-line text-sm text-foreground/90">{avaliacao.comentario}</p>}
       <Aspectos pros={avaliacao.pros} contras={avaliacao.contras} />
+
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+        <p className="text-sm text-foreground">
+          {avaliacao.relacao === "confirmada"
+            ? "Você confirmou que trabalhou com esta empresa. O selo “relação confirmada pelo avaliado” aparece na avaliação."
+            : avaliacao.relacao === "contestada"
+              ? "Você disse que não reconhece essa relação. A avaliação segue publicada, sem selo, e a moderação pode analisar."
+              : "Você trabalhou com esta empresa? Confirmar dá um selo à avaliação; só confirme se foi real."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {avaliacao.relacao !== "confirmada" && (
+            <Button type="button" tamanho="sm" variante="outline" disabled={respondendoRelacao} onClick={() => definirRelacao("confirmada")}>
+              Confirmar que trabalhamos juntos
+            </Button>
+          )}
+          {avaliacao.relacao !== "contestada" && (
+            <Button type="button" tamanho="sm" variante="ghost" disabled={respondendoRelacao} onClick={() => definirRelacao("contestada")}>
+              Não reconheço essa relação
+            </Button>
+          )}
+        </div>
+        {erroRelacao && (
+          <p role="alert" className="text-xs text-danger">
+            {erroRelacao}
+          </p>
+        )}
+      </div>
 
       {avaliacao.resposta && !respondendo && (
         <div className="flex flex-col gap-1 rounded-lg border-l-2 border-primary bg-surface px-3 py-2">

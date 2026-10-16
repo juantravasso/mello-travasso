@@ -324,12 +324,33 @@ model Usuario {
   /// Administrador da plataforma (Fase 6) — independente de `papel`, que é por
   /// empresa. Só é concedido por script (admin:promover), nunca pela interface.
   papelPlataforma    PapelPlataformaDb?
+  /// Quando o titular provou controlar este e-mail (link enviado a ele). Sem
+  /// isso a conta usa a gestão, mas não publica nem interage na rede.
+  emailConfirmadoEm  String?
   criadoEm           String
   atualizadoEm       String
 
-  sessoes Sessao[]
+  sessoes     Sessao[]
+  tokensEmail TokenEmail[]
 
   @@index([empresaId])
+}
+
+/// Token de uso único enviado por e-mail (hoje só a confirmação de endereço).
+/// Só o sha256 fica no banco: quem lê um dump não consegue confirmar nada.
+model TokenEmail {
+  id        String  @id @default(uuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo      String
+  tokenHash String  @unique
+  /// Endereço para o qual foi enviado; se o e-mail do usuário mudar, o token deixa de valer.
+  email     String
+  expiraEm  String
+  usadoEm   String?
+  criadoEm  String
+
+  @@index([usuarioId, tipo])
 }
 
 model Sessao {
@@ -593,6 +614,40 @@ enum StatusVerificacaoDb {
   relacao_comprovada
 }
 
+enum EstadoRelacaoDb {
+  confirmada
+  contestada
+}
+
+/// Resposta do avaliado à pergunta "você trabalhou com esta empresa?". Registra
+/// quem respondeu, quando e por qual método (hoje só "confirmacao_avaliado";
+/// a comprovação por documento entra na Fase 6.5b). Uma por avaliação.
+model VerificacaoRelacao {
+  id                     String          @id @default(uuid())
+  avaliacaoId            String          @unique
+  avaliacao              Avaliacao       @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  estado                 EstadoRelacaoDb
+  metodo                 String
+  respondidaPorUsuarioId String
+  respondidaEm           String
+
+  @@index([estado, respondidaEm])
+}
+
+/// Cada resposta do avaliado sobre a relação, em ordem, nunca sobrescrita:
+/// o estado atual fica em VerificacaoRelacao, a trilha (quem, quando, o quê) aqui.
+model VerificacaoRelacaoHistorico {
+  id           String          @id @default(uuid())
+  avaliacaoId  String
+  avaliacao    Avaliacao       @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  estado       EstadoRelacaoDb
+  metodo       String
+  usuarioId    String
+  registradoEm String
+
+  @@index([avaliacaoId, registradoEm])
+}
+
 /// Uma avaliação por par (empresa avaliadora, perfil avaliado).
 model Avaliacao {
   id                 String              @id @default(uuid())
@@ -613,9 +668,11 @@ model Avaliacao {
   atualizadoEm       String
   editadaEm          String?
 
-  resposta  RespostaAvaliacao?
-  historico AvaliacaoHistorico[]
-  denuncias Denuncia[]
+  resposta                     RespostaAvaliacao?
+  historico                    AvaliacaoHistorico[]
+  denuncias                    Denuncia[]
+  verificacaoRelacao           VerificacaoRelacao?
+  verificacoesRelacaoHistorico VerificacaoRelacaoHistorico[]
 
   @@unique([avaliadorEmpresaId, perfilId])
   @@index([perfilId, status, criadoEm])

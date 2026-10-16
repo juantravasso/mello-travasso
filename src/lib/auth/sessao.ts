@@ -65,6 +65,8 @@ export interface SessaoValida {
   papel: "dono" | "membro";
   /** Administrador da plataforma (independente do papel na empresa). */
   admin: boolean;
+  /** O titular já abriu o link enviado a este e-mail. */
+  emailConfirmado: boolean;
 }
 
 /**
@@ -127,6 +129,7 @@ export async function lerSessao(): Promise<SessaoValida | null> {
     empresaId: sessao.usuario.empresaId,
     papel: sessao.usuario.papel,
     admin: sessao.usuario.papelPlataforma === "admin",
+    emailConfirmado: sessao.usuario.emailConfirmadoEm !== null,
   };
 }
 

@@ -169,7 +169,7 @@ export interface AvaliacaoPublica {
   contras: string[];
   criadoEm: string;
   editadaEm?: string;
-  /** Estado da verificação da relação comercial (Fase 6.5 a preenche). */
+  /** Quem atestou a relação comercial: ninguém, o avaliado (6.5a) ou um documento analisado pela administração (6.5b). */
   verificacao: "nao_verificada" | "relacao_confirmada" | "relacao_comprovada";
   avaliadorNome: string;
   avaliadorSlug?: string;
@@ -228,6 +228,8 @@ export interface AvaliacaoRecebida {
   criadoEm: string;
   editadaEm?: string;
   avaliadorNome: string;
+  /** O que o avaliado respondeu sobre ter trabalhado com o avaliador. */
+  relacao?: "confirmada" | "contestada";
   resposta?: { texto: string; criadoEm: string };
 }
 
@@ -269,6 +271,8 @@ export interface AvaliacaoAdminItem {
   perfilSlug: string;
   perfilNome: string;
   avaliadorNome: string;
+  /** O avaliado respondeu que não reconhece ter trabalhado com o avaliador. */
+  relacaoContestada: boolean;
 }
 
 export type AcaoModeracaoAvaliacao = "ocultar" | "remover" | "restaurar";

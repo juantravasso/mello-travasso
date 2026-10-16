@@ -123,6 +123,9 @@ export interface RedeRepositorio {
   salvarAvaliacao(input: SalvarAvaliacaoInput): Promise<ResultadoAction<null>>;
   listarAvaliacoesFeitas(): Promise<AvaliacaoFeita[]>;
   listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]>;
+  responderRelacao(avaliacaoId: string, estado: "confirmada" | "contestada"): Promise<ResultadoAction<null>>;
+  reenviarConfirmacaoEmail(): Promise<ResultadoAction<null>>;
+  confirmarEmail(token: string): Promise<ResultadoAction<null>>;
   responderAvaliacao(avaliacaoId: string, texto: string): Promise<ResultadoAction<null>>;
   recomendarPerfil(slug: string): Promise<ResultadoAction<null>>;
   removerRecomendacao(slug: string): Promise<ResultadoAction<null>>;

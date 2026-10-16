@@ -15,6 +15,7 @@ import {
   selecaoEmpresaParaNome,
   STATUS_VISIVEIS,
 } from "./avaliacaoCore.server";
+import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 const TENTATIVAS_POR_DIA = 40;
@@ -39,6 +40,7 @@ export async function indicarEmpresa(
 ): Promise<ResultadoAction<{ slug: string; jaExistia: boolean }>> {
   const sessao = await exigirRedeAction();
   return executar(async () => {
+    exigirEmailConfirmado(sessao, "indicar empresas");
     // Teto geral logo de início: as consultas abaixo (CNPJ já cadastrado, perfil
     // parecido) não podem virar um oráculo ilimitado nem um jeito de contornar
     // o limite de recomendações.

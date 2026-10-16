@@ -7,6 +7,7 @@ import { verificarLimite } from "@/lib/auth/limite";
 import { complementarDenunciaSchema, denunciarSchema } from "@/lib/validacao/rede";
 import type { DenunciarInput, MinhaDenuncia, ResultadoAction } from "@/types";
 import { ehProprio, IDADE_MINIMA_CONTA_MS, STATUS_VISIVEIS } from "./avaliacaoCore.server";
+import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 const DENUNCIAS_POR_DIA = 10;
@@ -26,6 +27,7 @@ function ehConflito(erro: unknown): boolean {
 export async function denunciar(input: DenunciarInput): Promise<ResultadoAction<null>> {
   const sessao = await exigirRedeAction();
   return executar(async () => {
+    exigirEmailConfirmado(sessao, "enviar denúncias");
     const parsed = denunciarSchema.safeParse(input);
     if (!parsed.success) throw new ErroDeNegocio(parsed.error.issues[0]?.message ?? "Dados inválidos.");
     const { alvo, motivo, descricao } = parsed.data;

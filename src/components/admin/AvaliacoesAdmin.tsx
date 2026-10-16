@@ -111,6 +111,7 @@ export function AvaliacoesAdmin() {
                     {a.avaliadorNome} → <Link href={`/empresas/${a.perfilSlug}`} className="font-medium hover:text-primary">{a.perfilNome}</Link>
                   </span>
                   <span className="text-xs text-muted">{formatarDataBr(a.criadoEm)}</span>
+                  {a.relacaoContestada && <Badge tom="warning">Relação contestada pelo avaliado</Badge>}
                 </div>
                 {a.comentario && <p className="line-clamp-3 whitespace-pre-line text-sm text-foreground/90">{a.comentario}</p>}
 

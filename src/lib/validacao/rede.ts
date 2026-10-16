@@ -139,6 +139,13 @@ export const responderAvaliacaoSchema = z
   })
   .strict();
 
+export const responderRelacaoSchema = z
+  .object({
+    avaliacaoId: z.string().uuid(),
+    estado: z.enum(["confirmada", "contestada"]),
+  })
+  .strict();
+
 export const indicarEmpresaSchema = z
   .object({
     nome: z

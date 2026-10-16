@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { exigirRedeAction } from "@/lib/auth/dal";
 import { extrairIpConfiavel, verificarLimite } from "@/lib/auth/limite";
-import { responderAvaliacaoSchema, salvarAvaliacaoSchema, slugSchema } from "@/lib/validacao/rede";
+import { responderAvaliacaoSchema, responderRelacaoSchema, salvarAvaliacaoSchema, slugSchema } from "@/lib/validacao/rede";
 import type {
   AvaliacaoFeita,
   AvaliacaoParaEditar,
@@ -23,6 +23,7 @@ import {
   selecaoEmpresaParaNome,
   STATUS_VISIVEIS,
 } from "./avaliacaoCore.server";
+import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 const AVALIACOES_POR_DIA = 20;
@@ -99,6 +100,7 @@ export async function obterAvaliacaoParaEditar(slug: string): Promise<ResultadoA
 export async function salvarAvaliacao(input: SalvarAvaliacaoInput): Promise<ResultadoAction<null>> {
   const sessao = await exigirRedeAction();
   return executar(async () => {
+    exigirEmailConfirmado(sessao, "avaliar");
     const parsed = salvarAvaliacaoSchema.safeParse(input);
     if (!parsed.success) throw new ErroDeNegocio(parsed.error.issues[0]?.message ?? "Dados inválidos.");
     const dados = parsed.data;
@@ -250,7 +252,7 @@ export async function listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]> 
   if (!perfil) return [];
   const registros = await prisma.avaliacao.findMany({
     where: { perfilId: perfil.id, status: "publicada" },
-    include: { avaliador: { select: selecaoEmpresaParaNome }, resposta: true },
+    include: { avaliador: { select: selecaoEmpresaParaNome }, resposta: true, verificacaoRelacao: { select: { estado: true } } },
     orderBy: [{ criadoEm: "desc" }, { id: "asc" }],
     take: 200,
   });
@@ -263,6 +265,7 @@ export async function listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]> 
     criadoEm: a.criadoEm,
     editadaEm: a.editadaEm ?? undefined,
     avaliadorNome: nomePublicoDaEmpresa(a.avaliador).nome,
+    relacao: a.verificacaoRelacao?.estado,
     resposta: a.resposta ? { texto: a.resposta.texto, criadoEm: a.resposta.criadoEm } : undefined,
   }));
 }
@@ -271,6 +274,7 @@ export async function listarAvaliacoesRecebidas(): Promise<AvaliacaoRecebida[]> 
 export async function responderAvaliacao(avaliacaoId: string, texto: string): Promise<ResultadoAction<null>> {
   const sessao = await exigirRedeAction();
   return executar(async () => {
+    exigirEmailConfirmado(sessao, "responder avaliações");
     const parsed = responderAvaliacaoSchema.safeParse({ avaliacaoId, texto });
     if (!parsed.success) throw new ErroDeNegocio(parsed.error.issues[0]?.message ?? "Dados inválidos.");
 
@@ -308,9 +312,90 @@ export async function responderAvaliacao(avaliacaoId: string, texto: string): Pr
   });
 }
 
+const RESPOSTAS_RELACAO_POR_DIA = 60;
+const INTERVALO_MUDANCA_RELACAO_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * O avaliado diz se trabalhou mesmo com quem o avaliou. "Confirmada" dá à
+ * avaliação o selo "relação confirmada pelo avaliado"; "contestada" tira o selo
+ * e fica registrada para a moderação (nunca oculta a avaliação por si). Só a
+ * empresa dona do perfil avaliado responde, e pode mudar de ideia. O selo diz
+ * quem atestou: é a palavra do avaliado, não uma checagem da plataforma.
+ */
+export async function responderRelacao(avaliacaoId: string, estado: "confirmada" | "contestada"): Promise<ResultadoAction<null>> {
+  const sessao = await exigirRedeAction();
+  return executar(async () => {
+    exigirEmailConfirmado(sessao, "responder sobre a relação comercial");
+    const parsed = responderRelacaoSchema.safeParse({ avaliacaoId, estado });
+    if (!parsed.success) throw new ErroDeNegocio("Dados inválidos.");
+    const limite = await verificarLimite(`rede-relacao:${sessao.empresaId}`, RESPOSTAS_RELACAO_POR_DIA, UM_DIA_MS);
+    if (!limite.permitido) throw new ErroDeNegocio("Muitas respostas hoje. Tente de novo amanhã.");
+
+    const avaliacao = await prisma.avaliacao.findFirst({
+      where: { id: parsed.data.avaliacaoId, status: "publicada", perfil: { empresaId: sessao.empresaId } },
+      select: {
+        id: true,
+        avaliadorEmpresaId: true,
+        perfil: { select: { nome: true } },
+        verificacaoRelacao: { select: { estado: true, respondidaEm: true } },
+      },
+    });
+    if (!avaliacao || avaliacao.avaliadorEmpresaId === sessao.empresaId) throw new ErroDeNegocio("Avaliação não encontrada.");
+
+    const anterior = avaliacao.verificacaoRelacao;
+    if (anterior?.estado === parsed.data.estado) return null;
+    // Mudar de ideia é permitido, mas não em rajada: cada virada fica na trilha e esta pausa barra o vai e volta.
+    if (anterior && Date.now() - new Date(anterior.respondidaEm).getTime() < INTERVALO_MUDANCA_RELACAO_MS) {
+      throw new ErroDeNegocio("Você respondeu há pouco. Para mudar a resposta, tente de novo em 24 horas.");
+    }
+
+    const agora = new Date().toISOString();
+    const confirmou = parsed.data.estado === "confirmada";
+    await prisma.$transaction(async (tx) => {
+      await tx.verificacaoRelacaoHistorico.create({
+        data: {
+          avaliacaoId: avaliacao.id,
+          estado: parsed.data.estado,
+          metodo: "confirmacao_avaliado",
+          usuarioId: sessao.usuarioId,
+          registradoEm: agora,
+        },
+      });
+      await tx.verificacaoRelacao.upsert({
+        where: { avaliacaoId: avaliacao.id },
+        create: {
+          avaliacaoId: avaliacao.id,
+          estado: parsed.data.estado,
+          metodo: "confirmacao_avaliado",
+          respondidaPorUsuarioId: sessao.usuarioId,
+          respondidaEm: agora,
+        },
+        update: { estado: parsed.data.estado, respondidaPorUsuarioId: sessao.usuarioId, respondidaEm: agora },
+      });
+      // A comprovação por documento (6.5b) vale mais que a palavra do avaliado: a condição
+      // vai no próprio UPDATE (atômica), então nunca é rebaixada, nem por corrida.
+      await tx.avaliacao.updateMany({
+        where: { id: avaliacao.id, statusVerificacao: { not: "relacao_comprovada" } },
+        data: { statusVerificacao: confirmou ? "relacao_confirmada" : "nao_verificada" },
+      });
+      if (confirmou) {
+        await criarNotificacao(
+          tx,
+          avaliacao.avaliadorEmpresaId,
+          "relacao_confirmada",
+          `${avaliacao.perfil.nome} confirmou que trabalhou com você. Sua avaliação ganhou o selo de relação confirmada.`,
+          "/minha-rede/avaliacoes?aba=feitas",
+        );
+      }
+    });
+    return null;
+  });
+}
+
 export async function recomendarPerfil(slug: string): Promise<ResultadoAction<null>> {
   const sessao = await exigirRedeAction();
   return executar(async () => {
+    exigirEmailConfirmado(sessao, "recomendar");
     const perfil = await buscarPerfilVisivel(slug);
     const empresa = await prisma.empresa.findUniqueOrThrow({
       where: { id: sessao.empresaId },

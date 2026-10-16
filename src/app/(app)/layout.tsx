@@ -22,6 +22,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       statusPlano={statusPlano}
       temGestao={recursos.has("gestao")}
       admin={sessao.admin}
+      emailConfirmado={sessao.emailConfirmado}
+      emailUsuario={sessao.email}
     >
       {children}
     </ShellWrapper>

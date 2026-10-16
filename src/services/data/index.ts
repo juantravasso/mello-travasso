@@ -48,8 +48,10 @@ import {
   recomendarPerfil,
   removerRecomendacao,
   responderAvaliacao,
+  responderRelacao,
   salvarAvaliacao,
 } from "./server/avaliacaoActions";
+import { confirmarEmail, reenviarConfirmacaoEmail } from "./server/emailActions";
 import { indicarEmpresa, listarMinhasIndicacoes } from "./server/indicacaoActions";
 import {
   contarNotificacoesNaoLidas,
@@ -175,6 +177,9 @@ export const redeRepositorio: RedeRepositorio = {
   listarAvaliacoesFeitas,
   listarAvaliacoesRecebidas,
   responderAvaliacao,
+  responderRelacao,
+  reenviarConfirmacaoEmail,
+  confirmarEmail,
   recomendarPerfil,
   removerRecomendacao,
   indicarEmpresa,

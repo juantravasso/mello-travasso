@@ -8,6 +8,7 @@ import { salvarPerfilSchema } from "@/lib/validacao/rede";
 import { gerarSlug, normalizarBusca } from "@/lib/rede/texto";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
 import type { MeuPerfil, ResultadoAction, SalvarPerfilInput } from "@/types";
+import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 type PerfilRegistro = Prisma.PerfilPublicoGetPayload<{
@@ -183,6 +184,8 @@ async function salvarMeuPerfilInterno(input: SalvarPerfilInput): Promise<MeuPerf
 /** Publica ou volta o perfil para rascunho. Perfil suspenso pela administração não pode ser republicado. */
 async function definirPublicacaoInterno(publicar: boolean): Promise<MeuPerfil> {
   const sessao = await exigirRedeAction();
+  // Despublicar nunca é barrado; publicar exige e-mail confirmado.
+  if (publicar) exigirEmailConfirmado(sessao, "publicar seu perfil");
   const perfil = await prisma.perfilPublico.findUnique({
     where: { empresaId: sessao.empresaId },
     include: incluirProfissoes,

@@ -69,8 +69,8 @@ export function AvaliacaoCard({
         {avaliacao.verificacao === "nao_verificada"
           ? "Relação comercial não verificada"
           : avaliacao.verificacao === "relacao_confirmada"
-            ? "Relação comercial confirmada"
-            : "Relação comercial verificada"}
+            ? "Relação confirmada pelo avaliado"
+            : "Relação comprovada por documento"}
       </p>
 
       <Aspectos pros={avaliacao.pros} contras={avaliacao.contras} />

@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { gerarHash, verificarSenha, verificarSenhaFicticia } from "@/lib/auth/senha";
@@ -13,6 +14,7 @@ import { criarContaSchema } from "@/lib/validacao/cadastro";
 import { normalizarDocumento } from "@/lib/documento";
 import { VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 import type { ResultadoAction } from "@/types";
+import { emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
 
 const MENSAGEM_CADASTRO_DUPLICADO = "Não foi possível criar a conta com esses dados. Se você já tem conta, entre.";
 const LIMITE_CADASTROS_POR_HORA = 3;
@@ -242,6 +244,14 @@ export async function criarConta(
     });
 
     await criarSessao(resultado.id);
+    // Confirmação de e-mail depois da resposta: o tempo do envio não pode distinguir "conta criada"
+    // de "cadastro duplicado" (que responde sem enviar). Falha de envio não derruba o cadastro: há reenvio no app.
+    const paraConfirmar = { id: resultado.id, nome: resultado.nome, email: resultado.email };
+    after(() =>
+      emitirConfirmacaoDeEmail(paraConfirmar).catch((e) => {
+        console.error("[auth] falha ao emitir confirmação de e-mail:", e instanceof Error ? e.name : "erro");
+      }),
+    );
     return {
       ok: true,
       dados: { redirecionarPara: soRede ? "/minha-rede/perfil" : "/dashboard", trocaObrigatoria: false },

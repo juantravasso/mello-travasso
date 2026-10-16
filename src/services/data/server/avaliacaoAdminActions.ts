@@ -22,7 +22,11 @@ export async function listarAvaliacoesAdmin(busca?: string, status?: string): Pr
       ...(statusFiltro ? { status: statusFiltro } : {}),
       ...(termo ? { perfil: { nomeBusca: { contains: termo } } } : {}),
     },
-    include: { perfil: { select: { slug: true, nome: true } }, avaliador: { select: selecaoEmpresaParaNome } },
+    include: {
+      perfil: { select: { slug: true, nome: true } },
+      avaliador: { select: selecaoEmpresaParaNome },
+      verificacaoRelacao: { select: { estado: true } },
+    },
     orderBy: [{ criadoEm: "desc" }, { id: "asc" }],
     take: 50,
   });
@@ -35,6 +39,7 @@ export async function listarAvaliacoesAdmin(busca?: string, status?: string): Pr
     perfilSlug: a.perfil.slug,
     perfilNome: a.perfil.nome,
     avaliadorNome: nomePublicoDaEmpresa(a.avaliador).nome,
+    relacaoContestada: a.verificacaoRelacao?.estado === "contestada",
   }));
 }
 

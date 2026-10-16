@@ -3,6 +3,7 @@ import type { StatusPlano } from "@/lib/auth/plano";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { AvisoEmail } from "./AvisoEmail";
 import { FaixaTeste } from "./FaixaTeste";
 import { StatusPlanoProvider } from "./StatusPlanoContext";
 
@@ -15,12 +16,16 @@ export function ShellWrapper({
   statusPlano,
   temGestao,
   admin,
+  emailConfirmado,
+  emailUsuario,
 }: {
   children: ReactNode;
   nomeUsuario: string;
   statusPlano: StatusPlano;
   temGestao: boolean;
   admin: boolean;
+  emailConfirmado: boolean;
+  emailUsuario: string;
 }) {
   return (
     <StatusPlanoProvider status={statusPlano}>
@@ -32,6 +37,7 @@ export function ShellWrapper({
             dentro desta coluna (não acima do Sidebar, que é fixed) para não
             precisar deslocar o Sidebar quando a faixa aparece/some. */}
         <div className="flex min-h-full min-w-0 flex-1 flex-col md:ml-[68px]">
+          {!emailConfirmado && <AvisoEmail email={emailUsuario} />}
           <FaixaTeste />
           <Topbar />
           <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-6">

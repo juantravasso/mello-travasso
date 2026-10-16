@@ -9,6 +9,7 @@ import { extrairIpConfiavel, verificarLimite } from "@/lib/auth/limite";
 import { formatarTelefone } from "@/lib/rede/texto";
 import { jsonLdSeguro, urlDoSite } from "@/lib/rede/site";
 import { AcoesPerfil } from "@/components/rede/AcoesPerfil";
+import { SeloVerificado } from "@/components/rede/SeloVerificado";
 import { AvaliacaoCard } from "@/components/rede/AvaliacaoCard";
 import { DenunciarPerfil } from "@/components/rede/DenunciarPerfil";
 import { AvatarIniciais } from "@/components/rede/AvatarIniciais";
@@ -146,7 +147,13 @@ export default async function PerfilPublicoPage({
             className="font-medium underline underline-offset-4"
           >
             Não é você, ou quer corrigir ou remover esta página? Fale com a gente.
-          </a>
+          </a>{" "}
+          <Link
+            href={sessao ? `/minha-rede/reivindicar/${perfil.slug}` : `/login?next=${encodeURIComponent(`/minha-rede/reivindicar/${perfil.slug}`)}`}
+            className="font-medium underline underline-offset-4"
+          >
+            É a sua? Reivindique o perfil.
+          </Link>
         </Card>
       )}
 
@@ -157,6 +164,7 @@ export default async function PerfilPublicoPage({
           <div className="flex flex-wrap items-center gap-2">
             <Badge tom="neutral">{perfil.tipo === "pj" ? "Empresa" : "Profissional autônomo"}</Badge>
             {perfil.indicado && <Badge tom="info">Indicada pela rede</Badge>}
+            {perfil.verificado && <SeloVerificado tipo={perfil.tipo} />}
             {local && <span className="text-sm text-muted">{local}</span>}
           </div>
           {perfil.profissoes.length > 0 && (

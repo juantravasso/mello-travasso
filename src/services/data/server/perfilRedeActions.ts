@@ -8,6 +8,7 @@ import { salvarPerfilSchema } from "@/lib/validacao/rede";
 import { gerarSlug, normalizarBusca } from "@/lib/rede/texto";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
 import type { MeuPerfil, ResultadoAction, SalvarPerfilInput } from "@/types";
+import { criarNotificacao } from "./avaliacaoCore.server";
 import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
@@ -150,7 +151,27 @@ async function salvarMeuPerfilInterno(input: SalvarPerfilInput): Promise<MeuPerf
   }
 
   const tipoPj = perfil.tipo === "pj";
+  const mudouNome = normalizarBusca(dados.nome) !== normalizarBusca(perfil.nome);
   const atualizado = await prisma.$transaction(async (tx) => {
+    // O selo de verificado vale para o nome que foi conferido: trocar o nome público o remove (a empresa
+    // pede de novo), para que o selo não passe a abonar outro nome.
+    if (mudouNome) {
+      const agora = new Date().toISOString();
+      const removido = await tx.empresa.updateMany({
+        where: { id: sessao.empresaId, verificadaEm: { not: null } },
+        data: { verificadaEm: null, atualizadoEm: agora },
+      });
+      if (removido.count > 0) {
+        await criarNotificacao(
+          tx,
+          sessao.empresaId,
+          "selo_removido",
+          "O nome público do perfil mudou, então o selo de verificado foi removido. Peça uma nova verificação.",
+          "/minha-rede/verificacao",
+          { semDedupe: true },
+        );
+      }
+    }
     await tx.perfilProfissao.deleteMany({ where: { perfilId: perfil.id } });
     await tx.perfilProfissao.createMany({
       data: idsProfissoes.map((profissaoId) => ({ perfilId: perfil.id, profissaoId })),

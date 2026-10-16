@@ -31,3 +31,18 @@ export const recursosDoPlanoSchema = z
   .strict();
 
 export const buscaAdminSchema = z.string().trim().max(80);
+
+export const decidirSolicitacaoSchema = z
+  .object({
+    solicitacaoId: z.string().uuid(),
+    decisao: z.enum(["aprovar", "recusar"]),
+    motivo: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
+export const desfazerSolicitacaoSchema = z
+  .object({
+    solicitacaoId: z.string().uuid(),
+    motivo: z.string().trim().min(5, "Descreva o motivo (mínimo 5 letras).").max(500),
+  })
+  .strict();

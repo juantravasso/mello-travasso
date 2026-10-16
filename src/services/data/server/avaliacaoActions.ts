@@ -224,6 +224,7 @@ export async function listarAvaliacoesFeitas(): Promise<AvaliacaoFeita[]> {
   return registros.map((a) => ({
     id: a.id,
     status: a.status,
+    verificacao: a.statusVerificacao,
     perfilSlug: a.perfil.slug,
     perfilNome: a.perfil.nome,
     nota: a.nota,

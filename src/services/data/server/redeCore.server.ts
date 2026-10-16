@@ -33,6 +33,7 @@ function termoLiteral(texto: string): string {
 const incluirProfissoes = {
   profissoes: { include: { profissao: true } },
   arquivos: { where: { finalidade: "logo" as const }, orderBy: { criadoEm: "desc" as const }, select: { id: true }, take: 1 },
+  empresa: { select: { verificadaEm: true } },
 } as const;
 
 type PerfilComProfissoes = Prisma.PerfilPublicoGetPayload<{ include: typeof incluirProfissoes }>;
@@ -63,6 +64,7 @@ function paraResumo(
     estado: perfil.estado ?? undefined,
     profissoes: nomesDeProfissoesAtivas(perfil),
     indicado: perfil.status === "indicado",
+    verificado: perfil.status === "publicado" && !!perfil.empresa?.verificadaEm,
     logoUrl: perfil.status === "publicado" && perfil.arquivos[0] ? `/api/arquivos/${perfil.arquivos[0].id}` : undefined,
     avaliacao,
   };

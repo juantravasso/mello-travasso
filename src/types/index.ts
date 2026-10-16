@@ -10,3 +10,4 @@ export * from "./produto";
 export * from "./movimentoEstoque";
 export * from "./admin";
 export * from "./rede";
+export * from "./verificacao";

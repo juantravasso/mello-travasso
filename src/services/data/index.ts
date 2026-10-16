@@ -16,7 +16,11 @@ import type {
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
+  VerificacaoRepositorio,
+  VerificacoesAdminRepositorio,
 } from "./repositorios";
+import { cancelarSolicitacao, criarSolicitacao, listarMinhasSolicitacoes, obterAvaliacaoComprovavel, obterPerfilReivindicavel } from "./server/verificacaoActions";
+import { contarSolicitacoesPendentes, decidirSolicitacao, desfazerSolicitacao, listarSolicitacoesAdmin } from "./server/verificacaoAdminActions";
 import { alterarPlanoEmpresa, bloquearEmpresa, desbloquearEmpresa, listarEmpresasAdmin } from "./server/empresaAdminActions";
 import { obterMatrizPlanos, salvarRecursosDoPlano } from "./server/planoAdminActions";
 import { bloquearUsuario, desbloquearUsuario, encerrarSessoesDoUsuario, listarUsuariosAdmin } from "./server/usuarioAdminActions";
@@ -257,6 +261,21 @@ export const usuariosAdminRepositorio: UsuariosAdminRepositorio = {
   encerrarSessoes: encerrarSessoesDoUsuario,
 };
 
+export const verificacaoRepositorio: VerificacaoRepositorio = {
+  criar: criarSolicitacao,
+  listarMinhas: listarMinhasSolicitacoes,
+  cancelar: cancelarSolicitacao,
+  obterPerfilReivindicavel,
+  obterAvaliacaoComprovavel,
+};
+
+export const verificacoesAdminRepositorio: VerificacoesAdminRepositorio = {
+  listar: listarSolicitacoesAdmin,
+  contarPendentes: contarSolicitacoesPendentes,
+  decidir: decidirSolicitacao,
+  desfazer: desfazerSolicitacao,
+};
+
 export const planosAdminRepositorio: PlanosAdminRepositorio = {
   obter: obterMatrizPlanos,
   salvarRecursos: salvarRecursosDoPlano,
@@ -280,4 +299,6 @@ export type {
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
+  VerificacaoRepositorio,
+  VerificacoesAdminRepositorio,
 } from "./repositorios";

@@ -56,6 +56,8 @@ export interface PerfilPublicoResumo {
   indicado: boolean;
   /** URL da logo (só perfil publicado). */
   logoUrl?: string;
+  /** A administração conferiu os documentos desta empresa (ou profissional). */
+  verificado: boolean;
   /** Média e total de avaliações publicadas; ausente quando não há nenhuma. */
   avaliacao?: { media: number; total: number };
 }
@@ -151,6 +153,8 @@ export interface ResumoAvaliacoes {
   /** Quantidade por nota, de 1 a 5. */
   distribuicao: Record<1 | 2 | 3 | 4 | 5, number>;
   recomendacoes: number;
+  /** Avaliações publicadas com a relação comercial confirmada pelo avaliado ou comprovada por documento. */
+  verificadas: number;
 }
 
 export interface RespostaPublica {
@@ -210,6 +214,7 @@ export interface AvaliacaoParaEditar {
 
 export interface AvaliacaoFeita extends MinhaAvaliacao {
   id: string;
+  verificacao: "nao_verificada" | "relacao_confirmada" | "relacao_comprovada";
   /** "publicada" ou escondida pela moderação. */
   status: "publicada" | "oculta" | "removida";
   perfilSlug: string;

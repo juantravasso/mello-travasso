@@ -93,13 +93,14 @@ function arredondar(valor: number): number {
 }
 
 export async function obterResumo(perfilId: string): Promise<ResumoAvaliacoes> {
-  const [grupos, recomendacoes] = await Promise.all([
+  const [grupos, recomendacoes, verificadas] = await Promise.all([
     prisma.avaliacao.groupBy({
       by: ["nota"],
       where: { perfilId, status: "publicada" },
       _count: { _all: true },
     }),
     prisma.indicacao.count({ where: { perfilId } }),
+    prisma.avaliacao.count({ where: { perfilId, status: "publicada", statusVerificacao: { not: "nao_verificada" } } }),
   ]);
   const distribuicao: ResumoAvaliacoes["distribuicao"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let total = 0;
@@ -111,7 +112,7 @@ export async function obterResumo(perfilId: string): Promise<ResumoAvaliacoes> {
       soma += g.nota * g._count._all;
     }
   }
-  return { media: total > 0 ? arredondar(soma / total) : null, total, distribuicao, recomendacoes };
+  return { media: total > 0 ? arredondar(soma / total) : null, total, distribuicao, recomendacoes, verificadas };
 }
 
 /** Média e total por perfil, para os cartões da busca. */

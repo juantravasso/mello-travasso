@@ -46,7 +46,14 @@ import type {
   Produto,
   ProdutoComSaldo,
   ProdutoDetalhado,
+  AvaliacaoComprovavel,
+  CriarSolicitacaoInput,
+  DecisaoSolicitacao,
   EmpresaAdminItem,
+  NovaSolicitacao,
+  PerfilReivindicavel,
+  SolicitacaoAdminItem,
+  SolicitacaoItem,
   MatrizPlanos,
   ResultadoAction,
   UsuarioAdminItem,
@@ -211,4 +218,19 @@ export interface UsuariosAdminRepositorio {
 export interface PlanosAdminRepositorio {
   obter(): Promise<MatrizPlanos>;
   salvarRecursos(plano: string, recursos: string[], motivo: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+export interface VerificacaoRepositorio {
+  criar(input: CriarSolicitacaoInput): Promise<ResultadoAction<NovaSolicitacao>>;
+  listarMinhas(): Promise<SolicitacaoItem[]>;
+  cancelar(solicitacaoId: string): Promise<ResultadoAction<null>>;
+  obterPerfilReivindicavel(slug: string): Promise<ResultadoAction<PerfilReivindicavel>>;
+  obterAvaliacaoComprovavel(avaliacaoId: string): Promise<ResultadoAction<AvaliacaoComprovavel>>;
+}
+
+export interface VerificacoesAdminRepositorio {
+  listar(filtro?: "pendentes" | "decididas"): Promise<SolicitacaoAdminItem[]>;
+  contarPendentes(): Promise<number>;
+  decidir(solicitacaoId: string, decisao: DecisaoSolicitacao, motivo: string | undefined, senha?: string): Promise<ResultadoAction<null>>;
+  desfazer(solicitacaoId: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
 }

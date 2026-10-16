@@ -37,7 +37,7 @@ function erro(mensagem: string, status: number): RespostaUpload {
 }
 
 /** Lê o corpo contando os bytes e aborta ao passar do teto, sem confiar no Content-Length. */
-async function lerFormularioLimitado(request: Request, maximo: number): Promise<FormData | "grande" | "invalido"> {
+export async function lerFormularioLimitado(request: Request, maximo: number): Promise<FormData | "grande" | "invalido"> {
   const leitor = request.body?.getReader();
   if (!leitor) return "invalido";
   const partes: Uint8Array[] = [];

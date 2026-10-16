@@ -261,12 +261,28 @@ function Feitas() {
             </div>
           )}
           {a.status === "publicada" && (
-            <div>
-              <Link href={`/minha-rede/avaliar/${a.perfilSlug}`}>
-                <Button type="button" tamanho="sm" variante="outline">
-                  Editar avaliação
-                </Button>
-              </Link>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted">
+                {a.verificacao === "relacao_comprovada"
+                  ? "Relação comprovada por documento"
+                  : a.verificacao === "relacao_confirmada"
+                    ? "Relação confirmada pelo avaliado"
+                    : "Relação comercial não verificada"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/minha-rede/avaliar/${a.perfilSlug}`}>
+                  <Button type="button" tamanho="sm" variante="outline">
+                    Editar avaliação
+                  </Button>
+                </Link>
+                {a.verificacao !== "relacao_comprovada" && (
+                  <Link href={`/minha-rede/comprovar/${a.id}`}>
+                    <Button type="button" tamanho="sm" variante="ghost">
+                      Comprovar relação
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </Card>

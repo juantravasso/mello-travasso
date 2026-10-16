@@ -2,7 +2,7 @@ import type { ResumoAvaliacoes } from "@/types";
 import { EstrelasNota, formatarNota } from "./EstrelasNota";
 
 export function ResumoNotas({ resumo }: { resumo: ResumoAvaliacoes }) {
-  const { media, total, distribuicao, recomendacoes } = resumo;
+  const { media, total, distribuicao, recomendacoes, verificadas } = resumo;
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
@@ -15,6 +15,11 @@ export function ResumoNotas({ resumo }: { resumo: ResumoAvaliacoes }) {
           {total === 0 ? "Sem avaliações ainda" : total === 1 ? "1 avaliação" : `${total} avaliações`}
           {recomendacoes > 0 && <> · {recomendacoes === 1 ? "1 recomendação" : `${recomendacoes} recomendações`}</>}
         </p>
+        {verificadas > 0 && (
+          <p className="text-xs text-muted">
+            {verificadas === 1 ? "1 com relação comercial verificada" : `${verificadas} com relação comercial verificada`}
+          </p>
+        )}
       </div>
 
       {total > 0 && (

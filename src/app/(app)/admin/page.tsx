@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { exigirAdmin } from "@/lib/auth/dal";
+import { contarSolicitacoesPendentes } from "@/services/data/server/verificacaoAdminActions";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 
@@ -7,6 +8,7 @@ export default async function AdminPage() {
   // Conferido em cada página, e não só no layout: o layout não controla se
   // as páginas filhas renderizam (ver authentication.md do Next).
   await exigirAdmin();
+  const pendentes = await contarSolicitacoesPendentes();
   return (
     <div className="animar-entrada">
       <PageHeader titulo="Administração" />
@@ -39,6 +41,14 @@ export default async function AdminPage() {
           <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
             <span className="font-semibold text-foreground">Perfis da rede</span>
             <span className="text-sm text-muted">Suspenda um perfil publicado ou reative um suspenso.</span>
+          </Card>
+        </Link>
+        <Link href="/admin/verificacoes">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">
+              Verificações{pendentes > 0 && <span className="ml-2 text-sm font-medium text-warning">{pendentes} {pendentes === 1 ? "pendente" : "pendentes"}</span>}
+            </span>
+            <span className="text-sm text-muted">Selo de verificado, reivindicação de perfil e relação comprovada, com os documentos.</span>
           </Card>
         </Link>
         <Link href="/admin/empresas">

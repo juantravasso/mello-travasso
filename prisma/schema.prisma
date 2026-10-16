@@ -273,6 +273,8 @@ model Empresa {
   /// O motivo é interno, nunca mostrado ao usuário.
   bloqueadaEm        String?
   bloqueioMotivo     String?
+  /// Fase 6.5b: a administração conferiu os documentos da empresa (ou do profissional).
+  verificadaEm       String?
 
   usuarios Usuario[]
 
@@ -294,6 +296,7 @@ model Empresa {
   notificacoes                  Notificacao[]
   denuncias                     Denuncia[]
   arquivos                      Arquivo[]
+  solicitacoes                  SolicitacaoVerificacao[]
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -550,13 +553,14 @@ model PerfilPublico {
   /// Empresa que criou o perfil por indicação. Não pode avaliar o que criou.
   indicadoPorEmpresaId String?
 
-  profissoes PerfilProfissao[]
-  avaliacoes Avaliacao[]
-  indicacoes Indicacao[]
-  denuncias  Denuncia[]
-  arquivos   Arquivo[]
-  servicos   Servico[]
-  trabalhos  Trabalho[]
+  profissoes   PerfilProfissao[]
+  avaliacoes   Avaliacao[]
+  indicacoes   Indicacao[]
+  denuncias    Denuncia[]
+  arquivos     Arquivo[]
+  servicos     Servico[]
+  trabalhos    Trabalho[]
+  solicitacoes SolicitacaoVerificacao[]
 
   @@index([status, estado, cidadeBusca])
   @@index([status, criadoEm])
@@ -622,6 +626,58 @@ enum StatusVerificacaoDb {
   relacao_comprovada
 }
 
+enum TipoVerificacaoDb {
+  /// Selo "Empresa verificada" (ou "Profissional verificado" para autônomo).
+  empresa_verificada
+  /// A empresa diz que um perfil indicado é dela.
+  reivindicacao_perfil
+  /// O avaliador comprova por documento que contratou o avaliado.
+  relacao_comprovada
+}
+
+enum StatusSolicitacaoDb {
+  pendente
+  aprovada
+  recusada
+  cancelada
+  expirada
+  /// Aprovada e depois desfeita pela administração (selo revogado, perfil devolvido, relação rebaixada).
+  revogada
+}
+
+/// Pedido de verificação analisado por uma pessoa da administração. Nada é vinculado
+/// nem verificado sem decisão humana. Os documentos (Arquivo, finalidade "documento")
+/// são apagados quando o pedido sai de "pendente"; fica só esta decisão.
+model SolicitacaoVerificacao {
+  id                   String              @id @default(uuid())
+  tipo                 TipoVerificacaoDb
+  status               StatusSolicitacaoDb @default(pendente)
+  solicitanteEmpresaId String
+  solicitanteEmpresa   Empresa             @relation(fields: [solicitanteEmpresaId], references: [id], onDelete: Cascade)
+  solicitanteUsuarioId String
+  /// Só em reivindicacao_perfil.
+  perfilId             String?
+  perfil               PerfilPublico?      @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  /// Só em relacao_comprovada.
+  avaliacaoId          String?
+  avaliacao            Avaliacao?          @relation(fields: [avaliacaoId], references: [id], onDelete: Cascade)
+  /// O que o solicitante quis dizer à administração.
+  observacao           String?             @db.Text
+  decididaPorUsuarioId String?
+  decididaEm           String?
+  /// Motivo da decisão (obrigatório na recusa); o solicitante o vê.
+  motivoDecisao        String?             @db.Text
+  criadoEm             String
+  atualizadoEm         String
+
+  documentos Arquivo[]
+
+  @@index([status, criadoEm])
+  @@index([solicitanteEmpresaId, status])
+  @@index([perfilId])
+  @@index([avaliacaoId])
+}
+
 enum EstadoRelacaoDb {
   confirmada
   contestada
@@ -681,6 +737,7 @@ model Avaliacao {
   denuncias                    Denuncia[]
   verificacaoRelacao           VerificacaoRelacao?
   verificacoesRelacaoHistorico VerificacaoRelacaoHistorico[]
+  solicitacoes                 SolicitacaoVerificacao[]
 
   @@unique([avaliadorEmpresaId, perfilId])
   @@index([perfilId, status, criadoEm])
@@ -811,28 +868,38 @@ model Denuncia {
 enum FinalidadeArquivoDb {
   logo
   portfolio
-  /// Reservado para os documentos de comprovação (Fase 6.5): nunca públicos.
+  /// Documentos de comprovação (Fase 6.5b): privados e cifrados, nunca servidos em rota pública.
   documento
 }
 
 /// Arquivo guardado no próprio Postgres (sem storage externo ainda). Todo acesso
 /// passa pelo módulo de armazenamento, para trocar por Blob/S3 sem mexer no resto.
 model Arquivo {
-  id         String              @id @default(uuid())
-  empresaId  String
-  empresa    Empresa             @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  perfilId   String?
-  perfil     PerfilPublico?      @relation(fields: [perfilId], references: [id], onDelete: Cascade)
-  finalidade FinalidadeArquivoDb
-  mime       String
-  tamanho    Int
-  dados      Bytes
-  criadoEm   String
+  id            String                  @id @default(uuid())
+  empresaId     String
+  empresa       Empresa                 @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  perfilId      String?
+  perfil        PerfilPublico?          @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  finalidade    FinalidadeArquivoDb
+  mime          String
+  /// Tamanho do arquivo original (em documentos cifrados, `dados` é maior: iv + tag + conteúdo).
+  tamanho       Int
+  dados         Bytes
+  /// Documentos de verificação são sempre cifrados no app (AES-256-GCM); ver CHECK na migration.
+  cifrado       Boolean                 @default(false)
+  /// Quando os bytes foram apagados (decisão, cancelamento ou prazo): `dados` fica vazio.
+  apagadoEm     String?
+  solicitacaoId String?
+  solicitacao   SolicitacaoVerificacao? @relation(fields: [solicitacaoId], references: [id], onDelete: Cascade)
+  /// SHA-256 do conteúdo claro de um documento de verificação: prova do que foi analisado depois que os bytes são apagados.
+  sha256        String?
+  criadoEm      String
 
   foto TrabalhoFoto?
 
   @@index([perfilId, finalidade])
   @@index([empresaId])
+  @@index([solicitacaoId])
 }
 
 model Servico {

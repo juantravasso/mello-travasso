@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { PerfilPublicoResumo } from "@/types";
+import { SeloVerificado } from "./SeloVerificado";
 import { Badge } from "@/components/ui/Badge";
 import { AvatarIniciais } from "./AvatarIniciais";
 import { EstrelasNota, formatarNota } from "./EstrelasNota";
@@ -23,6 +24,7 @@ export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
             <h3 className="truncate font-semibold text-foreground group-hover:text-primary">{perfil.nome}</h3>
             <Badge tom="neutral">{perfil.tipo === "pj" ? "Empresa" : "Autônomo"}</Badge>
             {perfil.indicado && <Badge tom="info">Indicada pela rede</Badge>}
+            {perfil.verificado && <SeloVerificado tipo={perfil.tipo} />}
           </div>
           {perfil.avaliacao && (
             <p className="flex items-center gap-1.5 text-sm">

@@ -212,9 +212,9 @@ function sanearWebp(b: Uint8Array): { bytes: Bytes; largura: number; altura: num
  * arquivo malformado ou com dimensões absurdas (bomba de descompressão).
  * Devolve null quando a imagem não passa.
  */
-export function sanearImagem(bytes: Uint8Array, mime: TipoImagem): Bytes | null {
+export function sanearImagem(bytes: Uint8Array, mime: TipoImagem, maximo: number = TAMANHO_MAXIMO_BYTES): Bytes | null {
   const resultado = mime === "image/jpeg" ? sanearJpeg(bytes) : mime === "image/png" ? sanearPng(bytes) : sanearWebp(bytes);
-  if (!resultado || resultado.bytes.length === 0 || resultado.bytes.length > TAMANHO_MAXIMO_BYTES) return null;
+  if (!resultado || resultado.bytes.length === 0 || resultado.bytes.length > maximo) return null;
   return resultado.bytes;
 }
 
@@ -265,7 +265,8 @@ export async function lerMetaArquivo(id: string): Promise<MetaArquivo | null> {
 }
 
 export async function lerBytesArquivo(id: string): Promise<Uint8Array | null> {
-  const arquivo = await prisma.arquivo.findUnique({ where: { id }, select: { dados: true } });
+  // Documento de verificação nunca sai por aqui: quem precisa dele usa documentoAcesso (só admin, com log).
+  const arquivo = await prisma.arquivo.findFirst({ where: { id, finalidade: { not: "documento" } }, select: { dados: true } });
   return arquivo?.dados ?? null;
 }
 

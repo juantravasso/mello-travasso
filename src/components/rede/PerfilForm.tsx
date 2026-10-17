@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import type { CategoriaItem, MeuPerfil, SalvarPerfilInput } from "@/types";
 import { redeRepositorio } from "@/services/data";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
+import { useSugestoesCidade } from "./useSugestoesCidade";
 
 const MAX_PROFISSOES = 8;
 const MAX_AREAS = 20;
@@ -85,6 +86,8 @@ export function PerfilForm() {
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [erroCarga, setErroCarga] = useState<string | null>(null);
+  const idCidades = useId();
+  const { sugestoes: sugestoesCidade, desconhecida: cidadeDesconhecida } = useSugestoesCidade(form?.estado, form?.cidade ?? "");
 
   useEffect(() => {
     let cancelado = false;
@@ -358,7 +361,29 @@ export function PerfilForm() {
               </option>
             ))}
           </Select>
-          <Input id="perfil-cidade" label="Cidade" value={form.cidade ?? ""} onChange={(e) => atualizar("cidade", e.target.value)} maxLength={100} />
+          <div className="flex flex-col gap-1">
+            <Input
+              id="perfil-cidade"
+              label="Cidade"
+              value={form.cidade ?? ""}
+              onChange={(e) => atualizar("cidade", e.target.value)}
+              list={idCidades}
+              maxLength={100}
+              autoComplete="off"
+              aria-describedby={cidadeDesconhecida ? "perfil-cidade-aviso" : undefined}
+            />
+            <datalist id={idCidades}>
+              {sugestoesCidade.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+            {cidadeDesconhecida && (
+              <p id="perfil-cidade-aviso" role="status" className="text-xs text-warning">
+                Não achamos essa cidade{form.estado ? ` em ${form.estado}` : ""}. Escolha uma da lista para aparecer na busca por distância e nas
+                páginas da sua cidade.
+              </p>
+            )}
+          </div>
         </div>
         <Input
           id="perfil-regiao"

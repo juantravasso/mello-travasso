@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CategoriaItem, FiltrosBuscaPerfil } from "@/types";
 import { UFS } from "@/lib/rede/ufs";
 import { RAIOS_KM } from "@/lib/rede/raios";
-import { sugerirCidades } from "@/services/data/server/redeActions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { useSugestoesCidade } from "./useSugestoesCidade";
 
 function montarQuery(f: FiltrosBuscaPerfil): string {
   const params = new URLSearchParams();
@@ -40,29 +40,7 @@ export function BuscaRedeForm({
   const [tipo, setTipo] = useState<string>(inicial.tipo ?? "");
   const [notaMin, setNotaMin] = useState<string>(inicial.notaMin ? String(inicial.notaMin) : "");
   const [raio, setRaio] = useState<string>(inicial.raioKm ? String(inicial.raioKm) : "");
-  const [sugestoes, setSugestoes] = useState<string[]>([]);
-
-  useEffect(() => {
-    const termo = cidade.trim();
-    if (termo.length < 2) {
-      setSugestoes([]);
-      return;
-    }
-    let cancelado = false;
-    const espera = setTimeout(() => {
-      sugerirCidades(estado || undefined, termo)
-        .then((lista) => {
-          if (!cancelado) setSugestoes(lista);
-        })
-        .catch(() => {
-          if (!cancelado) setSugestoes([]);
-        });
-    }, 250);
-    return () => {
-      cancelado = true;
-      clearTimeout(espera);
-    };
-  }, [cidade, estado]);
+  const { sugestoes } = useSugestoesCidade(estado || undefined, cidade);
 
   function pesquisar(evento: React.FormEvent) {
     evento.preventDefault();

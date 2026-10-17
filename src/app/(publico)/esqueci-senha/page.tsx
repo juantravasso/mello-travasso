@@ -3,7 +3,7 @@ import { Logo } from "@/components/layout/Logo";
 import { EsqueciSenhaForm } from "./EsqueciSenhaForm";
 
 export const metadata: Metadata = {
-  title: "Esqueci minha senha | Mello e Travasso",
+  title: "Esqueci minha senha",
   robots: { index: false, follow: false },
 };
 

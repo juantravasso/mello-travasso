@@ -6,6 +6,7 @@ import { verificarLimite } from "@/lib/auth/limite";
 import { gerarHash } from "@/lib/auth/senha";
 import { enviarEmail, escaparHtml } from "@/lib/email/enviar.server";
 import { registrarLogAdmin } from "./adminLog.server";
+import { CORES_MARCA, MARCA } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
 
 // Recuperação de senha. Mesmo desenho da confirmação de e-mail (token só em
@@ -78,13 +79,13 @@ export async function enviarLinkDeRedefinicao(email: string): Promise<void> {
   // Conta cujo e-mail nunca foi confirmado pode ter sido aberta por outra pessoa com este endereço.
   const avisoTexto = usuario.emailConfirmadoEm
     ? ""
-    : "\n\nAtenção: esta conta nunca teve o e-mail confirmado. Se você não a criou, não abra o link e escreva para contato@mellotravasso.com.br.";
+    : `\n\nAtenção: esta conta nunca teve o e-mail confirmado. Se você não a criou, não abra o link e escreva para ${MARCA.emailContato}.`;
   const avisoHtml = usuario.emailConfirmadoEm
     ? ""
-    : "<p><strong>Atenção:</strong> esta conta nunca teve o e-mail confirmado. Se você não a criou, não clique no botão e escreva para contato@mellotravasso.com.br.</p>";
+    : `<p><strong>Atenção:</strong> esta conta nunca teve o e-mail confirmado. Se você não a criou, não clique no botão e escreva para ${MARCA.emailContato}.</p>`;
   await enviarEmail({
     para: usuario.email,
-    assunto: "Redefinição de senha na Mello e Travasso",
+    assunto: `Redefinição de senha no ${MARCA.nome}`,
     texto:
       `Olá, ${nome}.\n\n` +
       `Recebemos um pedido para redefinir a sua senha. Para escolher uma nova, abra o link abaixo (vale por 1 hora):\n${link}\n\n` +
@@ -93,7 +94,7 @@ export async function enviarLinkDeRedefinicao(email: string): Promise<void> {
     html:
       `<p>Olá, ${escaparHtml(nome)}.</p>` +
       `<p>Recebemos um pedido para redefinir a sua senha. Use o botão abaixo para escolher uma nova. O link vale por 1 hora.</p>` +
-      `<p><a href="${escaparHtml(link)}" style="display:inline-block;padding:10px 18px;background:#1b2a49;color:#fff;border-radius:6px;text-decoration:none">Redefinir senha</a></p>` +
+      `<p><a href="${escaparHtml(link)}" style="display:inline-block;padding:10px 18px;background:${CORES_MARCA.navy};color:#fff;border-radius:6px;text-decoration:none">Redefinir senha</a></p>` +
       `<p>Se o botão não abrir, copie este endereço no navegador:<br>${escaparHtml(link)}</p>` +
       `<p>Se não foi você, ignore esta mensagem: a sua senha continua a mesma.</p>` +
       avisoHtml,
@@ -105,14 +106,14 @@ async function avisarSenhaAlterada(usuario: { nome: string; email: string }): Pr
   const nome = usuario.nome.split(" ")[0] ?? "";
   await enviarEmail({
     para: usuario.email,
-    assunto: "Sua senha da Mello e Travasso foi alterada",
+    assunto: `Sua senha do ${MARCA.nome} foi alterada`,
     texto:
       `Olá, ${nome}.\n\nA senha da sua conta acabou de ser alterada e todas as sessões abertas foram encerradas.\n\n` +
-      `Se não foi você, peça outra redefinição agora em ${urlDoSite()}/esqueci-senha e fale com o suporte: contato@mellotravasso.com.br.`,
+      `Se não foi você, peça outra redefinição agora em ${urlDoSite()}/esqueci-senha e fale com o suporte: ${MARCA.emailContato}.`,
     html:
       `<p>Olá, ${escaparHtml(nome)}.</p>` +
       `<p>A senha da sua conta acabou de ser alterada e todas as sessões abertas foram encerradas.</p>` +
-      `<p>Se não foi você, <a href="${escaparHtml(`${urlDoSite()}/esqueci-senha`)}">peça outra redefinição agora</a> e fale com o suporte: contato@mellotravasso.com.br.</p>`,
+      `<p>Se não foi você, <a href="${escaparHtml(`${urlDoSite()}/esqueci-senha`)}">peça outra redefinição agora</a> e fale com o suporte: ${MARCA.emailContato}.</p>`,
   });
 }
 

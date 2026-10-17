@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { listarPerfisRecentes, listarTaxonomia } from "@/services/data/server/redeCore.server";
 import { obterSessaoOpcional } from "@/lib/auth/dal";
+import { MARCA } from "@/lib/marca";
 import { BuscaRedeForm } from "@/components/rede/BuscaRedeForm";
 import { PerfilItem } from "@/components/rede/PerfilItem";
 import { Card } from "@/components/ui/Card";
 
 export const metadata: Metadata = {
-  title: "Encontrar profissionais e empresas | Mello e Travasso",
+  title: "Encontrar profissionais e empresas",
   description:
-    "Pesquise empresas e profissionais da construção civil e de serviços por profissão, cidade e estado. Veja perfis, contatos e trabalhos.",
+    `Pesquise empresas e profissionais de construção civil, serviços e tecnologia por profissão, cidade e estado. Veja perfis, avaliações e trabalhos no ${MARCA.produtos.profissionais.nome}.`,
   alternates: { canonical: "/rede" },
 };
 
@@ -28,10 +29,10 @@ export default async function RedeInicioPage() {
       <section className="flex flex-col gap-5">
         <div className="flex max-w-2xl flex-col gap-2">
           <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
-            Ache quem faz o serviço, <span className="text-primary">perto da sua obra.</span>
+            Ache quem faz o serviço, <span className="text-primary">perto de você.</span>
           </h1>
           <p className="text-muted">
-            Empresas e profissionais da construção e de serviços, com contato direto. A consulta é aberta a todos.
+            Empresas e profissionais de construção civil, serviços e tecnologia, com avaliações de quem já contratou. A consulta é aberta a todos.
           </p>
         </div>
         <Card className="p-4 sm:p-5">

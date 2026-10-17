@@ -8,11 +8,12 @@ import type {
   PaginaAvaliacoes,
   ResumoAvaliacoes,
 } from "@/types";
+import { MARCA } from "@/lib/marca";
 import { ErroDeNegocio } from "./resultado.server";
 
 export const TAMANHO_PAGINA_AVALIACOES = 10;
 export const IDADE_MINIMA_CONTA_MS = 24 * 60 * 60 * 1000;
-export const CANAL_CONTESTACAO = "contato@mellotravasso.com.br";
+export const CANAL_CONTESTACAO = MARCA.emailContato;
 const RECOMENDACOES_POR_DIA = 60;
 const UM_DIA_MS = 24 * 60 * 60 * 1000;
 

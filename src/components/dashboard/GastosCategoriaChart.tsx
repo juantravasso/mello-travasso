@@ -4,7 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { FatiaCategoria } from "@/lib/dashboardMetrics";
 import { formatarMoeda } from "@/lib/formatadores";
 
-const PALETA = ["#d8a53d", "#4f9ee8", "#22c55e", "#ef4444", "#a78bfa", "#2dd4bf", "#8992a6"];
+const PALETA = ["#2dd4bf", "#e8b04b", "#4f9ee8", "#22c55e", "#ef4444", "#a78bfa", "#8992a6"];
 
 export function GastosCategoriaChart({ dados }: { dados: FatiaCategoria[] }) {
   const total = dados.reduce((soma, d) => soma + d.valor, 0);

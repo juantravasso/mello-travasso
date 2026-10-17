@@ -26,7 +26,7 @@ export function ConfirmarEmailForm({ token }: { token: string }) {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-semibold tracking-[-0.01em] text-foreground">E-mail confirmado</h1>
-        <p className="text-sm text-muted">Pronto. Você já pode publicar seu perfil e interagir na rede profissional.</p>
+        <p className="text-sm text-muted">Pronto. Você já pode publicar seu perfil e interagir no Elo Profissionais.</p>
         <Link href="/minha-rede/perfil" className="w-fit font-medium text-primary underline underline-offset-4">
           Ir para o meu perfil
         </Link>

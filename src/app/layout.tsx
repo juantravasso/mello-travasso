@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { MARCA, TEMPLATE_TITULO, TITULO_PADRAO } from "@/lib/marca";
+import { urlDoSite } from "@/lib/rede/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +15,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mello e Travasso | Engenharia Civil",
-  description: "Controle financeiro de obras: comprovantes, contas a pagar/receber e custos de materiais.",
+  metadataBase: new URL(urlDoSite()),
+  // As páginas informam só o próprio título; o sufixo "| Elo Negócios" vem do template.
+  title: { default: TITULO_PADRAO, template: TEMPLATE_TITULO },
+  description: MARCA.descricao,
+  applicationName: MARCA.nome,
+  openGraph: {
+    type: "website",
+    siteName: MARCA.nome,
+    locale: "pt_BR",
+    title: TITULO_PADRAO,
+    description: MARCA.descricao,
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

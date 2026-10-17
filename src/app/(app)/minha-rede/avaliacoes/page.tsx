@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AvaliacoesPainel } from "@/components/rede/AvaliacoesPainel";
 
-export const metadata: Metadata = { title: "Minhas avaliações | Mello e Travasso" };
+export const metadata: Metadata = { title: "Minhas avaliações" };
 
 export default async function AvaliacoesPage({
   searchParams,

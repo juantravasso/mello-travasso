@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { verificarLimite } from "@/lib/auth/limite";
 import { enviarEmail, escaparHtml } from "@/lib/email/enviar.server";
+import { CORES_MARCA, MARCA } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
 
 // Confirmação de e-mail. O token vai por e-mail em claro e fica no banco só
@@ -71,15 +72,15 @@ export async function emitirConfirmacaoDeEmail(usuario: UsuarioParaConfirmar): P
   const nome = usuario.nome.split(" ")[0] ?? "";
   return enviarEmail({
     para: usuario.email,
-    assunto: "Confirme seu e-mail na Mello e Travasso",
+    assunto: `Confirme seu e-mail no ${MARCA.nome}`,
     texto:
       `Olá, ${nome}.\n\n` +
-      `Para confirmar este e-mail e liberar a publicação na rede profissional, abra o link abaixo (vale por 24 horas):\n${link}\n\n` +
+      `Para confirmar este e-mail e liberar a publicação no ${MARCA.produtos.profissionais.nome}, abra o link abaixo (vale por 24 horas):\n${link}\n\n` +
       `Se você não criou uma conta, não abra o link e ignore esta mensagem.`,
     html:
       `<p>Olá, ${escaparHtml(nome)}.</p>` +
-      `<p>Para confirmar este e-mail e liberar a publicação na rede profissional, use o botão abaixo. O link vale por 24 horas.</p>` +
-      `<p><a href="${escaparHtml(link)}" style="display:inline-block;padding:10px 18px;background:#1b2a49;color:#fff;border-radius:6px;text-decoration:none">Confirmar e-mail</a></p>` +
+      `<p>Para confirmar este e-mail e liberar a publicação no ${MARCA.produtos.profissionais.nome}, use o botão abaixo. O link vale por 24 horas.</p>` +
+      `<p><a href="${escaparHtml(link)}" style="display:inline-block;padding:10px 18px;background:${CORES_MARCA.navy};color:#fff;border-radius:6px;text-decoration:none">Confirmar e-mail</a></p>` +
       `<p>Se o botão não abrir, copie este endereço no navegador:<br>${escaparHtml(link)}</p>` +
       `<p>Se você não criou uma conta, não clique no botão e ignore esta mensagem.</p>`,
   });

@@ -4,7 +4,7 @@ import { RedefinirSenhaForm } from "./RedefinirSenhaForm";
 
 // O token está na URL: sem Referer para outros sites e fora de qualquer índice.
 export const metadata: Metadata = {
-  title: "Nova senha | Mello e Travasso",
+  title: "Nova senha",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

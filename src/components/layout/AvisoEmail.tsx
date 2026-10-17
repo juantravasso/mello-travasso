@@ -29,7 +29,7 @@ export function AvisoEmail({ email }: { email: string }) {
       className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-warning bg-warning-bg px-4 py-2 text-sm text-warning sm:px-8"
     >
       <span>
-        Confirme seu e-mail para publicar na rede e avaliar. O link vai para{" "}
+        Confirme seu e-mail para publicar no Elo Profissionais e avaliar. O link vai para{" "}
         <span className="font-medium break-all">{email}</span>; se não chegou, peça outro.
       </span>
       <span className="flex items-center gap-3">

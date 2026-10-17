@@ -1,15 +1,28 @@
-# Mello Travasso — Gestão Financeira de Obras
+# Elo Negócios
 
-Sistema administrativo web para controle financeiro de obras comerciais:
-comprovantes de pagamento, contas a pagar/receber e histórico de custo de
-materiais, com pré-preenchimento automático via IA a partir de fotos de
-comprovantes e notas fiscais.
+> Seu negócio conectado a novas possibilidades.
+
+Plataforma para gerenciar a empresa, encontrar profissionais confiáveis e descobrir
+novas oportunidades, em um só lugar. Tem duas áreas no ar e uma planejada:
+
+- **Elo Gestão**: controle financeiro e operacional (contas a pagar/receber, projetos,
+  estoque, funcionários e fornecedores), com pré-preenchimento automático via IA a partir
+  de fotos de comprovantes e notas fiscais.
+- **Elo Profissionais**: busca, perfis públicos, avaliações, indicações e verificação de
+  empresas e autônomos (construção civil, serviços e tecnologia).
+- **Elo Marketplace**: compra e venda de produtos e serviços. **Ainda não existe**; aparece
+  só como visão futura (`disponivel: false`) e não tem rota.
+
+Nome, slogan, descrição, áreas e cores da marca ficam em [src/lib/marca.ts](src/lib/marca.ts).
+O logo é [Logo.tsx](src/components/layout/Logo.tsx); favicon, ícone do app, manifest e imagem
+de compartilhamento são gerados por código em `src/app/` (`icon.tsx`, `apple-icon.tsx`,
+`manifest.ts`, `opengraph-image.tsx`).
 
 ## Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript estrito** (sem `any`)
 - **Postgres (Neon, via integração nativa da Vercel) + Prisma 6** — banco real, compartilhado entre todos os dispositivos/usuários (ver seção própria abaixo)
-- **Tailwind CSS v4** — identidade visual "navy + dourado" com tema claro alternável em [src/app/globals.css](src/app/globals.css), componentes base em [src/components/ui](src/components/ui)
+- **Tailwind CSS v4** — identidade visual Elo (navy + verde-azulado, com dourado no símbolo) com tema claro alternável em [src/app/globals.css](src/app/globals.css), componentes base em [src/components/ui](src/components/ui)
 - **anime.js** para as animações de modal e dropdown
 - **Recharts** para os gráficos do dashboard (fluxo financeiro, gastos por categoria) e de evolução de preço
 - Roteamento: **file-based routing do Next.js** (App Router) — substitui o React Router; cada pasta em `src/app` é uma tela

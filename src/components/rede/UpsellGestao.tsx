@@ -1,21 +1,22 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { MARCA } from "@/lib/marca";
 import { IniciarTesteButton } from "./IniciarTesteButton";
 
 const MODULOS = [
   { titulo: "Captura de documentos com IA", texto: "Fotografe notas e recibos; os dados viram lançamentos." },
   { titulo: "Contas a pagar e a receber", texto: "Vencimentos, baixas e histórico de cada lançamento." },
-  { titulo: "Obras e estoque", texto: "Custos por obra e saldo de materiais em cada canteiro." },
-  { titulo: "Funcionários e fornecedores", texto: "Cadastros ligados às obras e aos lançamentos." },
+  { titulo: "Projetos e estoque", texto: "Custos por projeto e saldo de materiais em cada projeto." },
+  { titulo: "Funcionários e fornecedores", texto: "Cadastros ligados aos projetos e aos lançamentos." },
 ];
 
 export function UpsellGestao({ podeIniciarTeste }: { podeIniciarTeste: boolean }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 animar-entrada">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold text-foreground">Gestão de obras e finanças</h1>
+        <h1 className="text-xl font-semibold text-foreground">{MARCA.produtos.gestao.nome}</h1>
         <p className="text-sm text-muted">
-          Seu plano inclui a rede profissional. Os módulos abaixo fazem parte da gestão, que você pode experimentar quando quiser.
+          Seu plano inclui o {MARCA.produtos.profissionais.nome}. Os módulos abaixo fazem parte do {MARCA.produtos.gestao.nome}, que você pode experimentar quando quiser.
         </p>
       </div>
 
@@ -42,7 +43,7 @@ export function UpsellGestao({ podeIniciarTeste }: { podeIniciarTeste: boolean }
             href="/rede"
             className="inline-flex h-11 items-center justify-center rounded-lg px-4 text-base font-medium text-foreground transition-colors hover:bg-surface-2"
           >
-            Voltar à rede profissional
+            Voltar ao {MARCA.produtos.profissionais.nome}
           </Link>
         </div>
       </Card>

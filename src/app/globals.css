@@ -4,9 +4,10 @@
   --background: #0b0e14;
   --foreground: #eef1f6;
 
-  --color-primary: #d8a53d;
-  --color-primary-hover: #e8b750;
-  --color-primary-foreground: #171208;
+  /* Verde-azulado da marca Elo (confiança + crescimento). O dourado ficou só no símbolo e nos avisos. */
+  --color-primary: #2dd4bf;
+  --color-primary-hover: #5eead4;
+  --color-primary-foreground: #04211d;
 
   --color-sidebar: #0a0c12;
   --color-surface: #141824;
@@ -32,9 +33,9 @@
   --background: #f5f6f8;
   --foreground: #171b24;
 
-  --color-primary: #b3801f;
-  --color-primary-hover: #9c6f19;
-  --color-primary-foreground: #fffaf0;
+  --color-primary: #0f766e;
+  --color-primary-hover: #115e59;
+  --color-primary-foreground: #f0fdfa;
 
   --color-sidebar: #ffffff;
   --color-surface: #ffffff;

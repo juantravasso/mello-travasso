@@ -15,8 +15,8 @@ type TipoPessoa = "pj" | "pf";
 type ModoCadastro = "teste" | "rede";
 
 const OPCOES_MODO: { valor: ModoCadastro; titulo: string; descricao: string }[] = [
-  { valor: "teste", titulo: "Teste de 30 dias", descricao: "Todos os módulos: obras, contas, estoque e a rede profissional." },
-  { valor: "rede", titulo: "Só a rede profissional", descricao: "Perfil público, busca e avaliações. Grátis, sem prazo." },
+  { valor: "teste", titulo: "Teste de 30 dias", descricao: "Elo Gestão e Elo Profissionais: projetos, contas, estoque, perfil público e avaliações." },
+  { valor: "rede", titulo: "Só o Elo Profissionais", descricao: "Perfil público, busca e avaliações. Grátis, sem prazo." },
 ];
 
 interface EstadoCadastro {
@@ -310,7 +310,7 @@ export function CriarContaForm() {
           {emAndamento ? "Criando conta…" : modo === "rede" ? "Criar conta grátis" : "Criar conta e começar o teste"}
         </Button>
         <p className="text-center text-xs text-muted">
-          {modo === "rede" ? "Grátis, sem prazo. Dá para testar os módulos de gestão depois." : "30 dias grátis. Sem cartão de crédito."}
+          {modo === "rede" ? "Grátis, sem prazo. Dá para testar o Elo Gestão depois." : "30 dias grátis. Sem cartão de crédito."}
         </p>
       </div>
     </form>

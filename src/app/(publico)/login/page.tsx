@@ -4,7 +4,7 @@ import { Logo } from "@/components/layout/Logo";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = {
-  title: "Entrar | Mello e Travasso",
+  title: "Entrar",
 };
 
 export default function LoginPage() {
@@ -15,7 +15,7 @@ export default function LoginPage() {
 
         <div className="flex flex-col gap-1">
           <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-foreground">Entrar</h1>
-          <p className="text-sm text-muted">Acesse o controle financeiro das suas obras.</p>
+          <p className="text-sm text-muted">Acesse o Elo Gestão e o Elo Profissionais.</p>
         </div>
 
         <Suspense fallback={null}>

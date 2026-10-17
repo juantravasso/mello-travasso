@@ -4,7 +4,7 @@ import { Logo } from "@/components/layout/Logo";
 import { DATA_TERMOS_ATUAL, VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso | Mello e Travasso",
+  title: "Termos de Uso",
 };
 
 export default function TermosPage() {

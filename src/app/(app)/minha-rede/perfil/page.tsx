@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PerfilForm } from "@/components/rede/PerfilForm";
 
-export const metadata: Metadata = { title: "Meu perfil público | Mello e Travasso" };
+export const metadata: Metadata = { title: "Meu perfil público" };
 
 export default function MeuPerfilPage() {
   return (

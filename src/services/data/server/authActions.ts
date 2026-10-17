@@ -12,6 +12,7 @@ import { verificarLimite, extrairIpConfiavel, limparLimitesExpirados } from "@/l
 import { entrarSchema, trocarSenhaSchema } from "@/lib/validacao/auth";
 import { criarContaSchema } from "@/lib/validacao/cadastro";
 import { normalizarDocumento } from "@/lib/documento";
+import { MARCA } from "@/lib/marca";
 import { VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 import type { ResultadoAction } from "@/types";
 import { emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
@@ -21,7 +22,7 @@ const LIMITE_CADASTROS_POR_HORA = 5;
 
 const MENSAGEM_LOGIN_INVALIDO = "E-mail ou senha incorretos.";
 const MENSAGEM_BLOQUEADO = "Muitas tentativas. Tente de novo em 15 minutos.";
-const MENSAGEM_CONTA_BLOQUEADA = "Esta conta está bloqueada. Fale com o suporte: contato@mellotravasso.com.br.";
+const MENSAGEM_CONTA_BLOQUEADA = `Esta conta está bloqueada. Fale com o suporte: ${MARCA.emailContato}.`;
 const MAX_FALHAS = 5;
 const BLOQUEIO_MS = 15 * 60 * 1000;
 

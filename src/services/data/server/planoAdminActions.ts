@@ -46,7 +46,7 @@ export async function salvarRecursosDoPlano(plano: string, recursos: string[], m
     await exigirSenhaDoAdmin(admin.usuarioId, senha);
     const dados = parsed.data;
     if (dados.plano === "gratuito" && !dados.recursos.includes("rede")) {
-      throw new ErroDeNegocio("O plano gratuito precisa manter a rede profissional.");
+      throw new ErroDeNegocio("O plano gratuito precisa manter o Elo Profissionais.");
     }
     if (PLANOS_COMPLETOS.includes(dados.plano) && !RECURSOS_DO_PLANO_COMPLETO.every((c) => dados.recursos.includes(c))) {
       throw new ErroDeNegocio("Os planos de teste, cortesia e ativo precisam manter a rede e a gestão. Para barrar uma conta, bloqueie a empresa.");

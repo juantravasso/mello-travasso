@@ -59,7 +59,7 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const filtros = lerFiltros(await searchParams);
   const temFiltro = Boolean(filtros.q || filtros.profissao || filtros.categoria || filtros.estado || filtros.cidade || filtros.tipo || filtros.notaMin);
   return {
-    title: "Resultados da pesquisa | Mello e Travasso",
+    title: "Resultados da pesquisa",
     description: "Empresas e profissionais da construção civil e de serviços.",
     // Cada combinação de filtros é uma URL própria: só a listagem sem filtro é indexada.
     robots: temFiltro || (filtros.pagina ?? 1) > 1 ? { index: false, follow: true } : undefined,

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obterSessaoOpcional } from "@/lib/auth/dal";
 import { Logo } from "@/components/layout/Logo";
+import { MARCA } from "@/lib/marca";
 
 export async function RedeHeader() {
   const sessao = await obterSessaoOpcional();
@@ -9,12 +10,15 @@ export async function RedeHeader() {
     <header className="border-b border-border bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
-          <Link href="/" aria-label="Início">
-            <Logo tamanho="sm" />
+          <Link href="/" aria-label={`${MARCA.nome}: página inicial`}>
+            <Logo tamanho="sm" produto="profissionais" />
           </Link>
-          <nav aria-label="Rede profissional" className="hidden sm:block">
+          <nav aria-label={MARCA.nome} className="hidden items-center gap-5 sm:flex">
             <Link href="/rede" className="text-sm font-medium text-foreground hover:text-primary">
               Encontrar profissionais
+            </Link>
+            <Link href={sessao ? "/dashboard" : "/#produtos"} className="text-sm font-medium text-muted hover:text-foreground">
+              {MARCA.produtos.gestao.nome}
             </Link>
           </nav>
         </div>
@@ -37,9 +41,9 @@ export async function RedeHeader() {
               </Link>
               <Link
                 href="/criar-conta"
-                className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
+                className="inline-flex h-9 items-center whitespace-nowrap rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
               >
-                Criar conta grátis
+                Criar conta<span className="hidden sm:inline">&nbsp;grátis</span>
               </Link>
             </>
           )}

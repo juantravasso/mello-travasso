@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { MARCA } from "@/lib/marca";
 
 const abas = [
   { href: "/minha-rede/perfil", rotulo: "Meu perfil público", tambem: [] },
@@ -18,7 +19,7 @@ const abas = [
 export function AbasRede() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Rede profissional" className="mb-5 flex gap-1 overflow-x-auto border-b border-border">
+    <nav aria-label={MARCA.produtos.profissionais.nome} className="mb-5 flex gap-1 overflow-x-auto border-b border-border">
       {abas.map((aba) => {
         const prefixos: readonly string[] = [aba.href, ...aba.tambem];
         const ativa = prefixos.some((p) => pathname === p || pathname.startsWith(`${p}/`));

@@ -4,7 +4,7 @@ import { Logo } from "@/components/layout/Logo";
 import { CriarContaForm } from "./CriarContaForm";
 
 export const metadata: Metadata = {
-  title: "Criar conta | Mello e Travasso",
+  title: "Criar conta",
 };
 
 export default function CriarContaPage() {
@@ -19,7 +19,7 @@ export default function CriarContaPage() {
 
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-foreground">Criar conta</h1>
-        <p className="text-sm text-muted">Empresa ou autônomo da construção — 30 dias grátis para começar.</p>
+        <p className="text-sm text-muted">Para empresas, prestadores de serviços e autônomos. 30 dias grátis para começar.</p>
       </div>
 
       <CriarContaForm />

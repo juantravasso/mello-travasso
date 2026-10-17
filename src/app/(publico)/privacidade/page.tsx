@@ -4,7 +4,7 @@ import { Logo } from "@/components/layout/Logo";
 import { DATA_TERMOS_ATUAL, VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade | Mello e Travasso",
+  title: "Política de Privacidade",
 };
 
 export default function PrivacidadePage() {
@@ -52,9 +52,9 @@ export default function PrivacidadePage() {
             Você pode pedir a correção ou exclusão dos seus dados a qualquer momento, entrando em contato com quem
             administra sua conta.
           </p>
-          <h2 className="text-base font-semibold">6. Rede profissional (perfil público)</h2>
+          <h2 className="text-base font-semibold">6. Elo Profissionais (perfil público)</h2>
           <p>
-            Se você criar e publicar um perfil na rede profissional, os dados que você escolher mostrar passam a ser
+            Se você criar e publicar um perfil no Elo Profissionais, os dados que você escolher mostrar passam a ser
             públicos: nome do perfil, descrição, profissões, cidade, estado, áreas de atendimento, Instagram, site e,
             somente se você marcar, telefone e WhatsApp. Qualquer pessoa pode ver, e buscadores podem indexar a página.
             O perfil nasce como rascunho e só é publicado por ação sua. Você pode despublicar a qualquer momento — a

@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { obterSessaoOpcional } from "@/lib/auth/dal";
 import { extrairIpConfiavel, verificarLimite } from "@/lib/auth/limite";
 import { formatarTelefone } from "@/lib/rede/texto";
+import { MARCA } from "@/lib/marca";
 import { jsonLdSeguro, urlDoSite } from "@/lib/rede/site";
 import { AcoesPerfil } from "@/components/rede/AcoesPerfil";
 import { SeloVerificado } from "@/components/rede/SeloVerificado";
@@ -27,7 +28,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
   const dados = await obterPerfilPublicoPorSlug(slug);
-  if (!dados) return { title: "Perfil não encontrado | Mello e Travasso", robots: { index: false } };
+  if (!dados) return { title: "Perfil não encontrado", robots: { index: false } };
   const perfil = dados.perfil;
 
   const local = localizacao(perfil);
@@ -35,16 +36,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const titulo = [perfil.nome, profissoes || null, local].filter(Boolean).join(" — ");
   const descricao =
     perfil.descricao?.slice(0, 160) ??
-    `${perfil.nome}${profissoes ? `: ${profissoes}` : ""}${local ? ` em ${local}` : ""}. Veja contatos e avaliações na rede profissional.`;
+    `${perfil.nome}${profissoes ? `: ${profissoes}` : ""}${local ? ` em ${local}` : ""}. Veja contatos e avaliações no ${MARCA.produtos.profissionais.nome}.`;
   const caminho = `/empresas/${perfil.slug}`;
 
   return {
-    title: `${titulo} | Mello e Travasso`,
+    title: titulo,
     description: descricao,
     // Perfil indicado por terceiros não é indexado: o conteúdo não foi publicado pela própria pessoa.
     robots: perfil.indicado ? { index: false, follow: true } : undefined,
     alternates: { canonical: `${urlDoSite()}${caminho}` },
-    openGraph: { title: titulo, description: descricao, url: `${urlDoSite()}${caminho}`, type: "profile", locale: "pt_BR" },
+    openGraph: { title: titulo, description: descricao, url: `${urlDoSite()}${caminho}`, type: "profile", locale: "pt_BR", siteName: MARCA.nome },
     twitter: { card: "summary", title: titulo, description: descricao },
   };
 }
@@ -143,7 +144,7 @@ export default async function PerfilPublicoPage({
           Esta empresa foi indicada por outras empresas da rede e ainda não tem cadastro. As informações abaixo são
           básicas e não foram preenchidas por ela.{" "}
           <a
-            href="mailto:contato@mellotravasso.com.br?subject=Remover%20ou%20corrigir%20p%C3%A1gina%20indicada"
+            href={`mailto:${MARCA.emailContato}?subject=Remover%20ou%20corrigir%20p%C3%A1gina%20indicada`}
             className="font-medium underline underline-offset-4"
           >
             Não é você, ou quer corrigir ou remover esta página? Fale com a gente.

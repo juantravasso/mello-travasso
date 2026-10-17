@@ -4,7 +4,7 @@ import { ConfirmarEmailForm } from "./ConfirmarEmailForm";
 
 // O token está na URL: sem Referer para outros sites e fora de qualquer índice.
 export const metadata: Metadata = {
-  title: "Confirmar e-mail | Mello e Travasso",
+  title: "Confirmar e-mail",
   referrer: "no-referrer",
   robots: { index: false, follow: false },
 };

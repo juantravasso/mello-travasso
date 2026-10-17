@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MARCA } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
 import { listarPerfisLocais, obterLocalPorSlugs, visitaLocalPermitida } from "@/services/data/server/redeCore.server";
 import { PerfilItem } from "@/components/rede/PerfilItem";
@@ -19,9 +20,9 @@ function lerPagina(consulta: Record<string, string | string[] | undefined>): num
 export async function generateMetadata({ params, searchParams }: { params: Params; searchParams: SearchParams }): Promise<Metadata> {
   const { profissao, uf, cidade } = await params;
   // Acima do limite a página mostra só o aviso: não consulta o banco nem vai para o índice.
-  if (!(await visitaLocalPermitida())) return { title: "Muitas visitas | Mello e Travasso", robots: { index: false } };
+  if (!(await visitaLocalPermitida())) return { title: "Muitas visitas", robots: { index: false } };
   const local = await obterLocalPorSlugs(profissao, uf, cidade);
-  if (!local) return { title: "Página não encontrada | Mello e Travasso", robots: { index: false } };
+  if (!local) return { title: "Página não encontrada", robots: { index: false } };
 
   const pagina = lerPagina(await searchParams);
   const { total } = await listarPerfisLocais(local, pagina);
@@ -31,15 +32,15 @@ export async function generateMetadata({ params, searchParams }: { params: Param
   const descricao =
     total > 0
       ? `${total === 1 ? "1 empresa ou profissional" : `${total} empresas e profissionais`} de ${local.profissao.nome.toLowerCase()} em ${lugar}, com avaliações de quem já contratou.`
-      : `Empresas e profissionais de ${local.profissao.nome.toLowerCase()} em ${lugar} na rede Mello e Travasso.`;
+      : `Empresas e profissionais de ${local.profissao.nome.toLowerCase()} em ${lugar} no ${MARCA.produtos.profissionais.nome}.`;
 
   return {
-    title: `${titulo} | Mello e Travasso`,
+    title: titulo,
     description: descricao,
     // Página sem perfil publicado ou além da primeira não vai para o índice (conteúdo fino/duplicado).
     robots: total === 0 || pagina > 1 ? { index: false, follow: true } : undefined,
     alternates: { canonical: `${urlDoSite()}${caminho}` },
-    openGraph: { title: titulo, description: descricao, url: `${urlDoSite()}${caminho}`, type: "website", locale: "pt_BR" },
+    openGraph: { title: titulo, description: descricao, url: `${urlDoSite()}${caminho}`, type: "website", locale: "pt_BR", siteName: MARCA.nome },
   };
 }
 

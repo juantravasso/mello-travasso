@@ -14,7 +14,8 @@ import { ModalParcelamento, type ParcelaEditavel } from "@/components/contas/Mod
 import { SelectComCriacao } from "@/components/contas/SelectComCriacao";
 import { SelectFornecedor } from "@/components/contas/SelectFornecedor";
 import { FORMAS_PAGAMENTO_PARCELAVEIS, categoriasPagar } from "@/lib/categorias";
-import { hojeISO } from "@/lib/formatadores";
+import { formatarMoeda, hojeISO } from "@/lib/formatadores";
+import { ratearConta } from "@/lib/estoque/rateio";
 import { cn } from "@/lib/cn";
 
 export interface ItemNotaFiscalEditavel {
@@ -23,6 +24,8 @@ export interface ItemNotaFiscalEditavel {
   unidade: string;
   valorUnitario: number;
   valorTotal: number;
+  /** Para onde o item vai (projeto ou Depósito). Vazio na tela = o mesmo destino geral; ao confirmar já vem resolvido. */
+  obraId: string;
 }
 
 export interface DadosConfirmados {
@@ -48,10 +51,12 @@ interface ConfirmacaoExtracaoProps {
   onConfirmar: (dados: DadosConfirmados) => void;
   onCancelar: () => void;
   enviando: boolean;
+  /** Mensagem do servidor quando não foi possível salvar. */
+  erroAoSalvar?: string | null;
 }
 
 function itemVazio(): ItemNotaFiscalEditavel {
-  return { descricao: "", quantidade: 1, unidade: "un", valorUnitario: 0, valorTotal: 0 };
+  return { descricao: "", quantidade: 1, unidade: "un", valorUnitario: 0, valorTotal: 0, obraId: "" };
 }
 
 export function ConfirmacaoExtracao({
@@ -62,8 +67,9 @@ export function ConfirmacaoExtracao({
   onConfirmar,
   onCancelar,
   enviando,
+  erroAoSalvar,
 }: ConfirmacaoExtracaoProps) {
-  const { obras } = useObras();
+  const { obras, locais, deposito } = useObras();
   const categoriasCatalogo = useCatalogoCategorias("pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
   const { fornecedores, criarFornecedor, resolverFornecedor } = useFornecedores();
@@ -104,6 +110,7 @@ export function ConfirmacaoExtracao({
           unidade: item.unidade ?? "un",
           valorUnitario: item.valorUnitario ?? 0,
           valorTotal: item.valorTotal ?? 0,
+          obraId: "",
         })),
       );
     }
@@ -152,12 +159,31 @@ export function ConfirmacaoExtracao({
     );
   }
 
+  /** Escolher o destino geral faz todos os itens irem para ele (cada um ainda pode ser trocado depois). */
+  function aoMudarDestinoGeral(novo: string) {
+    setObraId(novo);
+    setItens((atual) => atual.map((item) => ({ ...item, obraId: "" })));
+  }
+
+  function aoMudarTipoDocumento(opcao: TipoDocumentoCapturado) {
+    setTipoDocumento(opcao);
+    // Comprovante simples não tem itens nem estoque: precisa de um projeto, não do Depósito.
+    if (opcao === "comprovante" && obraId === deposito?.id) aoMudarDestinoGeral(obras[0]?.id ?? "");
+  }
+
   function removerItem(indice: number) {
     setItens((atual) => atual.filter((_, i) => i !== indice));
   }
 
   const valorNumerico = Number(valor.replace(",", "."));
   const formularioValido = valorNumerico > 0 && data !== "" && favorecido.trim() !== "" && obraId !== "";
+
+  const ehNota = tipoDocumento === "nota_fiscal";
+  const opcoesDeDestino = ehNota && deposito ? [...obras, deposito] : obras;
+  const nomeDoLocal = (id: string) => locais.find((l) => l.id === id)?.nome ?? "—";
+  const itensComValor = itens.filter((i) => i.descricao.trim() !== "");
+  // Prévia de como a nota será dividida entre os destinos dos itens (o servidor faz a mesma conta).
+  const divisao = ehNota ? ratearConta(itensComValor.map((i) => ({ obraId: i.obraId || obraId, valorTotal: i.valorTotal })), valorNumerico || 0) : [];
 
   function aoMudarFormaPagamento(novoValor: string) {
     setFormaPagamento(novoValor);
@@ -177,7 +203,7 @@ export function ConfirmacaoExtracao({
       formaPagamento: formaPagamento || undefined,
       observacao: observacao.trim() || undefined,
       obraId,
-      itens: tipoDocumento === "nota_fiscal" ? itens : [],
+      itens: ehNota ? itensComValor.map((item) => ({ ...item, obraId: item.obraId || obraId })) : [],
       parcelas: parcelas && parcelas.length > 1 ? parcelas : undefined,
     });
   }
@@ -208,7 +234,7 @@ export function ConfirmacaoExtracao({
           <button
             key={opcao}
             type="button"
-            onClick={() => setTipoDocumento(opcao)}
+            onClick={() => aoMudarTipoDocumento(opcao)}
             className={cn(
               "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               tipoDocumento === opcao ? "bg-primary text-primary-foreground" : "text-muted",
@@ -259,16 +285,25 @@ export function ConfirmacaoExtracao({
           destaque={camposDestacados.includes("descricao")}
           placeholder="Descrição do gasto"
         />
-        <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+        <Select
+          label={ehNota ? "Destino de todos os itens" : "Projeto"}
+          value={obraId}
+          onChange={(e) => aoMudarDestinoGeral(e.target.value)}
+        >
           <option value="" disabled>
             Selecione o projeto
           </option>
-          {obras.map((obra) => (
+          {opcoesDeDestino.map((obra) => (
             <option key={obra.id} value={obra.id}>
-              {obra.nome}
+              {obra.ehDeposito ? "Depósito (estoque da empresa)" : obra.nome}
             </option>
           ))}
         </Select>
+        {ehNota && (
+          <p className="text-xs text-muted">
+            Escolha um destino para a nota inteira ou, nos itens abaixo, mande cada produto para um projeto ou para o Depósito.
+          </p>
+        )}
       </Card>
 
       <Card className="flex flex-col gap-3">
@@ -351,6 +386,19 @@ export function ConfirmacaoExtracao({
                 value={String(item.valorTotal)}
                 onChange={(e) => atualizarItem(indice, "valorTotal", e.target.value)}
               />
+              <Select
+                label="Vai para"
+                className="col-span-2"
+                value={item.obraId}
+                onChange={(e) => setItens((atual) => atual.map((it, i) => (i === indice ? { ...it, obraId: e.target.value } : it)))}
+              >
+                <option value="">Igual ao geral ({obraId ? (obraId === deposito?.id ? "Depósito" : nomeDoLocal(obraId)) : "—"})</option>
+                {opcoesDeDestino.map((obra) => (
+                  <option key={obra.id} value={obra.id}>
+                    {obra.ehDeposito ? "Depósito (estoque da empresa)" : obra.nome}
+                  </option>
+                ))}
+              </Select>
               <div className="col-span-2 flex justify-end">
                 <Button variante="ghost" tamanho="sm" onClick={() => removerItem(indice)}>
                   Remover item
@@ -358,8 +406,25 @@ export function ConfirmacaoExtracao({
               </div>
             </div>
           ))}
+          {divisao.length > 1 && (
+            <div className="flex flex-col gap-1 rounded-lg border border-info/40 bg-info-bg p-3 text-sm">
+              <p className="font-medium text-foreground">Esta nota será dividida entre {divisao.length} destinos</p>
+              {divisao.map((d) => (
+                <p key={d.obraId} className="flex justify-between gap-3 tabular-nums">
+                  <span className="truncate text-muted">{d.obraId === deposito?.id ? "Depósito" : nomeDoLocal(d.obraId)}</span>
+                  <span className="font-medium">{formatarMoeda(d.valor)}</span>
+                </p>
+              ))}
+              <p className="text-xs text-muted">
+                O valor de cada projeto é proporcional aos itens dele. O que for para o Depósito só vira gasto de projeto quando
+                você transferir.
+              </p>
+            </div>
+          )}
         </Card>
       )}
+
+      {erroAoSalvar && <p className="text-sm text-danger">{erroAoSalvar}</p>}
 
       <div className="flex gap-3">
         <Button variante="outline" className="flex-1" onClick={onCancelar} disabled={enviando}>

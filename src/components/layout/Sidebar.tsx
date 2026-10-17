@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { podeAcessarRota } from "@/lib/auth/modulos";
 import { MARCA } from "@/lib/marca";
+import { useAcesso } from "./AcessoContext";
 import { useBarraLateral } from "./BarraLateralContext";
 import { Logo } from "./Logo";
 import {
@@ -88,6 +90,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { expandida, alternar } = useBarraLateral();
+  const { pessoa } = useAcesso();
   // Sem o plano de gestão, os módulos continuam visíveis (apagados) e levam à
   // página de apresentação — o gratuito vê o que existe sem bloqueio agressivo.
   const itens = [
@@ -98,7 +101,7 @@ export function Sidebar({
       grupo: "gestao" as const,
     })),
     ...(admin ? [{ ...itemAdmin, grupo: "admin" as const }] : []),
-  ];
+  ].filter((item) => podeAcessarRota(pessoa, item.href)); // funcionário só vê os módulos que o dono liberou
 
   const classeItem = (ativo: boolean) =>
     cn(

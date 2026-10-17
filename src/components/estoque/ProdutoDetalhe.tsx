@@ -13,11 +13,11 @@ import { ModalMovimento } from "./ModalMovimento";
 
 export function ProdutoDetalhe({ produtoId }: { produtoId: string }) {
   const { produto, movimentos, carregando, registrarMovimento } = useProduto(produtoId);
-  const { obras } = useObras();
+  const { locais } = useObras();
   const { somenteLeitura } = useStatusPlano();
   const [modalAberto, setModalAberto] = useState(false);
 
-  const obraPorId = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
+  const obraPorId = useMemo(() => new Map(locais.map((o) => [o.id, o])), [locais]);
 
   if (carregando) return <p className="text-sm text-muted">Carregando…</p>;
   if (!produto) return <p className="text-sm text-danger">Produto não encontrado.</p>;
@@ -84,7 +84,7 @@ export function ProdutoDetalhe({ produtoId }: { produtoId: string }) {
         <ModalMovimento
           produtoId={produto.id}
           unidade={produto.unidade}
-          obras={obras}
+          obras={locais}
           saldosPorObra={produto.saldosPorObra}
           onFechar={() => setModalAberto(false)}
           onConfirmar={async (input) => {

@@ -1,17 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NovaObraInput, Obra } from "@/types";
 import { obrasRepositorio } from "@/services/data";
 
+/**
+ * `obras`: só os projetos (é o que se escolhe em formulários). `locais`: projetos + Depósito, para mostrar o nome
+ * de qualquer conta, item ou movimento, que podem apontar para o Depósito.
+ */
 export function useObras() {
-  const [obras, setObras] = useState<Obra[]>([]);
+  const [locais, setLocais] = useState<Obra[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
     const lista = await obrasRepositorio.listar();
-    setObras(lista);
+    setLocais(lista);
     setCarregando(false);
   }, []);
+
+  const obras = useMemo(() => locais.filter((o) => !o.ehDeposito), [locais]);
+  const deposito = useMemo(() => locais.find((o) => o.ehDeposito), [locais]);
 
   useEffect(() => {
     void recarregar();
@@ -26,5 +33,5 @@ export function useObras() {
     [recarregar],
   );
 
-  return { obras, carregando, recarregar, criarObra };
+  return { obras, locais, deposito, carregando, recarregar, criarObra };
 }

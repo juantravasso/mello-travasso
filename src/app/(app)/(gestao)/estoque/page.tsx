@@ -14,9 +14,16 @@ export default function EstoquePage() {
       <PageHeader
         titulo="Estoque"
         acao={
-          <Link href="/estoque/novo">
-            <Button tamanho="sm">+ Novo produto</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/estoque/deposito">
+              <Button tamanho="sm" variante="outline">
+                Depósito
+              </Button>
+            </Link>
+            <Link href="/estoque/novo">
+              <Button tamanho="sm">+ Novo produto</Button>
+            </Link>
+          </div>
         }
       />
       <EstoqueLista produtos={produtos} carregando={carregando} />

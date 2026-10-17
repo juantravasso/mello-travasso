@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ContaFinanceira, Obra } from "@/types";
-import { contasRepositorio, obrasRepositorio } from "@/services/data";
+import { contasRepositorio, depositoRepositorio, obrasRepositorio } from "@/services/data";
 import { useCatalogoCategorias } from "@/hooks/useCatalogo";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -29,14 +29,21 @@ import {
 export default function DashboardPage() {
   const [obras, setObras] = useState<Obra[]>([]);
   const [contas, setContas] = useState<ContaFinanceira[]>([]);
+  const [transferidos, setTransferidos] = useState<Record<string, number>>({});
   const [carregando, setCarregando] = useState(true);
   const categoriasCatalogo = useCatalogoCategorias("pagar");
   const { somenteLeitura } = useStatusPlano();
 
   useEffect(() => {
     void (async () => {
-      const [listaObras, listaContas] = await Promise.all([obrasRepositorio.listar(), contasRepositorio.listar()]);
-      setObras(listaObras);
+      const [listaObras, listaContas, custos] = await Promise.all([
+        obrasRepositorio.listar(),
+        contasRepositorio.listar(),
+        depositoRepositorio.obterCustosTransferidos(),
+      ]);
+      // O Depósito é um local de estoque, não um projeto: fica fora dos indicadores de projeto.
+      setObras(listaObras.filter((o) => !o.ehDeposito));
+      setTransferidos(custos.ok ? custos.dados : {});
       setContas(listaContas);
       setCarregando(false);
     })();
@@ -108,7 +115,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card>
           <h2 className="mb-3 font-medium">Projetos em andamento</h2>
-          <ProgressoObrasList itens={progressoObras(obras, contas)} />
+          <ProgressoObrasList itens={progressoObras(obras, contas, transferidos)} />
         </Card>
         <Card>
           <h2 className="mb-3 font-medium">Contas próximas</h2>

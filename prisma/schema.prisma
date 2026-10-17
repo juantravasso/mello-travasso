@@ -62,8 +62,11 @@ model Obra {
   observacoes       String?
   criadoEm          String
   atualizadoEm      String
+  /// O Depósito da empresa: um local de estoque (não é projeto). No máximo um por empresa (índice parcial na migração).
+  ehDeposito        Boolean      @default(false)
 
   contas            ContaFinanceira[]
+  rateios           RateioConta[]
   itensProduto      ItemProduto[]
   funcionarios      Funcionario[]
   saldosEstoque     SaldoEstoque[]
@@ -105,6 +108,8 @@ model ContaFinanceira {
   atualizadoEm             String
 
   itensProduto ItemProduto[]
+  /// Como o valor da conta se divide entre projetos e Depósito (nota com itens em destinos diferentes). Sem rateio, vale `obraId`.
+  rateios      RateioConta[]
 
   @@index([empresaId])
   @@index([obraId])
@@ -348,6 +353,8 @@ model Usuario {
   /// Preferências dos lembretes do calendário (Configurações). Ligadas por padrão.
   lembretesPorEmail        Boolean            @default(true)
   lembretesNoApp           Boolean            @default(true)
+  /// Módulos que o dono liberou (chaves de src/lib/auth/modulos.ts). Só vale para membros: o dono tem todos.
+  modulos                  String[]           @default([])
   criadoEm                 String
   atualizadoEm             String
 
@@ -452,29 +459,32 @@ model SaldoEstoque {
 }
 
 model MovimentoEstoque {
-  id            String                 @id @default(uuid())
-  empresaId     String
-  empresa       Empresa                @relation(fields: [empresaId], references: [id])
-  produtoId     String
-  produto       Produto                @relation(fields: [produtoId], references: [id])
-  obraId        String
-  obra          Obra                   @relation(fields: [obraId], references: [id])
-  tipo          TipoMovimentoEstoqueDb
+  id              String                 @id @default(uuid())
+  empresaId       String
+  empresa         Empresa                @relation(fields: [empresaId], references: [id])
+  produtoId       String
+  produto         Produto                @relation(fields: [produtoId], references: [id])
+  obraId          String
+  obra            Obra                   @relation(fields: [obraId], references: [id])
+  tipo            TipoMovimentoEstoqueDb
   /// Sempre > 0 — o efeito no saldo (soma ou subtrai) depende de `tipo`, nunca do sinal.
-  quantidade    Float
-  valorUnitario Float?
+  quantidade      Float
+  valorUnitario   Float?
   /// "manual" | "item_produto" — rastreabilidade de onde a movimentação veio.
-  origem        String
-  itemProdutoId String?
-  itemProduto   ItemProduto?           @relation(fields: [itemProdutoId], references: [id])
+  origem          String
+  itemProdutoId   String?
+  itemProduto     ItemProduto?           @relation(fields: [itemProdutoId], references: [id])
   /// Nome do usuário da sessão que registrou (não FK — sobrevive se o usuário for removido no futuro), mesmo padrão de ContaFinanceira.historico[].usuario.
-  lancadoPor    String
-  observacao    String?
-  criadoEm      String
+  lancadoPor      String
+  observacao      String?
+  criadoEm        String
+  /// Liga a saída de um local e a entrada em outro na mesma transferência (origem "transferencia").
+  transferenciaId String?
 
   @@index([empresaId])
   @@index([produtoId])
   @@index([obraId])
+  @@index([transferenciaId])
 }
 
 // --- Rede profissional (Fase 6) --------------------------------------------
@@ -1128,4 +1138,18 @@ model EntregaLembrete {
 
   @@unique([lembreteId, versao, usuarioId, canal])
   @@index([status, proximaTentativaEm])
+}
+
+/// Parte do valor de uma conta que pertence a um destino (projeto ou Depósito). Só existe para nota fiscal com itens
+/// em mais de um destino ou com destino diferente do projeto da conta; a soma dos rateios é o valor da conta.
+model RateioConta {
+  id                String          @id @default(uuid())
+  contaFinanceiraId String
+  contaFinanceira   ContaFinanceira @relation(fields: [contaFinanceiraId], references: [id], onDelete: Cascade)
+  obraId            String
+  obra              Obra            @relation(fields: [obraId], references: [id])
+  valor             Float
+
+  @@unique([contaFinanceiraId, obraId])
+  @@index([obraId])
 }

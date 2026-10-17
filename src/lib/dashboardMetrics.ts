@@ -1,5 +1,6 @@
 import type { CategoriaContaPagar, ContaFinanceira, Obra } from "@/types";
 import { rotulosCategoriaPagar } from "./categorias";
+import { valorDoDestino } from "./estoque/rateio";
 
 export interface PontoFluxoMensal {
   mes: string; // rótulo curto, ex.: "Jan"
@@ -128,13 +129,15 @@ export interface ProgressoObra {
   percentual: number | null;
 }
 
-export function progressoObras(obras: Obra[], contas: ContaFinanceira[]): ProgressoObra[] {
+/** `transferidos`: gasto de cada projeto com material tirado do Depósito (já líquido de devoluções). */
+export function progressoObras(obras: Obra[], contas: ContaFinanceira[], transferidos: Record<string, number> = {}): ProgressoObra[] {
   return obras
-    .filter((o) => o.status === "em_andamento")
+    .filter((o) => o.status === "em_andamento" && !o.ehDeposito)
     .map((obra) => {
-      const gasto = contas
-        .filter((c) => c.obraId === obra.id && c.tipo === "pagar" && c.status === "baixada")
-        .reduce((soma, c) => soma + c.valor, 0);
+      const gasto =
+        contas
+          .filter((c) => c.tipo === "pagar" && c.status === "baixada")
+          .reduce((soma, c) => soma + valorDoDestino(c, obra.id), 0) + (transferidos[obra.id] ?? 0);
       return {
         obra,
         gasto,

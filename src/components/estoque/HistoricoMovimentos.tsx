@@ -38,7 +38,8 @@ export function HistoricoMovimentos({
               <p className="text-xs text-muted">
                 {obraPorId.get(movimento.obraId)?.nome ?? "Projeto não encontrado"}
                 {movimento.origem === "item_produto" && " · item de nota fiscal"}
-                {movimento.origem === "estorno" && " · estorno de conta cancelada"} · {movimento.lancadoPor}
+                {movimento.origem === "estorno" && " · estorno de conta cancelada"}
+                {movimento.origem === "transferencia" && (movimento.tipo === "saida" ? " · transferência (saída)" : " · transferência (entrada)")} · {movimento.lancadoPor}
               </p>
               {movimento.observacao && <p className="text-xs text-muted">{movimento.observacao}</p>}
             </div>

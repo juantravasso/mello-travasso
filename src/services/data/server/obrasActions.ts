@@ -1,7 +1,9 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { garantirDeposito } from "./depositoCore.server";
 import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
+import { ACESSO } from "@/lib/auth/modulos";
 import { novaObraSchema, atualizarObraSchema } from "@/lib/validacao/obras";
 import type { NovaObraInput, Obra } from "@/types";
 
@@ -15,6 +17,7 @@ function paraObra(registro: {
   dataFim: string | null;
   orcamentoPrevisto: number | null;
   observacoes: string | null;
+  ehDeposito: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }): Obra {
@@ -28,13 +31,16 @@ function paraObra(registro: {
     dataFim: registro.dataFim ?? undefined,
     orcamentoPrevisto: registro.orcamentoPrevisto ?? undefined,
     observacoes: registro.observacoes ?? undefined,
+    ehDeposito: registro.ehDeposito || undefined,
     criadoEm: registro.criadoEm,
     atualizadoEm: registro.atualizadoEm,
   };
 }
 
 export async function listarObras(): Promise<Obra[]> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.obrasLer);
+  // Toda empresa tem o seu Depósito; as criadas depois da migração ganham o dela na primeira listagem.
+  await garantirDeposito(sessao.empresaId);
   const registros = await prisma.obra.findMany({
     where: { empresaId: sessao.empresaId },
     orderBy: { criadoEm: "desc" },
@@ -43,13 +49,13 @@ export async function listarObras(): Promise<Obra[]> {
 }
 
 export async function obterObraPorId(id: string): Promise<Obra | null> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.obrasLer);
   const registro = await prisma.obra.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraObra(registro) : null;
 }
 
 export async function criarObra(input: NovaObraInput): Promise<Obra> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.obrasEscrever);
   const parsed = novaObraSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -61,7 +67,7 @@ export async function criarObra(input: NovaObraInput): Promise<Obra> {
 }
 
 export async function atualizarObra(id: string, input: Partial<NovaObraInput>): Promise<Obra> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.obrasEscrever);
   const parsed = atualizarObraSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -69,7 +75,8 @@ export async function atualizarObra(id: string, input: Partial<NovaObraInput>): 
   // rejeite um "empresaId" forjado no corpo, o where também escopa a
   // operação — segunda barreira contra IDOR/reatribuição entre empresas.
   const resultado = await prisma.obra.updateMany({
-    where: { id, empresaId: sessao.empresaId },
+    // O Depósito não é projeto: nome, orçamento e status dele não se editam.
+    where: { id, empresaId: sessao.empresaId, ehDeposito: false },
     data: { ...parsed.data, atualizadoEm: new Date().toISOString() },
   });
   if (resultado.count === 0) throw new Error("Projeto não encontrado.");

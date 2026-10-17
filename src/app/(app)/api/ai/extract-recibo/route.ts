@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { ResultadoExtracao, SolicitacaoExtracao } from "@/types";
 import { obterProvedorExtracaoIA } from "@/services/ai/provedor.server";
 import { exigirGestaoEscritaAction } from "@/lib/auth/dal";
+import { ACESSO } from "@/lib/auth/modulos";
 import { verificarLimite } from "@/lib/auth/limite";
 
 export const runtime = "nodejs";
@@ -57,7 +58,7 @@ async function lerCorpoComLimite(request: Request, limiteBytes: number): Promise
 export async function POST(request: Request): Promise<NextResponse<ResultadoExtracao>> {
   let sessao;
   try {
-    sessao = await exigirGestaoEscritaAction();
+    sessao = await exigirGestaoEscritaAction(...ACESSO.leituraDeComprovante);
   } catch (erro) {
     if (erro instanceof Error && erro.message === "SOMENTE_LEITURA") {
       return NextResponse.json(
@@ -68,6 +69,12 @@ export async function POST(request: Request): Promise<NextResponse<ResultadoExtr
     if (erro instanceof Error && erro.message === "PLANO_SEM_ACESSO") {
       return NextResponse.json(
         { sucesso: false, erro: "Este recurso faz parte dos planos pagos." },
+        { status: 403 },
+      );
+    }
+    if (erro instanceof Error && erro.message === "SEM_ACESSO_MODULO") {
+      return NextResponse.json(
+        { sucesso: false, erro: "Você não tem acesso a este módulo. Fale com o responsável pela empresa." },
         { status: 403 },
       );
     }

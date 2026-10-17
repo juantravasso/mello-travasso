@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
+import { ACESSO } from "@/lib/auth/modulos";
 import { novoProdutoSchema, movimentoEstoqueSchema } from "@/lib/validacao/estoque";
 import {
   paraProduto,
@@ -23,7 +24,7 @@ async function validarReferenciasEstoque(empresaId: string, produtoId: string, o
 }
 
 export async function listarProdutos(): Promise<ProdutoComSaldo[]> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.estoque);
   const [produtos, saldos] = await Promise.all([
     prisma.produto.findMany({ where: { empresaId: sessao.empresaId }, orderBy: { nome: "asc" } }),
     prisma.saldoEstoque.groupBy({
@@ -37,7 +38,7 @@ export async function listarProdutos(): Promise<ProdutoComSaldo[]> {
 }
 
 export async function obterProdutoPorId(id: string): Promise<ProdutoDetalhado | null> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.estoque);
   const produto = await prisma.produto.findFirst({ where: { id, empresaId: sessao.empresaId } });
   if (!produto) return null;
 
@@ -50,7 +51,7 @@ export async function obterProdutoPorId(id: string): Promise<ProdutoDetalhado | 
 }
 
 export async function listarMovimentos(produtoId: string): Promise<MovimentoEstoque[]> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.estoque);
   const registros = await prisma.movimentoEstoque.findMany({
     where: { produtoId, empresaId: sessao.empresaId },
     orderBy: { criadoEm: "desc" },
@@ -59,7 +60,7 @@ export async function listarMovimentos(produtoId: string): Promise<MovimentoEsto
 }
 
 export async function criarProduto(input: NovoProdutoInput): Promise<Produto> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.estoque);
   const parsed = novoProdutoSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -71,7 +72,7 @@ export async function criarProduto(input: NovoProdutoInput): Promise<Produto> {
 }
 
 export async function registrarMovimento(input: NovoMovimentoInput): Promise<MovimentoEstoque> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.estoque);
   const parsed = movimentoEstoqueSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
   const { produtoId, obraId, tipo, quantidade, saldoEsperado, valorUnitario, observacao } = parsed.data;

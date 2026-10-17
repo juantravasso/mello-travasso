@@ -1,4 +1,10 @@
+import type { ModuloChave } from "@/lib/auth/modulos";
 import type {
+  EntradaCaptura,
+  NovaTransferenciaInput,
+  ResultadoCaptura,
+  TransferenciaDeposito,
+  VisaoDeposito,
   ColegaItem,
   CompromissoItem,
   EntradaCompromisso,
@@ -98,6 +104,17 @@ export interface ItensProdutoRepositorio {
   criarEmLote(itens: NovoItemProdutoInput[]): Promise<ItemProduto[]>;
   historicoPorDescricao(descricaoNormalizada: string): Promise<HistoricoPrecoProduto | null>;
   listarDescricoesUnicas(): Promise<string[]>;
+}
+
+export interface CapturaRepositorio {
+  registrar(entrada: EntradaCaptura): Promise<ResultadoAction<ResultadoCaptura>>;
+}
+
+export interface DepositoRepositorio {
+  obter(): Promise<ResultadoAction<VisaoDeposito>>;
+  transferir(input: NovaTransferenciaInput): Promise<ResultadoAction<TransferenciaDeposito>>;
+  listarTransferencias(filtro?: { obraId?: string; produtoId?: string }): Promise<ResultadoAction<TransferenciaDeposito[]>>;
+  obterCustosTransferidos(): Promise<ResultadoAction<Record<string, number>>>;
 }
 
 export interface FuncionariosRepositorio {
@@ -225,7 +242,8 @@ export interface UsuariosAdminRepositorio {
 /** Usuários da própria empresa (só o dono). A senha do dono confirma criar e redefinir. */
 export interface UsuariosEmpresaRepositorio {
   listar(): Promise<ResultadoAction<ListaUsuariosEmpresa>>;
-  criar(dados: { nome: string; email: string }, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
+  criar(dados: { nome: string; email: string; modulos: ModuloChave[] }, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
+  alterarModulos(usuarioId: string, modulos: ModuloChave[], senhaDoDono: string): Promise<ResultadoAction<ModuloChave[]>>;
   redefinirAcesso(usuarioId: string, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
   desativar(usuarioId: string): Promise<ResultadoAction<null>>;
   reativar(usuarioId: string): Promise<ResultadoAction<null>>;

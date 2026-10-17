@@ -67,6 +67,7 @@ export function paraMovimento(registro: {
   valorUnitario: number | null;
   origem: string;
   itemProdutoId: string | null;
+  transferenciaId: string | null;
   lancadoPor: string;
   observacao: string | null;
   criadoEm: string;
@@ -80,6 +81,7 @@ export function paraMovimento(registro: {
     valorUnitario: registro.valorUnitario ?? undefined,
     origem: registro.origem as MovimentoEstoque["origem"],
     itemProdutoId: registro.itemProdutoId ?? undefined,
+    transferenciaId: registro.transferenciaId ?? undefined,
     lancadoPor: registro.lancadoPor,
     observacao: registro.observacao ?? undefined,
     criadoEm: registro.criadoEm,
@@ -217,8 +219,10 @@ export interface ParametrosMovimento {
   /** Só para "ajuste" — saldo que a UI mostrou, ver definirSaldo(). */
   saldoEsperado?: number;
   valorUnitario?: number;
-  origem: "manual" | "item_produto" | "estorno";
+  origem: "manual" | "item_produto" | "estorno" | "transferencia";
   itemProdutoId?: string;
+  /** Só em transferência: liga a saída de um local e a entrada em outro. */
+  transferenciaId?: string;
   lancadoPor: string;
   observacao?: string;
 }
@@ -255,7 +259,8 @@ export async function registrarMovimentoComTx(
     await ajustarSaldo(tx, { empresaId, produtoId: p.produtoId, obraId: p.obraId, delta, agora });
   }
 
-  if (p.tipo === "entrada" && p.valorUnitario != null) {
+  // Transferir entre locais não é compra: o material já existia, então o custo médio não muda.
+  if (p.tipo === "entrada" && p.valorUnitario != null && p.origem !== "transferencia") {
     await atualizarCustoMedio(tx, p.produtoId, p.valorUnitario, p.quantidadeInformada, agora);
   }
 
@@ -269,6 +274,7 @@ export async function registrarMovimentoComTx(
       valorUnitario: p.valorUnitario,
       origem: p.origem,
       itemProdutoId: p.itemProdutoId,
+      transferenciaId: p.transferenciaId,
       lancadoPor: p.lancadoPor,
       observacao: p.observacao,
       criadoEm: agora,

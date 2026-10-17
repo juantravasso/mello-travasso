@@ -6,12 +6,13 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { gerarHash, verificarSenha, verificarSenhaFicticia } from "@/lib/auth/senha";
 import { criarSessao, apagarSessaoAtual, apagarOutrasSessoes, limparSessoesExpiradas } from "@/lib/auth/sessao";
-import { exigirSessaoAction } from "@/lib/auth/dal";
+import { exigirSessaoAction, obterRecursosDaEmpresa } from "@/lib/auth/dal";
 import { calcularFimDoTeste } from "@/lib/auth/plano";
 import { verificarLimite, extrairIpConfiavel, limparLimitesExpirados } from "@/lib/auth/limite";
 import { entrarSchema, trocarSenhaSchema } from "@/lib/validacao/auth";
 import { criarContaSchema } from "@/lib/validacao/cadastro";
 import { normalizarDocumento } from "@/lib/documento";
+import { normalizarModulos, primeiraRotaPermitida, TODOS_OS_MODULOS } from "@/lib/auth/modulos";
 import { MARCA } from "@/lib/marca";
 import { VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 import type { ResultadoAction } from "@/types";
@@ -117,7 +118,10 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
   await criarSessao(usuario.id);
 
   // Empresa só com a rede (plano gratuito) não tem dashboard: entra na rede.
-  const inicio = empresa?.plano === "gratuito" ? "/rede" : "/dashboard";
+  // O funcionário começa no primeiro módulo que o dono liberou para ele (o dono, no dashboard).
+  const recursos = await obterRecursosDaEmpresa(usuario.empresaId);
+  const pessoa = { papel: usuario.papel, modulos: usuario.papel === "dono" ? TODOS_OS_MODULOS : normalizarModulos(usuario.modulos) };
+  const inicio = empresa?.plano === "gratuito" ? "/rede" : primeiraRotaPermitida(pessoa, recursos);
 
   return {
     ok: true,

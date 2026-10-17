@@ -17,7 +17,7 @@ import { formatarMoeda } from "@/lib/formatadores";
 export default function ContasAReceberPage() {
   const [filtros, setFiltros] = useState<FiltrosContaFinanceira>({ status: "em_aberto" });
   const [modalAberto, setModalAberto] = useState(false);
-  const { obras } = useObras();
+  const { obras, locais } = useObras();
   const { contas, carregando, criarConta } = useContas("receber", filtros);
   const { somenteLeitura } = useStatusPlano();
 
@@ -26,7 +26,7 @@ export default function ContasAReceberPage() {
     [contas],
   );
 
-  const obraPorId = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
+  const obraPorId = useMemo(() => new Map(locais.map((o) => [o.id, o])), [locais]);
 
   return (
     <div className="animar-entrada">

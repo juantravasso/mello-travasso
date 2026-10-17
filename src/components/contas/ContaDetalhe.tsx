@@ -23,7 +23,7 @@ import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
 export function ContaDetalhe({ contaId }: { contaId: string }) {
   const { conta, carregando, darBaixa, cancelar, atualizar } = useConta(contaId);
-  const { obras } = useObras();
+  const { obras, locais } = useObras();
   const { fornecedores, criarFornecedor } = useFornecedores();
   const { somenteLeitura } = useStatusPlano();
   const categoriasCatalogo = useCatalogoCategorias(conta?.tipo ?? "pagar");
@@ -65,7 +65,10 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
   if (carregando) return <p className="text-sm text-muted">Carregando…</p>;
   if (!conta) return <p className="text-sm text-danger">Conta não encontrada.</p>;
 
-  const obra = obras.find((o) => o.id === conta.obraId);
+  const obra = locais.find((o) => o.id === conta.obraId);
+  const dividida = (conta.rateios?.length ?? 0) > 0;
+  // Contas a pagar podem ser do Depósito; a receber, só de projeto.
+  const opcoesDeDestino = conta.tipo === "pagar" ? locais : obras;
   const rotuloParte = conta.tipo === "pagar" ? "Favorecido" : "Cliente";
   const rotuloAcao = conta.tipo === "pagar" ? "Dar baixa (marcar como paga)" : "Marcar como recebida";
   const podeEditar = conta.status === "em_aberto";
@@ -149,10 +152,24 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           <DetalheLinha rotulo="Forma de pagamento" valor={formasCatalogo.rotuloDe(conta.formaPagamento)} />
         )}
         {conta.observacao && <DetalheLinha rotulo="Observação" valor={conta.observacao} />}
-        <DetalheLinha
-          rotulo="Projeto"
-          valor={obra ? <Link href={`/obras/${obra.id}`} className="text-primary underline">{obra.nome}</Link> : "—"}
-        />
+        {dividida ? (
+          conta.rateios?.map((r) => {
+            const destino = locais.find((o) => o.id === r.obraId);
+            return (
+              <DetalheLinha
+                key={r.obraId}
+                rotulo={destino?.ehDeposito ? "Parte do Depósito" : "Parte do projeto"}
+                valor={
+                  <>
+                    {destino ? <LinkDoLocal local={destino} /> : "—"} · {formatarMoeda(r.valor)}
+                  </>
+                }
+              />
+            );
+          })
+        ) : (
+          <DetalheLinha rotulo={obra?.ehDeposito ? "Destino" : "Projeto"} valor={obra ? <LinkDoLocal local={obra} /> : "—"} />
+        )}
         <DetalheLinha rotulo="Data de lançamento" valor={formatarData(conta.dataLancamento)} />
         {lancadoPor(conta) && <DetalheLinha rotulo="Lançado por" valor={lancadoPor(conta) as string} />}
         <DetalheLinha rotulo="Data de vencimento" valor={formatarData(conta.dataVencimento)} />
@@ -181,12 +198,18 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
                   : "Só é possível editar enquanto o lançamento está em aberto."}
             </p>
           </div>
-          <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
-          <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+          {dividida && (
+            <p className="text-sm text-muted">
+              Esta nota está dividida entre mais de um destino, então o valor e o projeto não se editam aqui. Para mudar,
+              cancele e lance de novo.
+            </p>
+          )}
+          <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} disabled={dividida} />
+          <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)} disabled={dividida}>
             <option value="" disabled>
               Selecione o projeto
             </option>
-            {obras.map((o) => (
+            {opcoesDeDestino.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.nome}
               </option>
@@ -268,6 +291,14 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
         />
       )}
     </div>
+  );
+}
+
+function LinkDoLocal({ local }: { local: { id: string; nome: string; ehDeposito?: boolean } }) {
+  return (
+    <Link href={local.ehDeposito ? "/estoque/deposito" : `/obras/${local.id}`} className="text-primary underline">
+      {local.nome}
+    </Link>
   );
 }
 

@@ -51,6 +51,8 @@ const selecaoUsuario = {
   lembretesNoApp: true,
   desativadoEm: true,
   bloqueadoPlataformaEm: true,
+  papel: true,
+  modulos: true,
 } satisfies Prisma.UsuarioSelect;
 
 const incluirParaEntrega = {
@@ -62,8 +64,9 @@ const incluirParaEntrega = {
 type CompromissoCompleto = Prisma.CompromissoGetPayload<{ include: typeof incluirParaEntrega }>;
 type UsuarioDestino = Prisma.UsuarioGetPayload<{ select: typeof selecaoUsuario }>;
 
+/** Ativo e com o módulo Calendário (se o dono tirou o módulo depois de compartilhar, o lembrete não sai). */
 function ativo(u: UsuarioDestino): boolean {
-  return u.desativadoEm === null && u.bloqueadoPlataformaEm === null;
+  return u.desativadoEm === null && u.bloqueadoPlataformaEm === null && (u.papel === "dono" || u.modulos.includes("calendario"));
 }
 
 function dadosDoLembrete(c: CompromissoCompleto, tipo: "vespera" | "dia", destino: UsuarioDestino): DadosLembrete {

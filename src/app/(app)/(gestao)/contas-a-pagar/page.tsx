@@ -17,7 +17,7 @@ import { formatarMoeda } from "@/lib/formatadores";
 export default function ContasAPagarPage() {
   const [filtros, setFiltros] = useState<FiltrosContaFinanceira>({ status: "em_aberto" });
   const [modalAberto, setModalAberto] = useState(false);
-  const { obras } = useObras();
+  const { obras, locais } = useObras();
   const { contas, carregando, criarConta } = useContas("pagar", filtros);
   const { somenteLeitura } = useStatusPlano();
 
@@ -26,7 +26,7 @@ export default function ContasAPagarPage() {
     [contas],
   );
 
-  const obraPorId = useMemo(() => new Map(obras.map((o) => [o.id, o])), [obras]);
+  const obraPorId = useMemo(() => new Map(locais.map((o) => [o.id, o])), [locais]);
 
   return (
     <div className="animar-entrada">
@@ -44,7 +44,7 @@ export default function ContasAPagarPage() {
         }
       />
 
-      <FiltrosContas tipo="pagar" filtros={filtros} onChange={setFiltros} obras={obras} />
+      <FiltrosContas tipo="pagar" filtros={filtros} onChange={setFiltros} obras={locais} />
 
       <p className="mb-3 text-sm text-muted">
         Em aberto no filtro atual: <span className="font-semibold text-foreground">{formatarMoeda(totalEmAberto)}</span>

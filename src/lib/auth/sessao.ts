@@ -3,6 +3,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { normalizarModulos, TODOS_OS_MODULOS, type ModuloChave } from "@/lib/auth/modulos";
 
 /**
  * Prisma lança P2025 quando o `delete`/`update` não acha a linha — isso é
@@ -69,6 +70,8 @@ export interface SessaoValida {
   emailConfirmado: boolean;
   /** Entrou com a senha temporária: só pode trocar a senha (ver exigirSessaoAction e o layout de (app)). */
   trocaSenhaPendente: boolean;
+  /** Módulos que a pessoa pode usar: o dono tem todos; o membro, os que o dono liberou. */
+  modulos: readonly ModuloChave[];
 }
 
 /**
@@ -141,6 +144,8 @@ export async function lerSessao(): Promise<SessaoValida | null> {
     admin: sessao.usuario.papelPlataforma === "admin",
     emailConfirmado: sessao.usuario.emailConfirmadoEm !== null,
     trocaSenhaPendente: sessao.usuario.trocarSenha,
+    // Lido do banco a cada requisição: tirar ou dar um módulo vale na hora, sem derrubar a sessão.
+    modulos: sessao.usuario.papel === "dono" ? TODOS_OS_MODULOS : normalizarModulos(sessao.usuario.modulos),
   };
 }
 

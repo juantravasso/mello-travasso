@@ -50,6 +50,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       admin={sessao.admin}
       emailConfirmado={sessao.emailConfirmado}
       emailUsuario={sessao.email}
+      papel={sessao.papel}
+      modulos={sessao.modulos}
     >
       {children}
     </ShellWrapper>

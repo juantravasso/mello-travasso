@@ -14,13 +14,13 @@ import { formatarData, formatarMoeda } from "@/lib/formatadores";
 
 export default function CustosProdutosPage() {
   const { descricoes } = useItensProduto();
-  const { obras } = useObras();
+  const { locais } = useObras();
   const searchParams = useSearchParams();
   const [busca, setBusca] = useState("");
   const [historico, setHistorico] = useState<HistoricoPrecoProduto | null>(null);
   const [buscando, setBuscando] = useState(false);
 
-  const obraPorId = new Map(obras.map((o) => [o.id, o]));
+  const obraPorId = new Map(locais.map((o) => [o.id, o]));
 
   const buscar = useCallback(async (descricao: string) => {
     setBusca(descricao);

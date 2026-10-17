@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { podeAcessarRota } from "@/lib/auth/modulos";
+import { useAcesso } from "./AcessoContext";
 import {
   IconeCadastro,
   IconeCaixa,
@@ -71,7 +73,9 @@ export function BottomNav({
   admin: boolean;
 }) {
   const pathname = usePathname();
-  const lista = admin ? [...itens, itemAdmin] : itens;
+  const { pessoa } = useAcesso();
+  // Funcionário só vê os módulos que o dono liberou; Ajustes (configurações) é de todos.
+  const lista = (admin ? [...itens, itemAdmin] : itens).filter((item) => podeAcessarRota(pessoa, item.href));
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/85 md:hidden">

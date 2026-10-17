@@ -27,11 +27,20 @@ export interface ParcelaInfo {
   totalParcelas: number;
 }
 
+/** Parte do valor da conta que pertence a um destino (projeto ou Depósito). */
+export interface RateioDaConta {
+  obraId: string;
+  valor: number;
+}
+
 export interface ContaFinanceira {
   id: string;
   tipo: TipoConta;
+  /** Projeto da conta; numa nota rateada é o destino com a maior parte (veja `rateios`). */
   obraId: string;
   valor: number;
+  /** Presente só quando a nota foi dividida entre mais de um destino, ou foi para outro destino que não o projeto da conta. A soma é `valor`. */
+  rateios?: RateioDaConta[];
   dataLancamento: string; // ISO date — quando o lançamento foi registrado
   dataVencimento: string; // ISO date — data prevista (pagamento ou recebimento)
   dataBaixa?: string; // ISO date — quando efetivamente paga/recebida

@@ -7,10 +7,14 @@ import { FuncionariosLista } from "@/components/funcionarios/FuncionariosLista";
 import { FornecedoresLista } from "@/components/fornecedores/FornecedoresLista";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { useAcesso } from "@/components/layout/AcessoContext";
 import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { cn } from "@/lib/cn";
 
 type Aba = "obras" | "funcionarios" | "fornecedores";
+
+// Cada aba é um módulo: o funcionário só vê as abas que o dono liberou.
+const MODULO_DA_ABA = { obras: "projetos", funcionarios: "funcionarios", fornecedores: "fornecedores" } as const;
 
 const rotulos: Record<Aba, string> = {
   obras: "Projetos",
@@ -30,8 +34,11 @@ const rotulosNovo: Record<"obras" | "funcionarios", string> = {
 };
 
 export default function CadastroPage() {
-  const [aba, setAba] = useState<Aba>("obras");
+  const [escolhida, setAba] = useState<Aba>("obras");
   const { somenteLeitura } = useStatusPlano();
+  const { pode } = useAcesso();
+  const abas = (["obras", "funcionarios", "fornecedores"] as const).filter((a) => pode(MODULO_DA_ABA[a]));
+  const aba: Aba = abas.includes(escolhida) ? escolhida : (abas[0] ?? "obras");
 
   return (
     <div className="animar-entrada">
@@ -51,7 +58,7 @@ export default function CadastroPage() {
       />
 
       <div className="mb-4 inline-flex w-full rounded-lg border border-border bg-surface p-1">
-        {(["obras", "funcionarios", "fornecedores"] as const).map((opcao) => (
+        {abas.map((opcao) => (
           <button
             key={opcao}
             type="button"

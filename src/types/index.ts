@@ -14,3 +14,6 @@ export * from "./verificacao";
 export * from "./usuarioEmpresa";
 
 export * from "./calendario";
+
+export * from "./deposito";
+export * from "./captura";

@@ -92,11 +92,16 @@ export async function obterUm(ctx: Contexto, id: string): Promise<CompromissoIte
 /** Usuários ativos da mesma empresa, para escolher com quem compartilhar. */
 export async function listarColegas(ctx: Contexto): Promise<ColegaItem[]> {
   return prisma.usuario.findMany({
-    where: { empresaId: ctx.empresaId, id: { not: ctx.usuarioId }, desativadoEm: null, bloqueadoPlataformaEm: null },
+    where: { ...comAcessoAoCalendario(ctx.empresaId), id: { not: ctx.usuarioId } },
     select: { id: true, nome: true, email: true },
     orderBy: [{ nome: "asc" }, { id: "asc" }],
     take: 100,
   });
+}
+
+/** Quem pode estar em um compromisso: ativo, da empresa e com o módulo Calendário (o dono sempre tem). */
+function comAcessoAoCalendario(empresaId: string): Prisma.UsuarioWhereInput {
+  return { empresaId, desativadoEm: null, bloqueadoPlataformaEm: null, OR: [{ papel: "dono" }, { modulos: { has: "calendario" } }] };
 }
 
 type Tx = Prisma.TransactionClient;
@@ -106,9 +111,9 @@ async function validarParticipantes(db: Tx | typeof prisma, ctx: Contexto, ids: 
   const unicos = [...new Set(ids)].filter((id) => id !== ctx.usuarioId);
   if (unicos.length === 0) return [];
   const validos = await db.usuario.count({
-    where: { id: { in: unicos }, empresaId: ctx.empresaId, desativadoEm: null, bloqueadoPlataformaEm: null },
+    where: { ...comAcessoAoCalendario(ctx.empresaId), id: { in: unicos } },
   });
-  if (validos !== unicos.length) throw new ErroDeNegocio("Só é possível compartilhar com usuários ativos da sua empresa.");
+  if (validos !== unicos.length) throw new ErroDeNegocio("Só é possível compartilhar com usuários ativos da sua empresa que tenham o módulo Calendário.");
   return unicos;
 }
 

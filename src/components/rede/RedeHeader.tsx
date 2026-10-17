@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { obterSessaoOpcional } from "@/lib/auth/dal";
 import { Logo } from "@/components/layout/Logo";
+import { primeiraRotaPermitida, temAlgumModulo } from "@/lib/auth/modulos";
 import { MARCA } from "@/lib/marca";
 
 export async function RedeHeader() {
@@ -17,9 +18,11 @@ export async function RedeHeader() {
             <Link href="/rede" className="text-sm font-medium text-foreground hover:text-primary">
               Encontrar profissionais
             </Link>
-            <Link href={sessao ? "/dashboard" : "/#produtos"} className="text-sm font-medium text-muted hover:text-foreground">
-              {MARCA.produtos.gestao.nome}
-            </Link>
+            {(!sessao || temAlgumModulo(sessao)) && (
+              <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/#produtos"} className="text-sm font-medium text-muted hover:text-foreground">
+                {MARCA.produtos.gestao.nome}
+              </Link>
+            )}
           </nav>
         </div>
 

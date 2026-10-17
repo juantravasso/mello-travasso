@@ -1,3 +1,5 @@
+import type { ModuloChave } from "@/lib/auth/modulos";
+
 // Usuários de uma empresa, gerenciados pelo dono (Configurações).
 
 export type SituacaoUsuarioEmpresa =
@@ -15,6 +17,8 @@ export interface UsuarioEmpresaItem {
   nome: string;
   email: string;
   papel: "dono" | "membro";
+  /** Módulos que a pessoa usa: o dono tem todos; o membro, os que foram liberados. */
+  modulos: ModuloChave[];
   situacao: SituacaoUsuarioEmpresa;
   criadoEm: string;
   /** Último uso de uma sessão; ausente se nunca entrou. */
@@ -26,6 +30,8 @@ export interface UsuarioEmpresaItem {
 export interface ListaUsuariosEmpresa {
   usuarios: UsuarioEmpresaItem[];
   limite: number;
+  /** Módulos que o plano da empresa permite liberar. */
+  modulosDisponiveis: ModuloChave[];
 }
 
 /** Retorno de criar/redefinir: a senha temporária aparece só aqui, para o dono repassar. */
@@ -34,4 +40,5 @@ export interface AcessoTemporario {
   email: string;
   senhaTemporaria: string;
   validadeDias: number;
+  modulos: ModuloChave[];
 }

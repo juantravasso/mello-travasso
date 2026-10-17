@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { lerSessao, type SessaoValida } from "@/lib/auth/sessao";
 import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
+import { temAlgumModulo, type ModuloChave } from "@/lib/auth/modulos";
 
 // DAL (Data Access Layer) de autenticação — única fonte de identidade no
 // servidor. Toda Server Action e toda página protegida chamam exigirSessao()
@@ -103,20 +104,23 @@ export const obterRecursosDaEmpresa = cache(async (empresaId: string): Promise<R
 
 /**
  * Sessão + o plano da empresa precisa liberar os módulos de gestão (obras,
- * contas, estoque…). Toda Server Action desses módulos usa esta função (ou a
- * de escrita abaixo) em vez de exigirSessaoAction() — a barreira real do plano
- * gratuito está aqui, no servidor; esconder o menu é só o complemento.
+ * contas, estoque…) + a pessoa precisa ter ao menos um dos módulos listados (o
+ * dono tem todos; o membro, os que o dono liberou). Sem lista, vale qualquer
+ * módulo de gestão. Toda Server Action desses módulos usa esta função (ou a de
+ * escrita abaixo) em vez de exigirSessaoAction() — a barreira real do plano e
+ * dos módulos está aqui, no servidor; esconder o menu é só o complemento.
  */
-export async function exigirGestaoAction(): Promise<SessaoValida> {
+export async function exigirGestaoAction(...modulos: ModuloChave[]): Promise<SessaoValida> {
   const sessao = await exigirSessaoAction();
   const recursos = await obterRecursosDaEmpresa(sessao.empresaId);
   if (!recursos.has("gestao")) throw new Error("PLANO_SEM_ACESSO");
+  if (!temAlgumModulo(sessao, modulos.length > 0 ? modulos : undefined)) throw new Error("SEM_ACESSO_MODULO");
   return sessao;
 }
 
 /** Igual a exigirGestaoAction(), e também bloqueia quando o teste já venceu. */
-export async function exigirGestaoEscritaAction(): Promise<SessaoValida> {
-  const sessao = await exigirGestaoAction();
+export async function exigirGestaoEscritaAction(...modulos: ModuloChave[]): Promise<SessaoValida> {
+  const sessao = await exigirGestaoAction(...modulos);
   const status = await obterStatusPlano(sessao.empresaId);
   if (status.somenteLeitura) throw new Error("SOMENTE_LEITURA");
   return sessao;
@@ -130,6 +134,7 @@ export async function exigirRedeAction(): Promise<SessaoValida> {
   const sessao = await exigirSessaoAction();
   const recursos = await obterRecursosDaEmpresa(sessao.empresaId);
   if (!recursos.has("rede")) throw new Error("PLANO_SEM_ACESSO");
+  if (!temAlgumModulo(sessao, ["rede"])) throw new Error("SEM_ACESSO_MODULO");
   return sessao;
 }
 

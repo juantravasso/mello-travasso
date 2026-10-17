@@ -5,11 +5,13 @@ import type { AcessoTemporario, ListaUsuariosEmpresa, ResultadoAction, SituacaoU
 import { usuariosEmpresaRepositorio as repo } from "@/services/data";
 import { formatarDataHora } from "@/lib/formatadores";
 import { mensagemDeErro } from "@/lib/mensagemErroAcao";
+import { rotuloDoModulo, type ModuloChave } from "@/lib/auth/modulos";
 import { PainelConfirmacao } from "@/components/admin/PainelConfirmacao";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { SeletorModulos } from "./SeletorModulos";
 
 const SITUACAO: Record<SituacaoUsuarioEmpresa, { rotulo: string; tom: "success" | "warning" | "danger" | "neutral" }> = {
   ativo: { rotulo: "Ativo", tom: "success" },
@@ -19,7 +21,7 @@ const SITUACAO: Record<SituacaoUsuarioEmpresa, { rotulo: string; tom: "success" 
   bloqueado: { rotulo: "Bloqueado pela plataforma", tom: "danger" },
 };
 
-type Painel = { usuarioId: string } | null;
+type Painel = { usuarioId: string; tipo: "redefinir" | "modulos" } | null;
 
 /** Só o dono vê isto (a página nem renderiza para membros; as ações também recusam no servidor). */
 export function UsuariosEmpresa() {
@@ -31,6 +33,7 @@ export function UsuariosEmpresa() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [modulosNovo, setModulosNovo] = useState<ModuloChave[]>([]);
 
   const carregar = useCallback(async () => {
     const resultado = await repo.listar();
@@ -65,12 +68,13 @@ export function UsuariosEmpresa() {
   async function criar(evento: React.FormEvent) {
     evento.preventDefault();
     const ok = await executar(
-      () => repo.criar({ nome, email }, senha),
+      () => repo.criar({ nome, email, modulos: modulosNovo }, senha),
       (acesso) => setAcessoNovo({ titulo: "Usuário criado", acesso }),
     );
     if (ok) {
       setNome("");
       setEmail("");
+      setModulosNovo([]);
     }
     // A senha do dono nunca fica no formulário depois de usada, deu certo ou não.
     setSenha("");
@@ -102,6 +106,8 @@ export function UsuariosEmpresa() {
             <dd className="break-all font-medium">{acessoNovo.acesso.email}</dd>
             <dt className="text-muted">Senha inicial</dt>
             <dd className="font-mono font-medium">{acessoNovo.acesso.senhaTemporaria}</dd>
+            <dt className="text-muted">Acesso a</dt>
+            <dd>{acessoNovo.acesso.modulos.map(rotuloDoModulo).join(", ")}</dd>
           </dl>
           <p className="text-muted">
             No primeiro acesso a pessoa é obrigada a escolher uma senha só dela. A senha inicial vale por {acessoNovo.acesso.validadeDias} dias; depois
@@ -122,9 +128,18 @@ export function UsuariosEmpresa() {
               key={u.id}
               usuario={u}
               ocupado={ocupado}
-              confirmando={painel?.usuarioId === u.id}
-              aoPedirRedefinir={() => setPainel({ usuarioId: u.id })}
+              painel={painel?.usuarioId === u.id ? painel.tipo : null}
+              modulosDisponiveis={lista.modulosDisponiveis}
+              aoPedir={(tipo) => setPainel({ usuarioId: u.id, tipo })}
               aoCancelar={() => setPainel(null)}
+              aoSalvarModulos={async (modulos, senhaDoDono) => {
+                if (modulos.length === 0) {
+                  setErro("Escolha ao menos um módulo para esta pessoa.");
+                  return;
+                }
+                const ok = await executar(() => repo.alterarModulos(u.id, modulos, senhaDoDono));
+                if (ok) setPainel(null);
+              }}
               aoRedefinir={async (senhaDoDono) => {
                 const ok = await executar(
                   () => repo.redefinirAcesso(u.id, senhaDoDono),
@@ -143,6 +158,7 @@ export function UsuariosEmpresa() {
         <p className="text-sm font-medium text-foreground">Adicionar usuário</p>
         <Input label="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} autoComplete="off" required />
         <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={180} autoComplete="off" required />
+        {lista && <SeletorModulos disponiveis={lista.modulosDisponiveis} selecionados={modulosNovo} aoMudar={setModulosNovo} />}
         <Input
           label="Sua senha (para confirmar)"
           type="password"
@@ -152,13 +168,19 @@ export function UsuariosEmpresa() {
           autoComplete="current-password"
           required
         />
-        <Button type="submit" disabled={ocupado || noLimite || !nome.trim() || !email.trim() || !senha}>
+        <Button type="submit" disabled={ocupado || noLimite || !nome.trim() || !email.trim() || !senha || modulosNovo.length === 0}>
           {ocupado ? "Criando…" : "Criar usuário"}
         </Button>
         {noLimite && lista && <p className="text-sm text-muted">Limite de {lista.limite} usuários por empresa atingido.</p>}
       </form>
     </Card>
   );
+}
+
+function resumoModulos(modulos: ModuloChave[]): string {
+  if (modulos.length === 0) return "nenhum módulo";
+  const nomes = modulos.map(rotuloDoModulo);
+  return nomes.length <= 3 ? nomes.join(", ") : `${nomes.slice(0, 3).join(", ")} e mais ${nomes.length - 3}`;
 }
 
 /** A atividade vem das sessões abertas: ao sair, a sessão some, então "sem sessão" não quer dizer que nunca entrou. */
@@ -171,24 +193,29 @@ function textoAtividade(u: UsuarioEmpresaItem): string {
 function LinhaUsuario({
   usuario: u,
   ocupado,
-  confirmando,
-  aoPedirRedefinir,
+  painel,
+  modulosDisponiveis,
+  aoPedir,
   aoCancelar,
+  aoSalvarModulos,
   aoRedefinir,
   aoDesativar,
   aoReativar,
 }: {
   usuario: UsuarioEmpresaItem;
   ocupado: boolean;
-  confirmando: boolean;
-  aoPedirRedefinir: () => void;
+  painel: "redefinir" | "modulos" | null;
+  modulosDisponiveis: ModuloChave[];
+  aoPedir: (tipo: "redefinir" | "modulos") => void;
   aoCancelar: () => void;
+  aoSalvarModulos: (modulos: ModuloChave[], senhaDoDono: string) => void;
   aoRedefinir: (senhaDoDono: string) => void;
   aoDesativar: () => void;
   aoReativar: () => void;
 }) {
   const situacao = SITUACAO[u.situacao];
   const membro = u.papel === "membro" && !u.voce;
+  const [escolhidos, setEscolhidos] = useState<ModuloChave[]>(u.modulos);
   return (
     <li className="flex flex-col gap-2 py-3 first:pt-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -199,6 +226,7 @@ function LinhaUsuario({
       </div>
       <p className="break-all text-sm text-muted">{u.email}</p>
       <p className="text-xs text-muted">{textoAtividade(u)}</p>
+      <p className="text-xs text-muted">{u.papel === "dono" ? "Acesso a todos os módulos" : `Acesso: ${resumoModulos(u.modulos)}`}</p>
       {membro && (
         <div className="flex flex-wrap gap-2">
           {u.situacao === "desativado" ? (
@@ -207,7 +235,19 @@ function LinhaUsuario({
             </Button>
           ) : (
             <>
-              <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={aoPedirRedefinir}>
+              <Button
+                type="button"
+                tamanho="sm"
+                variante="outline"
+                disabled={ocupado}
+                onClick={() => {
+                  setEscolhidos(u.modulos);
+                  aoPedir("modulos");
+                }}
+              >
+                Editar módulos
+              </Button>
+              <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={() => aoPedir("redefinir")}>
                 Redefinir acesso
               </Button>
               <Button type="button" tamanho="sm" variante="ghost" disabled={ocupado} onClick={aoDesativar}>
@@ -217,13 +257,24 @@ function LinhaUsuario({
           )}
         </div>
       )}
-      {confirmando && (
+      {painel === "redefinir" && (
         <PainelConfirmacao
           rotuloBotao="Redefinir acesso"
           ocupado={ocupado}
           aoConfirmar={(_motivo, senhaDoDono) => aoRedefinir(senhaDoDono)}
           aoCancelar={aoCancelar}
         />
+      )}
+      {painel === "modulos" && (
+        <div className="flex flex-col gap-3 border-t border-border pt-3">
+          <SeletorModulos disponiveis={modulosDisponiveis} selecionados={escolhidos} aoMudar={setEscolhidos} desabilitado={ocupado} />
+          <PainelConfirmacao
+            rotuloBotao="Salvar módulos"
+            ocupado={ocupado}
+            aoConfirmar={(_motivo, senhaDoDono) => aoSalvarModulos(escolhidos, senhaDoDono)}
+            aoCancelar={aoCancelar}
+          />
+        </div>
       )}
     </li>
   );

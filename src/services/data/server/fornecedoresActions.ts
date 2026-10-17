@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { exigirGestaoEscritaAction, exigirGestaoAction } from "@/lib/auth/dal";
+import { ACESSO } from "@/lib/auth/modulos";
 import { novoFornecedorSchema, atualizarFornecedorSchema } from "@/lib/validacao/fornecedores";
 import type { FiltrosFornecedor, Fornecedor, NovoFornecedorInput } from "@/types";
 import { normalizarDocumento } from "@/lib/documento";
@@ -49,7 +50,7 @@ function paraDados<T extends { documento?: string }>(input: T) {
 }
 
 export async function listarFornecedores(filtros?: FiltrosFornecedor): Promise<Fornecedor[]> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.fornecedoresLer);
   const registros = await prisma.fornecedor.findMany({
     where: {
       empresaId: sessao.empresaId,
@@ -68,13 +69,13 @@ export async function listarFornecedores(filtros?: FiltrosFornecedor): Promise<F
 }
 
 export async function obterFornecedorPorId(id: string): Promise<Fornecedor | null> {
-  const sessao = await exigirGestaoAction();
+  const sessao = await exigirGestaoAction(...ACESSO.fornecedoresLer);
   const registro = await prisma.fornecedor.findFirst({ where: { id, empresaId: sessao.empresaId } });
   return registro ? paraFornecedor(registro) : null;
 }
 
 export async function criarFornecedor(input: NovoFornecedorInput): Promise<Fornecedor> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.fornecedoresCriar);
   const parsed = novoFornecedorSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -86,7 +87,7 @@ export async function criarFornecedor(input: NovoFornecedorInput): Promise<Forne
 }
 
 export async function atualizarFornecedor(id: string, input: Partial<NovoFornecedorInput>): Promise<Fornecedor> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.fornecedoresAlterar);
   const parsed = atualizarFornecedorSchema.safeParse(input);
   if (!parsed.success) throw new Error("Dados inválidos.");
 
@@ -108,7 +109,7 @@ export async function atualizarFornecedor(id: string, input: Partial<NovoFornece
  * na busca quanto no cadastro (feito via criarFornecedor).
  */
 export async function resolverFornecedor(nome: string, documento?: string): Promise<Fornecedor> {
-  const sessao = await exigirGestaoEscritaAction();
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.fornecedoresCriar);
   const documentoNormalizado = normalizarDocumento(documento);
 
   if (documentoNormalizado) {

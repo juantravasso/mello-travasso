@@ -6,7 +6,13 @@ import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { lancadoPor } from "@/lib/autoria";
 import { formatarData, formatarMoeda } from "@/lib/formatadores";
 
-export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[]; obraPorId: Map<string, Obra> }) {
+export function ContasTabela({
+  contas,
+  obraPorId,
+}: {
+  contas: ContaFinanceira[];
+  obraPorId: Map<string, Obra>;
+}) {
   return (
     <Card className="hidden overflow-x-auto p-0 md:block">
       <table className="w-full text-sm">
@@ -23,7 +29,10 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
         </thead>
         <tbody>
           {contas.map((conta) => (
-            <tr key={conta.id} className="border-b border-border transition-colors last:border-0 hover:bg-surface-2">
+            <tr
+              key={conta.id}
+              className="border-b border-border transition-colors last:border-0 hover:bg-surface-2"
+            >
               <td className="p-3">
                 <Link
                   href={`/${conta.tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"}/${conta.id}`}
@@ -33,10 +42,21 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
                 </Link>
                 <p className="truncate text-xs text-muted">{conta.descricao}</p>
               </td>
-              <td className="p-3 text-muted">{obraPorId.get(conta.obraId)?.nome ?? "—"}</td>
+              <td className="p-3 text-muted">
+                {obraPorId.get(conta.obraId)?.nome ?? "—"}
+                {conta.rateios && conta.rateios.length > 1 && (
+                  <span className="ml-1 text-xs">
+                    +{conta.rateios.length - 1}
+                  </span>
+                )}
+              </td>
               <td className="p-3 text-muted">{lancadoPor(conta) ?? "—"}</td>
-              <td className="p-3 text-muted">{formatarData(conta.dataVencimento)}</td>
-              <td className="p-3 text-right font-medium">{formatarMoeda(conta.valor)}</td>
+              <td className="p-3 text-muted">
+                {formatarData(conta.dataVencimento)}
+              </td>
+              <td className="p-3 text-right font-medium">
+                {formatarMoeda(conta.valor)}
+              </td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-1.5">
                   <StatusContaBadge status={conta.status} tipo={conta.tipo} />

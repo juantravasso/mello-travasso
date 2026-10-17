@@ -60,10 +60,11 @@ async function criarEmpresa(sufixo: string, fuso: string): Promise<string> {
   });
   return e.id;
 }
-async function criarUsuario(empresaId: string, nome: string, papel: "dono" | "membro"): Promise<Pessoa> {
+// Membro usa só os módulos que o dono liberou: por padrão, o Calendário (o dono tem todos, não precisa de lista).
+async function criarUsuario(empresaId: string, nome: string, papel: "dono" | "membro", modulos: string[] = ["calendario"]): Promise<Pessoa> {
   const iso = new Date().toISOString();
   const u = await prisma.usuario.create({
-    data: { empresaId, nome: `${nome} ${marca}`, email: `${marca}-${nome.toLowerCase()}@example.test`, senhaHash: "sem-login", papel, emailConfirmadoEm: iso, criadoEm: iso, atualizadoEm: iso },
+    data: { empresaId, nome: `${nome} ${marca}`, email: `${marca}-${nome.toLowerCase()}@example.test`, senhaHash: "sem-login", papel, modulos: papel === "membro" ? modulos : [], emailConfirmadoEm: iso, criadoEm: iso, atualizadoEm: iso },
   });
   return { usuarioId: u.id, empresaId };
 }
@@ -96,6 +97,8 @@ async function main(): Promise<void> {
   const a1 = await criarUsuario(empA, "Ana", "dono");
   const a2 = await criarUsuario(empA, "Bruno", "membro");
   const a3 = await criarUsuario(empA, "Carla", "membro");
+  // Sem o módulo Calendário: não pode ser incluído em compromisso nem aparece na lista de colegas.
+  const a4 = await criarUsuario(empA, "Eduardo", "membro", ["estoque"]);
   const b1 = await criarUsuario(empB, "Dino", "dono");
   const escopo = [empA, empB];
   const agoraDe = (c: { id: string }, tipo: "vespera" | "dia") => async () => {
@@ -158,6 +161,17 @@ async function main(): Promise<void> {
   await teste("3b. lista de colegas traz só usuários ativos da mesma empresa, sem o próprio usuário", async () => {
     const ids = (await core.listarColegas(a1)).map((c) => c.id).sort();
     assert.deepEqual(ids, [a2.usuarioId, a3.usuarioId].sort());
+  });
+
+  await teste("3c. quem não tem o módulo Calendário não entra em compromisso e não aparece como colega", async () => {
+    await rejeita(core.criar(a1, base({ participantesIds: [a4.usuarioId] }), T0), /módulo Calendário/);
+    await rejeita(core.atualizar(a1, compartilhado.id, base({ participantesIds: [a2.usuarioId, a4.usuarioId] }), T0), /módulo Calendário/);
+    assert.ok(!(await core.listarColegas(a1)).some((c) => c.id === a4.usuarioId), "colega sem o módulo apareceu na lista");
+    assert.equal(await prisma.compromissoParticipante.count({ where: { usuarioId: a4.usuarioId } }), 0);
+    // Liberar o módulo passa a valer na hora (lido do banco a cada uso).
+    await prisma.usuario.update({ where: { id: a4.usuarioId }, data: { modulos: ["estoque", "calendario"] } });
+    assert.ok((await core.listarColegas(a1)).some((c) => c.id === a4.usuarioId), "módulo liberado não refletiu");
+    await prisma.usuario.update({ where: { id: a4.usuarioId }, data: { modulos: ["estoque"] } });
   });
 
   // 5 e 6 ---------------------------------------------------------------------------------------------

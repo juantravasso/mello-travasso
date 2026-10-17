@@ -1,6 +1,7 @@
 "use server";
 
 import { exigirGestaoAction, exigirGestaoEscritaAction, exigirSessaoAction } from "@/lib/auth/dal";
+import { ACESSO } from "@/lib/auth/modulos";
 import { verificarLimite } from "@/lib/auth/limite";
 import { idSchema, periodoSchema, preferenciasSchema } from "@/lib/validacao/calendario";
 import type {
@@ -27,7 +28,7 @@ async function limitarEscritas(usuarioId: string): Promise<void> {
 
 export async function listarCompromissos(de: string, ate: string): Promise<ResultadoAction<ListaCompromissos>> {
   return executar(async () => {
-    const sessao = await exigirGestaoAction();
+    const sessao = await exigirGestaoAction(...ACESSO.calendario);
     const periodo = periodoSchema.safeParse({ de, ate });
     if (!periodo.success) throw new ErroDeNegocio(periodo.error.issues[0]?.message ?? "Período inválido.");
     return core.listarNoPeriodo(sessao, periodo.data.de, periodo.data.ate);
@@ -36,14 +37,14 @@ export async function listarCompromissos(de: string, ate: string): Promise<Resul
 
 export async function listarProximosCompromissos(limite: number = 8): Promise<ResultadoAction<CompromissoItem[]>> {
   return executar(async () => {
-    const sessao = await exigirGestaoAction();
+    const sessao = await exigirGestaoAction(...ACESSO.calendario);
     return core.listarProximos(sessao, Number.isInteger(limite) ? limite : 8);
   });
 }
 
 export async function obterCompromisso(id: string): Promise<ResultadoAction<CompromissoItem>> {
   return executar(async () => {
-    const sessao = await exigirGestaoAction();
+    const sessao = await exigirGestaoAction(...ACESSO.calendario);
     const parsed = idSchema.safeParse({ id });
     if (!parsed.success) throw new ErroDeNegocio("Compromisso não encontrado.");
     return core.obterUm(sessao, parsed.data.id);
@@ -52,14 +53,14 @@ export async function obterCompromisso(id: string): Promise<ResultadoAction<Comp
 
 export async function listarColegas(): Promise<ResultadoAction<ColegaItem[]>> {
   return executar(async () => {
-    const sessao = await exigirGestaoAction();
+    const sessao = await exigirGestaoAction(...ACESSO.calendario);
     return core.listarColegas(sessao);
   });
 }
 
 export async function criarCompromisso(entrada: EntradaCompromisso): Promise<ResultadoAction<CompromissoItem>> {
   return executar(async () => {
-    const sessao = await exigirGestaoEscritaAction();
+    const sessao = await exigirGestaoEscritaAction(...ACESSO.calendario);
     await limitarEscritas(sessao.usuarioId);
     return core.criar(sessao, entrada);
   });
@@ -67,7 +68,7 @@ export async function criarCompromisso(entrada: EntradaCompromisso): Promise<Res
 
 export async function atualizarCompromisso(id: string, entrada: EntradaCompromisso): Promise<ResultadoAction<CompromissoItem>> {
   return executar(async () => {
-    const sessao = await exigirGestaoEscritaAction();
+    const sessao = await exigirGestaoEscritaAction(...ACESSO.calendario);
     await limitarEscritas(sessao.usuarioId);
     const parsed = idSchema.safeParse({ id });
     if (!parsed.success) throw new ErroDeNegocio("Compromisso não encontrado.");
@@ -77,7 +78,7 @@ export async function atualizarCompromisso(id: string, entrada: EntradaCompromis
 
 export async function excluirCompromisso(id: string): Promise<ResultadoAction<null>> {
   return executar(async () => {
-    const sessao = await exigirGestaoEscritaAction();
+    const sessao = await exigirGestaoEscritaAction(...ACESSO.calendario);
     await limitarEscritas(sessao.usuarioId);
     const parsed = idSchema.safeParse({ id });
     if (!parsed.success) throw new ErroDeNegocio("Compromisso não encontrado.");

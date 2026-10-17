@@ -88,6 +88,7 @@ src/
 | `/obras/novo`                  | Cadastro de obra                                          |
 | `/obras/[id]`                  | Detalhe: resumo financeiro + contas a pagar/receber vinculadas |
 | `/custos-produtos`             | Busca por material → histórico de preço, gráfico, tabela por obra/fornecedor |
+| `/estoque/deposito`            | Depósito: saldos, última compra, valor em estoque, onde mais o material está, transferir/devolver e histórico |
 | `/funcionarios`                | Lista + filtros (obra/status/busca) + cadastro            |
 | `/funcionarios/novo`           | Cadastro de funcionário                                    |
 | `/funcionarios/[id]`           | Detalhe + ativar/inativar                                  |
@@ -209,6 +210,49 @@ Opcional: `CALENDARIO_HORA_DIA_INTEIRO` e `CALENDARIO_HORA_LEMBRETE_DO_DIA` (hor
 **Testes.** `yarn test` roda os testes unitários (regras puras, sem banco). `yarn testar:calendario` roda a integração
 contra o banco do `.env.local`: cria duas empresas descartáveis, exercita compartilhamento, isolamento, lembretes,
 repetição e concorrência (e-mail simulado) e apaga o que criou.
+
+## Acesso por módulo (funcionários da empresa)
+
+O dono cria os usuários da empresa em Configurações e escolhe os **módulos** de cada um (Dashboard, Calendário, Captura,
+Contas a pagar, Contas a receber, Projetos, Estoque, Funcionários, Fornecedores, Elo Profissionais). O dono sempre tem
+todos; um membro usa só o que foi marcado, e o dono pode mudar isso depois (precisa da própria senha). A lista de módulos
+e o que cada ação exige estão numa definição só, [modulos.ts](src/lib/auth/modulos.ts), usada em três camadas: o menu
+esconde o que a pessoa não usa, a página mostra "sem acesso" e, o que realmente protege, **cada Server Action confere
+no servidor** (os módulos são lidos do banco a cada requisição, então revogar vale na hora). "Ler" é mais largo que
+"escrever": quem lança uma conta enxerga a lista de projetos para escolher, mas só altera projetos quem tem o módulo
+Projetos. Os módulos que a pessoa pode receber também respeitam o plano da empresa.
+
+## Depósito, rateio da nota e transferências
+
+Cada empresa tem um **Depósito**: um local de estoque especial (uma linha em `Obra` com `ehDeposito`, no máximo uma por
+empresa, garantido por índice único parcial). Ele não é projeto: não aparece nas listas de projetos, não tem orçamento
+e não entra nos indicadores de projeto.
+
+**Captura de nota fiscal.** Na revisão, o campo "Destino de todos os itens" manda a nota inteira para um projeto ou para o
+Depósito; em cada item é possível trocar o destino. A gravação é uma só, no servidor e numa transação
+([capturaCore.server.ts](src/services/data/server/capturaCore.server.ts)): conta (ou parcelas), itens, produto do
+catálogo e entrada no estoque do destino do item. Com mais de um destino, o valor da conta é **rateado proporcional ao
+valor dos itens** (frete e impostos entram na mesma proporção), em centavos inteiros pelo método do maior resto, para a
+soma fechar exatamente no valor da nota ([rateio.ts](src/lib/estoque/rateio.ts)). A conta continua **uma só** (um
+boleto, uma baixa): o rateio fica em `RateioConta`, e a conta fica com o projeto de maior parte. Em notas parceladas,
+cada parcela é rateada na mesma proporção e os itens ficam na primeira conta. A soma das parcelas precisa bater com o
+valor da nota.
+
+**Custo do projeto.** Compra para o Depósito **não** é gasto de projeto. O projeto soma: contas que têm parte dele
+(só a parte dele, via rateio) + material transferido do Depósito ao valor da última compra. Isso aparece no detalhe
+do projeto (seção "Materiais vindos do depósito") e no progresso de orçamento do dashboard.
+
+**Transferir / devolver** ([depositoCore.server.ts](src/services/data/server/depositoCore.server.ts)). Duas
+movimentações de estoque ligadas por `transferenciaId` (saída de um local, entrada no outro) na mesma transação; o
+saldo nunca fica negativo e transferências simultâneas não passam do saldo. O valor unitário é o da última compra
+(itens de contas não canceladas); sem compra, o custo médio; sem nenhum, R$ 0,00 (a tela avisa antes). Transferir não
+é compra: não muda o custo médio, não cria conta e não mexe no caixa. **Devolver** ao Depósito abate o custo do projeto
+pelo mesmo critério. Limite conhecido: a devolução usa a última compra *do momento*, então, se o preço mudou entre a ida
+e a volta, sobra uma pequena diferença no custo do projeto.
+
+**Testes.** `yarn testar:deposito` (integração, banco do `.env.local`): captura com rateio, parcelas, Depósito,
+transferência, devolução, última compra com conta cancelada, isolamento entre empresas e concorrência; cria empresas
+descartáveis e apaga o que criou.
 
 ## Rodando localmente
 

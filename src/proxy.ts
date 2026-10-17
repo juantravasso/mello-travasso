@@ -12,7 +12,13 @@ const NOME_COOKIE = "mt_sessao";
 
 export function proxy(request: NextRequest) {
   const temCookie = request.cookies.has(NOME_COOKIE);
-  if (temCookie) return NextResponse.next();
+  if (temCookie) {
+    // Os layouts não recebem o caminho da página; este cabeçalho (sempre sobrescrito aqui, nunca o que o
+    // cliente mandar) deixa o layout de (app) conferir o módulo da rota. A barreira real continua nas ações.
+    const cabecalhos = new Headers(request.headers);
+    cabecalhos.set("x-pathname", request.nextUrl.pathname);
+    return NextResponse.next({ request: { headers: cabecalhos } });
+  }
 
   const destino = new URL("/login", request.url);
   destino.searchParams.set("next", request.nextUrl.pathname);

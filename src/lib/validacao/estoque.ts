@@ -11,6 +11,16 @@ export const novoProdutoSchema = z
   })
   .strict();
 
+export const transferenciaSchema = z
+  .object({
+    produtoId: z.string().uuid(),
+    obraId: z.string().uuid(),
+    sentido: z.enum(["para_projeto", "devolucao"]).optional(),
+    quantidade: z.number().positive("Informe uma quantidade maior que zero.").max(1_000_000_000),
+    observacao: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
 export const movimentoEstoqueSchema = z
   .object({
     produtoId: z.string().uuid(),

@@ -1,4 +1,6 @@
 import type {
+  CapturaRepositorio,
+  DepositoRepositorio,
   CatalogoRepositorio,
   ContasRepositorio,
   EstoqueRepositorio,
@@ -21,6 +23,8 @@ import type {
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
 } from "./repositorios";
+import { registrarCaptura } from "./server/capturaActions";
+import { listarTransferencias, obterCustosTransferidos, obterDeposito, transferirDoDeposito } from "./server/depositoActions";
 import { cancelarSolicitacao, criarSolicitacao, listarMinhasSolicitacoes, obterAvaliacaoComprovavel, obterPerfilReivindicavel } from "./server/verificacaoActions";
 import { contarSolicitacoesPendentes, decidirSolicitacao, desfazerSolicitacao, listarSolicitacoesAdmin } from "./server/verificacaoAdminActions";
 import { alterarPlanoEmpresa, bloquearEmpresa, desbloquearEmpresa, listarEmpresasAdmin } from "./server/empresaAdminActions";
@@ -39,6 +43,7 @@ import {
   salvarPreferenciasCalendario,
 } from "./server/calendarioActions";
 import {
+  alterarModulosDoUsuario,
   criarUsuarioDaEmpresa,
   desativarUsuarioDaEmpresa,
   listarUsuariosDaEmpresa,
@@ -165,6 +170,17 @@ export const itensProdutoRepositorio: ItensProdutoRepositorio = {
   criarEmLote: criarItensProdutoEmLote,
   historicoPorDescricao: historicoPrecoPorDescricao,
   listarDescricoesUnicas: listarDescricoesUnicasProduto,
+};
+
+export const capturaRepositorio: CapturaRepositorio = {
+  registrar: registrarCaptura,
+};
+
+export const depositoRepositorio: DepositoRepositorio = {
+  obter: obterDeposito,
+  transferir: transferirDoDeposito,
+  listarTransferencias,
+  obterCustosTransferidos,
 };
 
 export const funcionariosRepositorio: FuncionariosRepositorio = {
@@ -298,6 +314,7 @@ export const calendarioRepositorio: CalendarioRepositorio = {
 export const usuariosEmpresaRepositorio: UsuariosEmpresaRepositorio = {
   listar: listarUsuariosDaEmpresa,
   criar: criarUsuarioDaEmpresa,
+  alterarModulos: alterarModulosDoUsuario,
   redefinirAcesso: redefinirAcessoDoUsuario,
   desativar: desativarUsuarioDaEmpresa,
   reativar: reativarUsuarioDaEmpresa,
@@ -324,6 +341,8 @@ export const planosAdminRepositorio: PlanosAdminRepositorio = {
 };
 
 export type {
+  CapturaRepositorio,
+  DepositoRepositorio,
   CatalogoRepositorio,
   ContasRepositorio,
   EstoqueRepositorio,

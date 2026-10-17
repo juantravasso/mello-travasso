@@ -17,7 +17,7 @@ import type { ResultadoAction } from "@/types";
 import { emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
 
 const MENSAGEM_CADASTRO_DUPLICADO = "Não foi possível criar a conta com esses dados. Se você já tem conta, entre.";
-const LIMITE_CADASTROS_POR_HORA = 3;
+const LIMITE_CADASTROS_POR_HORA = 5;
 
 const MENSAGEM_LOGIN_INVALIDO = "E-mail ou senha incorretos.";
 const MENSAGEM_BLOQUEADO = "Muitas tentativas. Tente de novo em 15 minutos.";
@@ -166,12 +166,6 @@ export async function criarConta(
     }
   }
 
-  const ip = await obterIp();
-  const limite = await verificarLimite(`cadastro:ip:${ip}`, LIMITE_CADASTROS_POR_HORA, 60 * 60 * 1000);
-  if (!limite.permitido) {
-    return { ok: false, erro: "LIMITE", mensagem: "Muitos cadastros a partir deste endereço. Tente de novo mais tarde." };
-  }
-
   const parsed = criarContaSchema.safeParse(input);
   if (!parsed.success) {
     const documentoInvalido = parsed.error.issues.some((i) => i.path[0] === "documento");
@@ -184,6 +178,15 @@ export async function criarConta(
     if (documentoInvalido) campos.documento = mensagemDocumento;
     return { ok: false, erro: "VALIDACAO", mensagem: "Confira os campos destacados.", campos };
   }
+  // O limite vem depois da validação de formato: erro de digitação (CNPJ, CEP, campo vazio) não gasta
+  // tentativa. Continua antes de qualquer consulta ao banco, que é o que revelaria se um documento
+  // ou e-mail já tem conta.
+  const ip = await obterIp();
+  const limite = await verificarLimite(`cadastro:ip:${ip}`, LIMITE_CADASTROS_POR_HORA, 60 * 60 * 1000);
+  if (!limite.permitido) {
+    return { ok: false, erro: "LIMITE", mensagem: "Muitos cadastros a partir deste endereço. Tente de novo mais tarde." };
+  }
+
   const dadosForm = parsed.data;
   const documentoNormalizado = normalizarDocumento(dadosForm.documento);
   if (!documentoNormalizado) {

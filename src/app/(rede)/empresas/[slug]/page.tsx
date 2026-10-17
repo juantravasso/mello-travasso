@@ -242,6 +242,23 @@ export default async function PerfilPublicoPage({
             </section>
           )}
 
+          {perfil.locais && perfil.locais.length > 0 && (
+            <nav className="flex flex-col gap-2" aria-labelledby="titulo-locais">
+              <h2 id="titulo-locais" className="text-lg font-semibold text-foreground">
+                Veja também na região
+              </h2>
+              <ul className="flex flex-wrap gap-2">
+                {perfil.locais.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="inline-flex rounded-full border border-border px-2.5 py-1 text-sm text-foreground hover:border-primary hover:text-primary">
+                      {l.rotulo}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
+
           <section id="avaliacoes" className="flex scroll-mt-20 flex-col gap-4" aria-labelledby="titulo-avaliacoes">
             <h2 id="titulo-avaliacoes" className="text-lg font-semibold text-foreground">
               Avaliações

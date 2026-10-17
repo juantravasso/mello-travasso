@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
+import { RAIOS_KM } from "@/lib/rede/raios";
 import { normalizarInstagram, normalizarSite, normalizarTelefone } from "@/lib/rede/texto";
 import { CHAVES_NEGATIVAS, CHAVES_POSITIVAS, motivosParaAlvo } from "@/lib/rede/aspectos";
 import { cnpjValido } from "./documento";
@@ -103,6 +104,10 @@ export const filtrosBuscaSchema = z
     cidade: z.string().trim().max(100).optional(),
     tipo: z.enum(["pj", "pf"]).optional(),
     notaMin: z.number().min(1).max(5).optional(),
+    raioKm: z
+      .number()
+      .refine((km) => (RAIOS_KM as readonly number[]).includes(km), "Raio inválido.")
+      .optional(),
     pagina: z.number().int().min(1).max(500).optional(),
   })
   .strict();

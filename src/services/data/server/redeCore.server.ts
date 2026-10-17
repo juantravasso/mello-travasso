@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { extrairIpConfiavel, verificarLimite } from "@/lib/auth/limite";
 import { filtrosBuscaSchema } from "@/lib/validacao/rede";
 import { gerarSlug, normalizarBusca } from "@/lib/rede/texto";
+import { SIGLAS_UF } from "@/lib/rede/ufs";
 import type {
   CategoriaItem,
   FiltrosBuscaPerfil,
@@ -53,6 +54,7 @@ function resumir(texto: string | null, max: number): string | undefined {
 function paraResumo(
   perfil: PerfilComProfissoes,
   avaliacao?: { media: number; total: number },
+  distanciaKm?: number,
 ): PerfilPublicoResumo {
   return {
     slug: perfil.slug,
@@ -67,6 +69,7 @@ function paraResumo(
     verificado: perfil.status === "publicado" && !!perfil.empresa?.verificadaEm,
     logoUrl: perfil.status === "publicado" && perfil.arquivos[0] ? `/api/arquivos/${perfil.arquivos[0].id}` : undefined,
     avaliacao,
+    distanciaKm,
   };
 }
 
@@ -132,7 +135,23 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
 
   const parsed = filtrosBuscaSchema.safeParse(filtrosBrutos);
   if (!parsed.success) return vazio;
-  const { q, profissao, categoria, estado, cidade, tipo, notaMin, pagina = 1 } = parsed.data;
+  const { q, profissao, categoria, estado, cidade, tipo, notaMin, raioKm, pagina = 1 } = parsed.data;
+  const termoCidade = cidade ? termoLiteral(cidade) : "";
+
+  // Raio: o centro é o município oficial (estado + nome exato). Sem ele não há como medir distância:
+  // busca só pelo nome da cidade e avisa.
+  let distancias: Map<string, number> | undefined;
+  let raio: ResultadoBuscaPerfil["raio"];
+  let raioIgnorado = false;
+  if (raioKm && estado && termoCidade) {
+    const centro = await prisma.municipio.findUnique({ where: { uf_nomeBusca: { uf: estado, nomeBusca: termoCidade } } });
+    if (centro) {
+      distancias = await perfisNoRaio(centro, raioKm);
+      raio = { cidade: centro.nome, estado: centro.uf, km: raioKm };
+    } else {
+      raioIgnorado = true;
+    }
+  }
 
   const condicoes: Prisma.PerfilPublicoWhereInput[] = [{ status: { in: statusVisiveis } }];
 
@@ -159,9 +178,13 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
       },
     });
   }
-  if (estado) condicoes.push({ estado });
-  const termoCidade = cidade ? termoLiteral(cidade) : "";
-  if (termoCidade) condicoes.push({ cidadeBusca: { contains: termoCidade } });
+  if (distancias) {
+    // O raio já inclui a própria cidade (distância 0): estado e cidade não restringem mais.
+    condicoes.push({ id: { in: [...distancias.keys()] } });
+  } else {
+    if (estado) condicoes.push({ estado });
+    if (termoCidade) condicoes.push({ cidadeBusca: { contains: termoCidade } });
+  }
   if (tipo) condicoes.push({ tipo });
   // Sem nenhum filtro, a listagem (indexável) não mostra autônomo indicado por
   // terceiros: o nome civil de uma pessoa não entra numa lista aberta sem que
@@ -180,24 +203,73 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
   }
 
   const where: Prisma.PerfilPublicoWhereInput = { AND: condicoes };
-  const [total, perfis] = await Promise.all([
-    prisma.perfilPublico.count({ where }),
-    prisma.perfilPublico.findMany({
-      where,
-      include: incluirProfissoes,
-      orderBy: [{ nome: "asc" }, { id: "asc" }],
-      skip: (pagina - 1) * TAMANHO_PAGINA_BUSCA,
-      take: TAMANHO_PAGINA_BUSCA,
-    }),
-  ]);
+  let total: number;
+  let perfis: PerfilComProfissoes[];
+  if (distancias) {
+    // Ordem por distância não existe no Prisma: acha quem passa nos filtros, ordena aqui (no máximo
+    // 2000 ids vindos do raio) e só então carrega a página.
+    const mapa = distancias;
+    const achados = await prisma.perfilPublico.findMany({ where, select: { id: true, nome: true } });
+    const ordenados = achados.sort(
+      (a, b) =>
+        (mapa.get(a.id) ?? 0) - (mapa.get(b.id) ?? 0) || a.nome.localeCompare(b.nome, "pt-BR") || a.id.localeCompare(b.id),
+    );
+    total = ordenados.length;
+    const idsPagina = ordenados.slice((pagina - 1) * TAMANHO_PAGINA_BUSCA, pagina * TAMANHO_PAGINA_BUSCA).map((p) => p.id);
+    const carregados = await prisma.perfilPublico.findMany({ where: { id: { in: idsPagina } }, include: incluirProfissoes });
+    const porId = new Map(carregados.map((p) => [p.id, p]));
+    perfis = idsPagina.map((id) => porId.get(id)).filter((p): p is PerfilComProfissoes => p !== undefined);
+  } else {
+    [total, perfis] = await Promise.all([
+      prisma.perfilPublico.count({ where }),
+      prisma.perfilPublico.findMany({
+        where,
+        include: incluirProfissoes,
+        orderBy: [{ nome: "asc" }, { id: "asc" }],
+        skip: (pagina - 1) * TAMANHO_PAGINA_BUSCA,
+        take: TAMANHO_PAGINA_BUSCA,
+      }),
+    ]);
+  }
   const resumos = await resumosPorPerfil(perfis.map((p) => p.id));
 
   return {
-    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id))),
+    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id), distancias ? Math.round(distancias.get(p.id) ?? 0) : undefined)),
     total,
     pagina,
     totalPaginas: Math.ceil(total / TAMANHO_PAGINA_BUSCA),
+    raio,
+    raioIgnorado: raioIgnorado || undefined,
   };
+}
+
+/**
+ * Perfis visíveis dentro do raio, com a distância (km, em linha reta) entre o centro da cidade
+ * pesquisada e o da cidade de cada perfil — precisão de cidade, não de endereço. O caixote
+ * (latitude/longitude) corta a tabela de municípios antes da fórmula de haversine.
+ */
+async function perfisNoRaio(centro: { latitude: number; longitude: number }, raioKm: number): Promise<Map<string, number>> {
+  const dLat = raioKm / 111;
+  const dLon = raioKm / (111 * Math.max(Math.cos((centro.latitude * Math.PI) / 180), 0.2));
+  const linhas = await prisma.$queryRaw<{ id: string; km: number }[]>`
+    SELECT p."id", d."km"
+    FROM "PerfilPublico" p
+    JOIN (
+      SELECT m."uf", m."nomeBusca",
+        2 * 6371 * asin(sqrt(LEAST(1.0,
+          power(sin(radians(m."latitude" - ${centro.latitude}::float8) / 2), 2) +
+          cos(radians(${centro.latitude}::float8)) * cos(radians(m."latitude")) *
+          power(sin(radians(m."longitude" - ${centro.longitude}::float8) / 2), 2)
+        ))) AS "km"
+      FROM "Municipio" m
+      WHERE m."latitude" BETWEEN ${centro.latitude - dLat}::float8 AND ${centro.latitude + dLat}::float8
+        AND m."longitude" BETWEEN ${centro.longitude - dLon}::float8 AND ${centro.longitude + dLon}::float8
+    ) d ON d."uf" = p."estado" AND d."nomeBusca" = p."cidadeBusca"
+    WHERE p."status" IN ('publicado', 'indicado')
+      AND d."km" <= ${raioKm}::float8
+    ORDER BY d."km", p."id"
+    LIMIT 2000`;
+  return new Map(linhas.map((l) => [l.id, Number(l.km)]));
 }
 
 /** Serviços e trabalhos (agrupados por galeria) de um perfil já verificado como publicado. */
@@ -247,6 +319,23 @@ export interface PerfilPublicoComContexto {
   indicadoPorEmpresaId: string | null;
 }
 
+/** Links para as páginas locais que listam este perfil (publicado, com cidade da base de municípios). */
+async function linksLocais(perfil: PerfilComProfissoes): Promise<PerfilPublicoCompleto["locais"]> {
+  if (perfil.status !== "publicado" || !perfil.estado || !perfil.cidadeBusca) return undefined;
+  const municipio = await prisma.municipio.findUnique({
+    where: { uf_nomeBusca: { uf: perfil.estado, nomeBusca: perfil.cidadeBusca } },
+    select: { nome: true, uf: true },
+  });
+  if (!municipio) return undefined;
+  return perfil.profissoes
+    .filter((pp) => pp.profissao.ativo)
+    .slice(0, 6)
+    .map((pp) => ({
+      rotulo: `${pp.profissao.nome} em ${municipio.nome}/${municipio.uf}`,
+      href: `/rede/${pp.profissao.slug}/${municipio.uf.toLowerCase()}/${gerarSlug(municipio.nome, 80)}`,
+    }));
+}
+
 // cache() por request: generateMetadata e a página chamam isto com o mesmo slug.
 export const obterPerfilPublicoPorSlug = cache(async (slug: string): Promise<PerfilPublicoComContexto | null> => {
   if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null;
@@ -255,12 +344,13 @@ export const obterPerfilPublicoPorSlug = cache(async (slug: string): Promise<Per
     include: incluirProfissoes,
   });
   if (!registro) return null;
-  const [resumo, portfolio] = await Promise.all([
+  const [resumo, portfolio, locais] = await Promise.all([
     obterResumo(registro.id),
     registro.status === "publicado" ? carregarPortfolioPublico(registro.id) : { servicos: [], galerias: [] },
+    linksLocais(registro),
   ]);
   return {
-    perfil: paraCompleto(registro, resumo, portfolio),
+    perfil: { ...paraCompleto(registro, resumo, portfolio), locais },
     id: registro.id,
     empresaId: registro.empresaId,
     documentoIndicado: registro.documentoIndicado,
@@ -289,20 +379,127 @@ export async function listarSlugsPublicados(): Promise<{ slug: string; atualizad
   });
 }
 
-/** Cidades (nomes como digitados pelos perfis visíveis) — sem lista fixa embutida. */
+/** Sugestões de cidade vindas da base de municípios (nome oficial, o mesmo usado no raio). */
 export async function listarCidadesPublicas(estado: string | undefined, termo: string): Promise<string[]> {
   const busca = termoLiteral(termo);
-  const linhas = await prisma.perfilPublico.findMany({
-    where: {
-      status: { in: statusVisiveis },
-      cidade: { not: null },
-      ...(estado ? { estado } : {}),
-      ...(busca ? { cidadeBusca: { contains: busca } } : {}),
-    },
-    select: { cidade: true },
-    distinct: ["cidadeBusca"],
-    orderBy: { cidade: "asc" },
-    take: 10,
+  if (!busca) return [];
+  const linhas = await prisma.municipio.findMany({
+    where: { nomeBusca: { contains: busca }, ...(estado ? { uf: estado } : {}) },
+    select: { nome: true },
+    orderBy: [{ nome: "asc" }],
+    take: 40,
   });
-  return linhas.map((l) => l.cidade).filter((c): c is string => c !== null);
+  return [...new Set(linhas.map((l) => l.nome))].slice(0, 10);
+}
+
+// --- Páginas locais (profissão + cidade), indexáveis ------------------------
+
+export interface LocalProfissao {
+  profissao: { id: string; nome: string; slug: string };
+  municipio: { nome: string; nomeBusca: string; uf: string };
+}
+
+// A tabela de municípios é estática (IBGE): guarda em memória, por estado, o índice slug → município.
+// Tabela vazia não é guardada, para a página voltar a funcionar assim que o import rodar.
+const municipiosPorUf = new Map<string, Map<string, { nome: string; nomeBusca: string }>>();
+
+async function municipiosDaUf(uf: string) {
+  let indice = municipiosPorUf.get(uf);
+  if (!indice) {
+    const linhas = await prisma.municipio.findMany({ where: { uf }, select: { nome: true, nomeBusca: true } });
+    indice = new Map(linhas.map((m) => [gerarSlug(m.nome, 80), m]));
+    if (linhas.length > 0) municipiosPorUf.set(uf, indice);
+  }
+  return indice;
+}
+
+/** Limite de visitas às páginas locais por IP; compartilhado (cache por request) entre generateMetadata e a página. */
+export const visitaLocalPermitida = cache(async (): Promise<boolean> => {
+  const limite = await verificarLimite(`rede-local:${extrairIpConfiavel(await headers())}`, 120, 60_000);
+  return limite.permitido;
+});
+
+/** Resolve /rede/[profissao]/[uf]/[cidade]; null (404) se a profissão, o estado ou a cidade não existem. */
+export const obterLocalPorSlugs = cache(
+  async (profissaoSlug: string, ufMinusculo: string, cidadeSlug: string): Promise<LocalProfissao | null> => {
+    const padrao = /^[a-z0-9-]{1,80}$/;
+    if (!/^[a-z]{2}$/.test(ufMinusculo) || !padrao.test(profissaoSlug) || !padrao.test(cidadeSlug)) return null;
+    const uf = ufMinusculo.toUpperCase();
+    if (!SIGLAS_UF.includes(uf)) return null;
+    const municipio = (await municipiosDaUf(uf)).get(cidadeSlug);
+    if (!municipio) return null;
+    const profissao = await prisma.profissao.findFirst({ where: { slug: profissaoSlug, ativo: true }, select: { id: true, nome: true, slug: true } });
+    if (!profissao) return null;
+    return { profissao, municipio: { ...municipio, uf } };
+  },
+);
+
+/** Só perfis publicados pelo dono (mesma regra do sitemap): indicados por terceiros não viram página local. */
+// cache() por request: generateMetadata e a página pedem a mesma lista (mesmo objeto `local`).
+export const listarPerfisLocais = cache(async function listarPerfisLocais(
+  local: LocalProfissao,
+  pagina: number,
+): Promise<{ itens: PerfilPublicoResumo[]; total: number; totalPaginas: number }> {
+  const where: Prisma.PerfilPublicoWhereInput = {
+    status: "publicado",
+    estado: local.municipio.uf,
+    cidadeBusca: local.municipio.nomeBusca,
+    profissoes: { some: { profissaoId: local.profissao.id } },
+  };
+  const [total, perfis] = await Promise.all([
+    prisma.perfilPublico.count({ where }),
+    prisma.perfilPublico.findMany({
+      where,
+      include: incluirProfissoes,
+      orderBy: [{ nome: "asc" }, { id: "asc" }],
+      skip: (pagina - 1) * TAMANHO_PAGINA_BUSCA,
+      take: TAMANHO_PAGINA_BUSCA,
+    }),
+  ]);
+  const resumos = await resumosPorPerfil(perfis.map((p) => p.id));
+  return {
+    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id))),
+    total,
+    totalPaginas: Math.ceil(total / TAMANHO_PAGINA_BUSCA),
+  };
+});
+
+export interface LocalIndexavel {
+  href: string;
+  atualizadoEm: string;
+}
+
+/** Combinações profissão × cidade com ao menos um perfil publicado: só elas entram no sitemap (sem página vazia). */
+export async function listarLocaisIndexaveis(): Promise<LocalIndexavel[]> {
+  const pares = await prisma.perfilProfissao.findMany({
+    where: { profissao: { ativo: true }, perfil: { status: "publicado", estado: { not: null }, cidadeBusca: { not: null } } },
+    select: {
+      profissao: { select: { slug: true } },
+      perfil: { select: { estado: true, cidadeBusca: true, atualizadoEm: true } },
+    },
+    orderBy: [{ perfilId: "asc" }, { profissaoId: "asc" }],
+    take: 20000,
+  });
+  if (pares.length === 20000) console.warn("[sitemap] listarLocaisIndexaveis atingiu 20000 pares: sitemap local truncado.");
+  const combinacoes = new Map<string, { profissao: string; uf: string; cidadeBusca: string; atualizadoEm: string }>();
+  for (const p of pares) {
+    if (!p.perfil.estado || !p.perfil.cidadeBusca) continue;
+    const chave = `${p.profissao.slug}|${p.perfil.estado}|${p.perfil.cidadeBusca}`;
+    const atual = combinacoes.get(chave);
+    if (!atual || atual.atualizadoEm < p.perfil.atualizadoEm) {
+      combinacoes.set(chave, { profissao: p.profissao.slug, uf: p.perfil.estado, cidadeBusca: p.perfil.cidadeBusca, atualizadoEm: p.perfil.atualizadoEm });
+    }
+  }
+  if (combinacoes.size === 0) return [];
+  const ufs = [...new Set([...combinacoes.values()].map((c) => c.uf))];
+  const municipios = await prisma.municipio.findMany({ where: { uf: { in: ufs } }, select: { uf: true, nome: true, nomeBusca: true } });
+  const nomes = new Map(municipios.map((m) => [`${m.uf}|${m.nomeBusca}`, m.nome]));
+  const saida: LocalIndexavel[] = [];
+  for (const c of combinacoes.values()) {
+    const nome = nomes.get(`${c.uf}|${c.cidadeBusca}`);
+    if (!nome) continue; // cidade digitada fora da base de municípios: sem página local
+    saida.push({ href: `/rede/${c.profissao}/${c.uf.toLowerCase()}/${gerarSlug(nome, 80)}`, atualizadoEm: c.atualizadoEm });
+    if (saida.length >= 5000) break;
+  }
+  return saida;
 }

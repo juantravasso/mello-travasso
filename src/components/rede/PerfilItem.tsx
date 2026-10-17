@@ -36,7 +36,14 @@ export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
           {perfil.profissoes.length > 0 && (
             <p className="truncate text-sm text-foreground">{perfil.profissoes.join(" · ")}</p>
           )}
-          {local && <p className="text-sm text-muted">{local}</p>}
+          {local && (
+            <p className="text-sm text-muted">
+              {local}
+              {perfil.distanciaKm !== undefined && (
+                <span className="tabular-nums"> · {perfil.distanciaKm === 0 ? "mesma cidade" : `a ${perfil.distanciaKm} km`}</span>
+              )}
+            </p>
+          )}
           {perfil.descricao && <p className="line-clamp-2 text-sm text-muted">{perfil.descricao}</p>}
         </div>
       </Link>

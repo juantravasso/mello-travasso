@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CategoriaItem, FiltrosBuscaPerfil } from "@/types";
 import { UFS } from "@/lib/rede/ufs";
+import { RAIOS_KM } from "@/lib/rede/raios";
 import { sugerirCidades } from "@/services/data/server/redeActions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -18,6 +19,7 @@ function montarQuery(f: FiltrosBuscaPerfil): string {
   if (f.cidade) params.set("cidade", f.cidade);
   if (f.tipo) params.set("tipo", f.tipo);
   if (f.notaMin) params.set("notaMin", String(f.notaMin));
+  if (f.raioKm) params.set("raioKm", String(f.raioKm));
   const texto = params.toString();
   return texto ? `?${texto}` : "";
 }
@@ -37,6 +39,7 @@ export function BuscaRedeForm({
   const [cidade, setCidade] = useState(inicial.cidade ?? "");
   const [tipo, setTipo] = useState<string>(inicial.tipo ?? "");
   const [notaMin, setNotaMin] = useState<string>(inicial.notaMin ? String(inicial.notaMin) : "");
+  const [raio, setRaio] = useState<string>(inicial.raioKm ? String(inicial.raioKm) : "");
   const [sugestoes, setSugestoes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -71,6 +74,8 @@ export function BuscaRedeForm({
         cidade: cidade.trim() || undefined,
         tipo: tipo === "pj" || tipo === "pf" ? tipo : undefined,
         notaMin: notaMin ? Number(notaMin) : undefined,
+        // Raio só faz sentido com estado e cidade: sem eles não há centro para medir.
+        raioKm: raio && estado && cidade.trim() ? Number(raio) : undefined,
       })}`,
     );
   }
@@ -133,7 +138,21 @@ export function BuscaRedeForm({
         <option value="4">4 estrelas ou mais</option>
         <option value="4.5">4,5 estrelas ou mais</option>
       </Select>
-      <div className="flex items-end sm:col-span-2 lg:col-span-2 lg:justify-end">
+      <Select
+        id="rede-raio"
+        label="Distância"
+        value={raio}
+        onChange={(e) => setRaio(e.target.value)}
+        disabled={!estado || !cidade.trim()}
+      >
+        <option value="">Só nesta cidade</option>
+        {RAIOS_KM.map((km) => (
+          <option key={km} value={km}>
+            Até {km} km
+          </option>
+        ))}
+      </Select>
+      <div className="flex items-end lg:justify-end">
         <Button type="submit" className="w-full sm:w-auto sm:min-w-40">
           Pesquisar
         </Button>

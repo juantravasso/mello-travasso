@@ -60,6 +60,8 @@ export interface PerfilPublicoResumo {
   verificado: boolean;
   /** Média e total de avaliações publicadas; ausente quando não há nenhuma. */
   avaliacao?: { media: number; total: number };
+  /** Só na busca por raio: km entre o centro da cidade pesquisada e o da cidade do perfil. */
+  distanciaKm?: number;
 }
 
 /** Perfil completo para a página pública. Telefone/WhatsApp só vêm se o dono marcou como públicos. */
@@ -72,6 +74,8 @@ export interface PerfilPublicoCompleto extends PerfilPublicoResumo {
   site?: string;
   profissoesDetalhe: { nome: string; slug: string }[];
   criadoEm: string;
+  /** Páginas locais (profissão + cidade) que listam este perfil; só de perfil publicado. */
+  locais?: { rotulo: string; href: string }[];
   resumo: ResumoAvaliacoes;
   servicos: ServicoPublico[];
   galerias: GaleriaPublica[];
@@ -86,6 +90,8 @@ export interface FiltrosBuscaPerfil {
   tipo?: TipoPerfil;
   /** Só perfis com média de avaliações igual ou acima. */
   notaMin?: number;
+  /** Busca por raio em volta da cidade (exige estado e cidade conhecidos). Ver RAIOS_KM. */
+  raioKm?: number;
   pagina?: number;
 }
 
@@ -95,6 +101,10 @@ export interface ResultadoBuscaPerfil {
   pagina: number;
   totalPaginas: number;
   limiteExcedido?: boolean;
+  /** Raio aplicado, com o nome oficial da cidade usada como centro. */
+  raio?: { cidade: string; estado: string; km: number };
+  /** Pediram raio, mas a cidade não foi encontrada na base de municípios: buscou só pelo nome. */
+  raioIgnorado?: boolean;
 }
 
 /** Perfil como o dono vê e edita (inclui rascunho, flags de visibilidade e status). */

@@ -17,7 +17,8 @@
     "backfill:cadastro-empresa": "tsx scripts/backfill-cadastro-empresa.ts",
     "empresa:estender-teste": "tsx scripts/estender-teste.ts",
     "admin:promover": "tsx scripts/promover-admin.ts",
-    "seed:taxonomia": "tsx scripts/semear-taxonomia.ts"
+    "seed:taxonomia": "tsx scripts/semear-taxonomia.ts",
+    "seed:municipios": "tsx scripts/importar-municipios.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

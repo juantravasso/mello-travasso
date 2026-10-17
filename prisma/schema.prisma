@@ -948,3 +948,22 @@ model TrabalhoFoto {
 
   @@index([trabalhoId, ordem])
 }
+
+// --- Localização (Fase 6.7) -------------------------------------------------
+
+/// Municípios do Brasil com o ponto central (latitude/longitude): base da busca por raio.
+/// Dado público, importado por `yarn seed:municipios` de prisma/dados/municipios.csv
+/// (kelvins/Municipios-Brasileiros, MIT, derivado do IBGE). O perfil não aponta para cá por FK:
+/// a ligação é por (estado, cidadeBusca), então a cidade digitada continua livre e nada quebra
+/// se a tabela estiver vazia.
+model Municipio {
+  ibgeId    Int    @id
+  nome      String
+  /// Minúsculo e sem acento; mesma normalização de PerfilPublico.cidadeBusca.
+  nomeBusca String
+  uf        String
+  latitude  Float
+  longitude Float
+
+  @@unique([uf, nomeBusca])
+}

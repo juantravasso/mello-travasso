@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buscarPerfisPublicos, listarTaxonomia } from "@/services/data/server/redeCore.server";
 import { SIGLAS_UF } from "@/lib/rede/ufs";
+import { RAIOS_KM } from "@/lib/rede/raios";
 import type { FiltrosBuscaPerfil } from "@/types";
 import { BuscaRedeForm } from "@/components/rede/BuscaRedeForm";
 import { PerfilItem } from "@/components/rede/PerfilItem";
@@ -21,6 +22,11 @@ function lerNotaMin(valor: string | undefined): number | undefined {
   return Number.isFinite(nota) && nota >= 1 && nota <= 5 ? nota : undefined;
 }
 
+function lerRaio(valor: string | undefined): number | undefined {
+  const km = Number.parseInt(valor ?? "", 10);
+  return (RAIOS_KM as readonly number[]).includes(km) ? km : undefined;
+}
+
 function lerFiltros(params: Record<string, string | string[] | undefined>): FiltrosBuscaPerfil {
   const estado = primeiro(params.estado)?.toUpperCase();
   const tipo = primeiro(params.tipo);
@@ -33,6 +39,7 @@ function lerFiltros(params: Record<string, string | string[] | undefined>): Filt
     cidade: primeiro(params.cidade)?.slice(0, 100),
     tipo: tipo === "pj" || tipo === "pf" ? tipo : undefined,
     notaMin: lerNotaMin(primeiro(params.notaMin)),
+    raioKm: lerRaio(primeiro(params.raioKm)),
     pagina: Number.isFinite(pagina) && pagina >= 1 ? Math.min(pagina, 500) : 1,
   };
 }
@@ -76,6 +83,18 @@ export default async function BuscarPage({ searchParams }: { searchParams: Searc
               ? "1 resultado"
               : `${resultado.total} resultados`}
         </p>
+        {resultado.raio && (
+          <p className="text-sm text-muted">
+            Até {resultado.raio.km} km de {resultado.raio.cidade}/{resultado.raio.estado}, do mais perto ao mais longe. A distância é
+            em linha reta entre o centro das cidades.
+          </p>
+        )}
+        {resultado.raioIgnorado && (
+          <p role="status" className="text-sm text-warning">
+            Não encontramos essa cidade na lista de municípios do estado, então buscamos só pelo nome. Confira a grafia para buscar por
+            distância.
+          </p>
+        )}
       </div>
 
       <Card className="p-4 sm:p-5">
@@ -91,7 +110,9 @@ export default async function BuscarPage({ searchParams }: { searchParams: Searc
           <p className="font-medium text-foreground">Nenhum perfil encontrado.</p>
           <p>
             {temFiltro
-              ? "Tente tirar algum filtro ou pesquisar uma cidade próxima."
+              ? resultado.raio
+                ? "Nenhum perfil nesse raio. Tente aumentar a distância ou tirar algum filtro."
+                : "Tente tirar algum filtro ou pesquisar uma cidade próxima."
               : "Ainda não há perfis publicados na rede."}
           </p>
           {temFiltro && (

@@ -7,7 +7,7 @@ import { listarCidadesPublicas } from "./redeCore.server";
 
 /**
  * Sugestões de cidade para o autocomplete da busca pública (sem login).
- * Vem dos perfis publicados, não de uma lista embutida no código.
+ * Vem da tabela de municípios do IBGE (Municipio), não de uma lista embutida no código.
  */
 export async function sugerirCidades(estado: string | undefined, termo: string): Promise<string[]> {
   // POST direto não respeita os tipos do TS.

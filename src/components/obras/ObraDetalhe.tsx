@@ -28,7 +28,7 @@ export function ObraDetalhe({ obraId }: { obraId: string }) {
   }, [obraId]);
 
   if (carregando) return <p className="text-sm text-muted">Carregando…</p>;
-  if (!obra) return <p className="text-sm text-danger">Obra não encontrada.</p>;
+  if (!obra) return <p className="text-sm text-danger">Projeto não encontrado.</p>;
 
   const resumo = calcularResumoFinanceiro(obra, contas);
   const contasPagar = contas.filter((c) => c.tipo === "pagar");

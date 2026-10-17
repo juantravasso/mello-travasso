@@ -104,9 +104,9 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+        <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
           <option value="" disabled>
-            Selecione a obra
+            Selecione o projeto
           </option>
           {obras.map((obra) => (
             <option key={obra.id} value={obra.id}>

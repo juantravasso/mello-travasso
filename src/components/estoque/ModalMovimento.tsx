@@ -53,7 +53,7 @@ export function ModalMovimento({ produtoId, unidade, obras, saldosPorObra, onFec
       const mensagem = erro instanceof Error ? erro.message : "";
       if (mensagem.startsWith(PREFIXO_SALDO_INSUFICIENTE)) {
         const restam = mensagem.slice(PREFIXO_SALDO_INSUFICIENTE.length);
-        setErroQuantidade(`Saldo insuficiente nesta obra: restam ${restam}${unidade ? ` ${unidade}` : ""}.`);
+        setErroQuantidade(`Saldo insuficiente neste projeto: restam ${restam}${unidade ? ` ${unidade}` : ""}.`);
       } else if (mensagem.startsWith(PREFIXO_SALDO_MUDOU)) {
         const atual = mensagem.slice(PREFIXO_SALDO_MUDOU.length);
         setErroQuantidade(
@@ -70,9 +70,9 @@ export function ModalMovimento({ produtoId, unidade, obras, saldosPorObra, onFec
   return (
     <Modal titulo="Nova movimentação" onFechar={onFechar}>
       <div className="flex flex-col gap-3">
-        <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+        <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
           <option value="" disabled>
-            Selecione a obra
+            Selecione o projeto
           </option>
           {obras.map((o) => (
             <option key={o.id} value={o.id}>
@@ -97,7 +97,7 @@ export function ModalMovimento({ produtoId, unidade, obras, saldosPorObra, onFec
         />
         {tipo === "ajuste" && obraId && (
           <p className="text-xs text-muted">
-            Saldo atual nesta obra: {(saldoAtualDaObra ?? 0).toLocaleString("pt-BR")}
+            Saldo atual neste projeto: {(saldoAtualDaObra ?? 0).toLocaleString("pt-BR")}
             {unidade ? ` ${unidade}` : ""} → informe o saldo real.
           </p>
         )}

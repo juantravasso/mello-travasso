@@ -72,7 +72,7 @@ export async function atualizarObra(id: string, input: Partial<NovaObraInput>): 
     where: { id, empresaId: sessao.empresaId },
     data: { ...parsed.data, atualizadoEm: new Date().toISOString() },
   });
-  if (resultado.count === 0) throw new Error("Obra não encontrada.");
+  if (resultado.count === 0) throw new Error("Projeto não encontrado.");
 
   const registro = await prisma.obra.findFirstOrThrow({ where: { id, empresaId: sessao.empresaId } });
   return paraObra(registro);

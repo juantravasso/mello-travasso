@@ -9,10 +9,10 @@ export default function ObrasPage() {
   return (
     <div className="animar-entrada">
       <PageHeader
-        titulo="Obras"
+        titulo="Projetos"
         acao={
           <Link href="/obras/novo">
-            <Button tamanho="sm">+ Nova obra</Button>
+            <Button tamanho="sm">+ Novo projeto</Button>
           </Link>
         }
       />

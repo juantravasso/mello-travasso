@@ -31,7 +31,7 @@ export function FiltrosContas({ tipo, filtros, onChange, obras }: FiltrosContasP
         onChange={(e) => onChange({ ...filtros, busca: e.target.value || undefined })}
       />
       <Select
-        label="Obra"
+        label="Projeto"
         value={filtros.obraId ?? ""}
         onChange={(e) => onChange({ ...filtros, obraId: e.target.value || undefined })}
       >

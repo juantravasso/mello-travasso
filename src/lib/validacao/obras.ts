@@ -5,7 +5,7 @@ import { z } from "zod";
 // o formulário) — sem isso, o spread de `input` no `data` do Prisma passaria
 // o campo adiante (ver achado do security-reviewer na Fase 2).
 const camposObra = {
-  nome: z.string().trim().min(1, "Informe o nome da obra").max(160),
+  nome: z.string().trim().min(1, "Informe o nome do projeto").max(160),
   cliente: z.string().trim().min(1, "Informe o cliente").max(160),
   endereco: z.string().trim().max(300).optional(),
   status: z.enum(["em_andamento", "concluida", "pausada"]),

@@ -259,9 +259,9 @@ export function ConfirmacaoExtracao({
           destaque={camposDestacados.includes("descricao")}
           placeholder="Descrição do gasto"
         />
-        <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+        <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
           <option value="" disabled>
-            Selecione a obra
+            Selecione o projeto
           </option>
           {obras.map((obra) => (
             <option key={obra.id} value={obra.id}>

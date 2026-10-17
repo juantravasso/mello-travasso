@@ -3,7 +3,7 @@ import type { ProgressoObra } from "@/lib/dashboardMetrics";
 import { formatarMoeda } from "@/lib/formatadores";
 
 export function ProgressoObrasList({ itens }: { itens: ProgressoObra[] }) {
-  if (itens.length === 0) return <p className="text-sm text-muted">Nenhuma obra em andamento.</p>;
+  if (itens.length === 0) return <p className="text-sm text-muted">Nenhum projeto em andamento.</p>;
 
   return (
     <ul className="flex flex-col gap-4">

@@ -65,7 +65,7 @@ export async function obterFuncionarioPorId(id: string): Promise<Funcionario | n
 async function validarObraDaEmpresa(obraId: string | undefined, empresaId: string): Promise<void> {
   if (!obraId) return;
   const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId } });
-  if (!obra) throw new Error("Obra não encontrada.");
+  if (!obra) throw new Error("Projeto não encontrado.");
 }
 
 export async function criarFuncionario(input: NovoFuncionarioInput): Promise<Funcionario> {

@@ -70,7 +70,7 @@ export default function NovoFuncionarioPage() {
           <Input label="Data de admissão" type="date" value={dataAdmissao} onChange={(e) => setDataAdmissao(e.target.value)} />
           <Input label="Salário (R$, opcional)" inputMode="decimal" value={salario} onChange={(e) => setSalario(e.target.value)} />
         </div>
-        <Select label="Obra alocada (opcional)" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+        <Select label="Projeto alocado (opcional)" value={obraId} onChange={(e) => setObraId(e.target.value)}>
           <option value="">Nenhuma</option>
           {obras.map((obra) => (
             <option key={obra.id} value={obra.id}>

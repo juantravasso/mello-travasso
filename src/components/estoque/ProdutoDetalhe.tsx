@@ -55,12 +55,12 @@ export function ProdutoDetalhe({ produtoId }: { produtoId: string }) {
       </Card>
 
       <Card className="flex flex-col gap-3">
-        <h2 className="font-medium">Saldo por obra</h2>
-        {produto.saldosPorObra.length === 0 && <p className="text-sm text-muted">Sem saldo em nenhuma obra ainda.</p>}
+        <h2 className="font-medium">Saldo por projeto</h2>
+        {produto.saldosPorObra.length === 0 && <p className="text-sm text-muted">Sem saldo em nenhum projeto ainda.</p>}
         <ul className="flex flex-col gap-2">
           {produto.saldosPorObra.map((saldo) => (
             <li key={saldo.obraId} className="flex items-center justify-between text-sm">
-              <span className="text-muted">{obraPorId.get(saldo.obraId)?.nome ?? "Obra não encontrada"}</span>
+              <span className="text-muted">{obraPorId.get(saldo.obraId)?.nome ?? "Projeto não encontrado"}</span>
               <span className="font-medium tabular-nums">
                 {saldo.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
                 {produto.unidade ? ` ${produto.unidade}` : ""}

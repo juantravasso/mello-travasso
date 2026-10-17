@@ -92,7 +92,7 @@ export default function CustosProdutosPage() {
               <thead>
                 <tr className="border-b border-border text-left text-muted">
                   <th className="p-3 font-medium">Data</th>
-                  <th className="p-3 font-medium">Obra</th>
+                  <th className="p-3 font-medium">Projeto</th>
                   <th className="p-3 font-medium">Fornecedor</th>
                   <th className="p-3 font-medium text-right">Qtd.</th>
                   <th className="p-3 font-medium text-right">Vlr. unit.</th>

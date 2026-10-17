@@ -54,7 +54,7 @@ export function FuncionarioDetalhe({ funcionarioId }: { funcionarioId: string })
         <Linha rotulo="Data de admissão" valor={formatarData(funcionario.dataAdmissao)} />
         <Linha rotulo="Salário" valor={funcionario.salario ? formatarMoeda(funcionario.salario) : "—"} />
         <Linha
-          rotulo="Obra alocada"
+          rotulo="Projeto alocado"
           valor={obra ? <Link href={`/obras/${obra.id}`} className="text-primary underline">{obra.nome}</Link> : "—"}
         />
       </Card>

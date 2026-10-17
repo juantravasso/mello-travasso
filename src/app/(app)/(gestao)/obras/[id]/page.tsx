@@ -5,7 +5,7 @@ export default async function ObraDetalhePage({ params }: { params: Promise<{ id
   const { id } = await params;
   return (
     <div className="animar-entrada">
-      <PageHeader titulo="Detalhe da obra" />
+      <PageHeader titulo="Detalhe do projeto" />
       <ObraDetalhe obraId={id} />
     </div>
   );

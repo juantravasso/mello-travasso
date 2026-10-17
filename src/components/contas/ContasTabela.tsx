@@ -12,7 +12,7 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
         <thead>
           <tr className="border-b border-border text-left text-muted">
             <th className="p-3 font-medium">Fornecedor/Cliente</th>
-            <th className="p-3 font-medium">Obra</th>
+            <th className="p-3 font-medium">Projeto</th>
             <th className="p-3 font-medium">Vencimento</th>
             <th className="p-3 font-medium text-right">Valor</th>
             <th className="p-3 font-medium">Status</th>

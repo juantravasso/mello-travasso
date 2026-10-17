@@ -91,7 +91,7 @@ function paraWhere(
 /** Confere que obraId (e fornecedorId, se informado) pertencem à empresa da sessão antes de gravar. */
 async function validarReferencias(empresaId: string, obraId: string, fornecedorId?: string): Promise<void> {
   const obra = await prisma.obra.findFirst({ where: { id: obraId, empresaId } });
-  if (!obra) throw new Error("Obra não encontrada.");
+  if (!obra) throw new Error("Projeto não encontrado.");
   if (fornecedorId) {
     const fornecedor = await prisma.fornecedor.findFirst({ where: { id: fornecedorId, empresaId } });
     if (!fornecedor) throw new Error("Fornecedor não encontrado.");
@@ -237,7 +237,7 @@ export async function cancelarConta(input: CancelarContaInput): Promise<Resultad
   try {
     const { naoRevertidos } = await reverterEstoqueDaConta(sessao.empresaId, sessao.nome, parsed.data.contaId);
     if (naoRevertidos > 0) {
-      avisoEstoque = "Estoque já consumido nesta obra — ajuste manual necessário para os itens desta conta.";
+      avisoEstoque = "Estoque já consumido neste projeto — ajuste manual necessário para os itens desta conta.";
     }
   } catch (erro) {
     console.error("[contasActions] falha ao reverter estoque no cancelamento", parsed.data.contaId, erro);

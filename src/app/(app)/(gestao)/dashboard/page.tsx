@@ -64,16 +64,16 @@ export default function DashboardPage() {
       {obras.length === 0 && (
         <Card className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-medium text-foreground">Cadastre sua primeira obra</p>
+            <p className="font-medium text-foreground">Cadastre seu primeiro projeto</p>
             <p className="text-sm text-muted">É a partir dela que suas contas e materiais ficam organizados.</p>
           </div>
           {somenteLeitura ? (
             <Button tamanho="sm" disabled title="Teste encerrado — os dados continuam disponíveis para consulta.">
-              + Nova obra
+              + Novo projeto
             </Button>
           ) : (
             <Link href="/obras/novo">
-              <Button tamanho="sm">+ Nova obra</Button>
+              <Button tamanho="sm">+ Novo projeto</Button>
             </Link>
           )}
         </Card>
@@ -91,7 +91,7 @@ export default function DashboardPage() {
           valor={formatarMoeda(recebidoEsteMes)}
           variacao={variacaoPercentual(recebidoEsteMes, recebidoMesAnterior)}
         />
-        <KpiCard rotulo="Obras em andamento" valor={String(obrasAtivas.length)} subtitulo={`${obras.length} no total`} />
+        <KpiCard rotulo="Projetos em andamento" valor={String(obrasAtivas.length)} subtitulo={`${obras.length} no total`} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card>
-          <h2 className="mb-3 font-medium">Obras em andamento</h2>
+          <h2 className="mb-3 font-medium">Projetos em andamento</h2>
           <ProgressoObrasList itens={progressoObras(obras, contas)} />
         </Card>
         <Card>

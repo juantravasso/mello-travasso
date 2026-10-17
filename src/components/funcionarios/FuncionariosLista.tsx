@@ -26,7 +26,7 @@ export function FuncionariosLista() {
           onChange={(e) => setFiltros({ ...filtros, busca: e.target.value || undefined })}
         />
         <Select
-          label="Obra"
+          label="Projeto"
           value={filtros.obraId ?? ""}
           onChange={(e) => setFiltros({ ...filtros, obraId: e.target.value || undefined })}
         >

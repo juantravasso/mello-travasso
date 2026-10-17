@@ -18,7 +18,7 @@ export const categoriasPagar: CategoriaContaPagar[] = Object.keys(
 ) as CategoriaContaPagar[];
 
 export const rotulosCategoriaReceber: Record<CategoriaContaReceber, string> = {
-  obras: "Obras",
+  obras: "Projetos",
   servicos_vans: "Serviços das vans",
   manutencao: "Manutenção",
 };

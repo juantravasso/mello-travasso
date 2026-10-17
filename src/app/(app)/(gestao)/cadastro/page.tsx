@@ -13,7 +13,7 @@ import { cn } from "@/lib/cn";
 type Aba = "obras" | "funcionarios" | "fornecedores";
 
 const rotulos: Record<Aba, string> = {
-  obras: "Obras",
+  obras: "Projetos",
   funcionarios: "Funcionários",
   fornecedores: "Fornecedores",
 };
@@ -25,7 +25,7 @@ const hrefsNovo: Record<"obras" | "funcionarios", string> = {
 };
 
 const rotulosNovo: Record<"obras" | "funcionarios", string> = {
-  obras: "+ Nova obra",
+  obras: "+ Novo projeto",
   funcionarios: "+ Novo funcionário",
 };
 

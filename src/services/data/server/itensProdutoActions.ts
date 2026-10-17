@@ -74,7 +74,7 @@ export async function criarItensProdutoEmLote(itens: NovoItemProdutoInput[]): Pr
   const idsContasValidas = new Set(contasValidas.map((c) => c.id));
   const idsObrasValidas = new Set(obrasValidas.map((o) => o.id));
   if (idsContas.some((id) => !idsContasValidas.has(id)) || idsObras.some((id) => !idsObrasValidas.has(id))) {
-    throw new Error("Conta ou obra não encontrada.");
+    throw new Error("Conta ou projeto não encontrado.");
   }
 
   const agora = new Date().toISOString();

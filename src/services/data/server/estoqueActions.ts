@@ -19,7 +19,7 @@ async function validarReferenciasEstoque(empresaId: string, produtoId: string, o
     prisma.obra.findFirst({ where: { id: obraId, empresaId } }),
   ]);
   if (!produto) throw new Error("Produto não encontrado.");
-  if (!obra) throw new Error("Obra não encontrada.");
+  if (!obra) throw new Error("Projeto não encontrado.");
 }
 
 export async function listarProdutos(): Promise<ProdutoComSaldo[]> {

@@ -149,7 +149,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
         )}
         {conta.observacao && <DetalheLinha rotulo="Observação" valor={conta.observacao} />}
         <DetalheLinha
-          rotulo="Obra"
+          rotulo="Projeto"
           valor={obra ? <Link href={`/obras/${obra.id}`} className="text-primary underline">{obra.nome}</Link> : "—"}
         />
         <DetalheLinha rotulo="Data de lançamento" valor={formatarData(conta.dataLancamento)} />
@@ -180,9 +180,9 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             </p>
           </div>
           <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} />
-          <Select label="Obra" value={obraId} onChange={(e) => setObraId(e.target.value)}>
+          <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
             <option value="" disabled>
-              Selecione a obra
+              Selecione o projeto
             </option>
             {obras.map((o) => (
               <option key={o.id} value={o.id}>

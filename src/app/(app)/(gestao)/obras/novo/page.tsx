@@ -46,14 +46,14 @@ export default function NovaObraPage() {
 
   return (
     <div className="mx-auto max-w-xl animar-entrada">
-      <PageHeader titulo="Nova obra" />
+      <PageHeader titulo="Novo projeto" />
       {somenteLeitura && (
         <Card className="mb-3 border-warning bg-warning-bg text-sm text-warning">
           Teste encerrado — os dados continuam disponíveis para consulta.
         </Card>
       )}
       <Card className="flex flex-col gap-3">
-        <Input label="Nome da obra" value={nome} onChange={(e) => setNome(e.target.value)} />
+        <Input label="Nome do projeto" value={nome} onChange={(e) => setNome(e.target.value)} />
         <Input label="Cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} />
         <Input label="Endereço" value={endereco} onChange={(e) => setEndereco(e.target.value)} />
         <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value as StatusObra)}>
@@ -73,7 +73,7 @@ export default function NovaObraPage() {
             Cancelar
           </Button>
           <Button className="flex-1" onClick={salvar} disabled={!valido || salvando || somenteLeitura}>
-            {salvando ? "Salvando…" : "Salvar obra"}
+            {salvando ? "Salvando…" : "Salvar projeto"}
           </Button>
         </div>
       </Card>

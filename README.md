@@ -178,6 +178,38 @@ login`, etc.) e não tem mais `prisma generate`/`db push` como comandos de
 topo. Este projeto fica no **Prisma 6**, que é o ORM tradicional e funciona
 com qualquer Postgres — não instale a v7 por engano.
 
+## Calendário e lembretes
+
+Módulo do Elo Gestão em `/calendario` (visões mês, semana e dia). Cada compromisso é do calendário de quem o criou;
+o criador pode compartilhá-lo com usuários ativos da mesma empresa, que o veem no próprio calendário e recebem os
+lembretes. A empresa em si não abre o calendário pessoal de ninguém, nem o dono. Só o criador edita, exclui e compartilha.
+
+**Lembretes.** Cada compromisso agendado gera dois: na véspera e no dia, por e-mail (Resend) e notificação no sino.
+Com horário, a véspera sai 24 h antes do início e o do dia às 8h locais (nunca a menos de 60 min do início). Dia inteiro:
+às 9h locais, na véspera e no dia. Lembrete cujo horário já passou na hora de criar ou editar **não** é enviado depois
+do fato. Cancelar, concluir ou excluir cancela o que ainda não saiu; mudar data ou horário recalcula e permite avisar de
+novo. Falha de e-mail tem até 5 tentativas (5 min, 15 min, 1 h, 3 h) e depois fica registrada como falha.
+
+**Como funciona o disparo.** Nada depende do site aberto. Um agendador chama `POST /api/cron/lembretes`; a rota é
+idempotente e reserva cada item com um UPDATE condicional, então chamadas simultâneas não duplicam. A unicidade
+(lembrete, versão, usuário, canal) em `EntregaLembrete` é a segunda barreira, e o e-mail leva chave de idempotência.
+
+**Configuração (uma vez):**
+
+1. Gere um segredo (`node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`) e defina-o como
+   `CRON_SECRET` na Vercel (Production). Sem ele a rota responde 503.
+2. No GitHub, em Settings > Secrets and variables > Actions, crie `CRON_SECRET` (mesmo valor) e `APP_URL` (endereço do
+   site, sem barra final). O workflow `.github/workflows/lembretes.yml` chama a rota a cada 5 minutos.
+3. E-mail real: `RESEND_API_KEY` e `EMAIL_REMETENTE` (já usados pela confirmação de e-mail). Sem eles, em produção o
+   envio falha e vira nova tentativa; em desenvolvimento a mensagem sai no console.
+
+Opcional: `CALENDARIO_HORA_DIA_INTEIRO` e `CALENDARIO_HORA_LEMBRETE_DO_DIA` (hora local, 0 a 23). O fuso é da empresa
+(Configurações, só o dono; padrão Brasília). Preferências de e-mail e de sino são de cada usuário.
+
+**Testes.** `yarn test` roda os testes unitários (regras puras, sem banco). `yarn testar:calendario` roda a integração
+contra o banco do `.env.local`: cria duas empresas descartáveis, exercita compartilhamento, isolamento, lembretes,
+repetição e concorrência (e-mail simulado) e apaga o que criou.
+
 ## Rodando localmente
 
 ```bash

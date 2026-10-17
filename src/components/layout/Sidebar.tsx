@@ -9,6 +9,7 @@ import { useBarraLateral } from "./BarraLateralContext";
 import { Logo } from "./Logo";
 import {
   IconeCaixa,
+  IconeCalendario,
   IconeCamera,
   IconeConfig,
   IconeDashboard,
@@ -24,6 +25,7 @@ import {
 
 const itensGestao = [
   { href: "/dashboard", rotulo: "Dashboard", Icone: IconeDashboard },
+  { href: "/calendario", rotulo: "Calendário", Icone: IconeCalendario },
   { href: "/capturar", rotulo: "Captura de documentos", Icone: IconeCamera },
   { href: "/contas-a-pagar", rotulo: "Contas a pagar", Icone: IconeSaida },
   {
@@ -141,7 +143,12 @@ export function Sidebar({
       {/* Recolhida: sem overflow-y-auto: definir só o eixo Y como auto faz o navegador
           tratar o eixo X como auto também, cortando o tooltip que aparece à
           direita do ícone. Com poucos itens, a lista não deve estourar a altura. */}
-      <nav className={cn("min-h-0 w-full flex-1 py-4", expandida ? "overflow-y-auto px-3" : "px-2")}>
+      <nav
+        className={cn(
+          "min-h-0 w-full flex-1 py-4",
+          expandida ? "overflow-y-auto px-3" : "px-2",
+        )}
+      >
         <ul className="flex flex-col gap-1">
           {itens.map((item, indice) => {
             const { href, rotulo, Icone } = item;

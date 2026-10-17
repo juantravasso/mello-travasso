@@ -21,8 +21,8 @@ export function Topbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-20 hidden items-center justify-end gap-4 border-b border-border bg-background/80 px-8 py-3 backdrop-blur md:flex">
-      <span className="text-sm capitalize text-muted">{data}</span>
+    <header className="sticky top-0 z-20 flex items-center justify-end gap-3 border-b border-border bg-background/80 px-4 py-2 backdrop-blur md:gap-4 md:px-8 md:py-3">
+      <span className="hidden text-sm capitalize text-muted sm:inline">{data}</span>
       <SeletorTema />
       <SinoNotificacoes />
     </header>

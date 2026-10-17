@@ -269,10 +269,14 @@ export interface IndicarEmpresaInput {
 export interface NotificacaoItem {
   id: string;
   tipo: string;
+  /** Só nos lembretes do calendário. */
+  titulo?: string;
   texto: string;
   href: string;
   lida: boolean;
   criadoEm: string;
+  /** Compromisso de origem (lembretes do calendário), se ainda existir. */
+  compromissoId?: string;
 }
 
 export type StatusAvaliacao = "publicada" | "oculta" | "removida";

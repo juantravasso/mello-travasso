@@ -7,6 +7,7 @@ const MODULOS = [
   { titulo: "Captura de documentos com IA", texto: "Fotografe notas e recibos; os dados viram lançamentos." },
   { titulo: "Contas a pagar e a receber", texto: "Vencimentos, baixas e histórico de cada lançamento." },
   { titulo: "Projetos e estoque", texto: "Custos por projeto e saldo de materiais em cada projeto." },
+  { titulo: "Calendário e lembretes", texto: "Compromissos com aviso por e-mail e no sistema, individuais ou compartilhados com a equipe." },
   { titulo: "Funcionários e fornecedores", texto: "Cadastros ligados aos projetos e aos lançamentos." },
 ];
 

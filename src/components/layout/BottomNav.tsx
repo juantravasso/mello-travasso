@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import {
   IconeCadastro,
   IconeCaixa,
+  IconeCalendario,
   IconeCamera,
   IconeConfig,
   IconeDashboard,
@@ -26,9 +27,25 @@ interface ItemNav {
 const itens: readonly ItemNav[] = [
   { href: "/minha-rede", rotulo: "Rede", Icone: IconeRede },
   { href: "/dashboard", rotulo: "Início", Icone: IconeDashboard, gestao: true },
+  {
+    href: "/calendario",
+    rotulo: "Agenda",
+    Icone: IconeCalendario,
+    gestao: true,
+  },
   { href: "/capturar", rotulo: "Capturar", Icone: IconeCamera, gestao: true },
-  { href: "/contas-a-pagar", rotulo: "A Pagar", Icone: IconeSaida, gestao: true },
-  { href: "/contas-a-receber", rotulo: "A Receber", Icone: IconeEntrada, gestao: true },
+  {
+    href: "/contas-a-pagar",
+    rotulo: "A Pagar",
+    Icone: IconeSaida,
+    gestao: true,
+  },
+  {
+    href: "/contas-a-receber",
+    rotulo: "A Receber",
+    Icone: IconeEntrada,
+    gestao: true,
+  },
   { href: "/estoque", rotulo: "Estoque", Icone: IconeCaixa, gestao: true },
   {
     href: "/cadastro",
@@ -40,9 +57,19 @@ const itens: readonly ItemNav[] = [
   { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
 ];
 
-const itemAdmin: ItemNav = { href: "/admin", rotulo: "Admin", Icone: IconeEscudo };
+const itemAdmin: ItemNav = {
+  href: "/admin",
+  rotulo: "Admin",
+  Icone: IconeEscudo,
+};
 
-export function BottomNav({ temGestao, admin }: { temGestao: boolean; admin: boolean }) {
+export function BottomNav({
+  temGestao,
+  admin,
+}: {
+  temGestao: boolean;
+  admin: boolean;
+}) {
   const pathname = usePathname();
   const lista = admin ? [...itens, itemAdmin] : itens;
 
@@ -53,7 +80,10 @@ export function BottomNav({ temGestao, admin }: { temGestao: boolean; admin: boo
           const ativo =
             pathname === href ||
             pathname.startsWith(`${href}/`) ||
-            tambem.some((prefixo) => pathname === prefixo || pathname.startsWith(`${prefixo}/`));
+            tambem.some(
+              (prefixo) =>
+                pathname === prefixo || pathname.startsWith(`${prefixo}/`),
+            );
           const bloqueado = gestao && !temGestao;
           return (
             <li key={href} className="flex-1">

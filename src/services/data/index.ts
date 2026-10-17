@@ -17,6 +17,7 @@ import type {
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
   UsuariosEmpresaRepositorio,
+  CalendarioRepositorio,
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
 } from "./repositorios";
@@ -25,6 +26,18 @@ import { contarSolicitacoesPendentes, decidirSolicitacao, desfazerSolicitacao, l
 import { alterarPlanoEmpresa, bloquearEmpresa, desbloquearEmpresa, listarEmpresasAdmin } from "./server/empresaAdminActions";
 import { obterMatrizPlanos, salvarRecursosDoPlano } from "./server/planoAdminActions";
 import { bloquearUsuario, desbloquearUsuario, encerrarSessoesDoUsuario, listarUsuariosAdmin } from "./server/usuarioAdminActions";
+import {
+  atualizarCompromisso,
+  criarCompromisso,
+  excluirCompromisso,
+  listarColegas,
+  listarCompromissos,
+  listarProximosCompromissos,
+  obterCompromisso,
+  obterPreferenciasCalendario,
+  salvarFusoHorarioDaEmpresa,
+  salvarPreferenciasCalendario,
+} from "./server/calendarioActions";
 import {
   criarUsuarioDaEmpresa,
   desativarUsuarioDaEmpresa,
@@ -269,6 +282,19 @@ export const usuariosAdminRepositorio: UsuariosAdminRepositorio = {
   encerrarSessoes: encerrarSessoesDoUsuario,
 };
 
+export const calendarioRepositorio: CalendarioRepositorio = {
+  listar: listarCompromissos,
+  proximos: listarProximosCompromissos,
+  obter: obterCompromisso,
+  colegas: listarColegas,
+  criar: criarCompromisso,
+  atualizar: atualizarCompromisso,
+  excluir: excluirCompromisso,
+  obterPreferencias: obterPreferenciasCalendario,
+  salvarPreferencias: salvarPreferenciasCalendario,
+  salvarFuso: salvarFusoHorarioDaEmpresa,
+};
+
 export const usuariosEmpresaRepositorio: UsuariosEmpresaRepositorio = {
   listar: listarUsuariosDaEmpresa,
   criar: criarUsuarioDaEmpresa,
@@ -316,6 +342,7 @@ export type {
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
   UsuariosEmpresaRepositorio,
+  CalendarioRepositorio,
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
 } from "./repositorios";

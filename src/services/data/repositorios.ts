@@ -1,4 +1,9 @@
 import type {
+  ColegaItem,
+  CompromissoItem,
+  EntradaCompromisso,
+  ListaCompromissos,
+  PreferenciasCalendario,
   AcessoTemporario,
   AcaoDecisaoDenuncia,
   AcaoModeracaoAvaliacao,
@@ -224,6 +229,20 @@ export interface UsuariosEmpresaRepositorio {
   redefinirAcesso(usuarioId: string, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
   desativar(usuarioId: string): Promise<ResultadoAction<null>>;
   reativar(usuarioId: string): Promise<ResultadoAction<null>>;
+}
+
+/** Calendário do usuário: compromissos próprios e os compartilhados com ele. */
+export interface CalendarioRepositorio {
+  listar(de: string, ate: string): Promise<ResultadoAction<ListaCompromissos>>;
+  proximos(limite?: number): Promise<ResultadoAction<CompromissoItem[]>>;
+  obter(id: string): Promise<ResultadoAction<CompromissoItem>>;
+  colegas(): Promise<ResultadoAction<ColegaItem[]>>;
+  criar(entrada: EntradaCompromisso): Promise<ResultadoAction<CompromissoItem>>;
+  atualizar(id: string, entrada: EntradaCompromisso): Promise<ResultadoAction<CompromissoItem>>;
+  excluir(id: string): Promise<ResultadoAction<null>>;
+  obterPreferencias(): Promise<ResultadoAction<PreferenciasCalendario>>;
+  salvarPreferencias(prefs: { lembretesPorEmail: boolean; lembretesNoApp: boolean }): Promise<ResultadoAction<null>>;
+  salvarFuso(fuso: string): Promise<ResultadoAction<null>>;
 }
 
 export interface PlanosAdminRepositorio {

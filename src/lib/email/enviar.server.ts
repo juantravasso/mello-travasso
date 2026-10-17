@@ -17,15 +17,8 @@ export interface MensagemEmail {
   chaveIdempotencia?: string;
 }
 
-/** Escapa texto de usuário antes de entrar no HTML do e-mail. */
-export function escaparHtml(valor: string): string {
-  return valor
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+// Fica em ./escapar para os modelos de e-mail puros (testáveis) usarem sem puxar o envio.
+export { escaparHtml } from "./escapar";
 
 /** true quando o provedor aceitou a mensagem. Nunca lança: quem chama decide o que dizer ao usuário. */
 export async function enviarEmail(mensagem: MensagemEmail): Promise<boolean> {

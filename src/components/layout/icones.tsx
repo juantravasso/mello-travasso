@@ -142,3 +142,14 @@ export const IconeMenu = (p: SVGProps<SVGSVGElement>) => (
     <path d="M4 18h16" />
   </Base>
 );
+
+export const IconeCalendario = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M8 3v4" />
+    <path d="M16 3v4" />
+    <path d="M8 14h2" />
+    <path d="M14 14h2" />
+  </Base>
+);

@@ -275,6 +275,8 @@ model Empresa {
   bloqueioMotivo     String?
   /// Fase 6.5b: a administração conferiu os documentos da empresa (ou do profissional).
   verificadaEm       String?
+  /// Fuso IANA em que os compromissos e lembretes da empresa são interpretados (ver src/lib/calendario/tempo.ts).
+  fusoHorario        String       @default("America/Sao_Paulo")
 
   usuarios Usuario[]
 
@@ -297,6 +299,7 @@ model Empresa {
   denuncias                     Denuncia[]
   arquivos                      Arquivo[]
   solicitacoes                  SolicitacaoVerificacao[]
+  compromissos                  Compromisso[]
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -342,11 +345,19 @@ model Usuario {
   desativadoEm             String?
   /// Até quando a senha temporária (definida pelo dono ao criar ou redefinir) ainda entra. Só vale com `trocarSenha` ligado.
   senhaTemporariaExpiraEm  String?
+  /// Preferências dos lembretes do calendário (Configurações). Ligadas por padrão.
+  lembretesPorEmail        Boolean            @default(true)
+  lembretesNoApp           Boolean            @default(true)
   criadoEm                 String
   atualizadoEm             String
 
   sessoes     Sessao[]
   tokensEmail TokenEmail[]
+
+  compromissosCriados        Compromisso[]
+  compromissosCompartilhados CompromissoParticipante[]
+  entregasLembrete           EntregaLembrete[]
+  notificacoes               Notificacao[]
 
   @@index([empresaId])
 }
@@ -792,17 +803,26 @@ model Indicacao {
 }
 
 model Notificacao {
-  id        String  @id @default(uuid())
-  empresaId String
-  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  tipo      String
-  texto     String
+  id            String       @id @default(uuid())
+  empresaId     String
+  empresa       Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  /// Destinatário individual (lembretes do calendário). Nulo = notificação da empresa, visível a todos os usuários dela.
+  usuarioId     String?
+  usuario       Usuario?     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  /// Compromisso de origem; a notificação sobrevive à exclusão dele (o vínculo vira nulo).
+  compromissoId String?
+  compromisso   Compromisso? @relation(fields: [compromissoId], references: [id], onDelete: SetNull)
+  tipo          String
+  titulo        String?
+  texto         String
   /// Caminho interno para onde a notificação leva.
-  href      String
-  lida      Boolean @default(false)
-  criadoEm  String
+  href          String
+  lida          Boolean      @default(false)
+  criadoEm      String
 
   @@index([empresaId, lida, criadoEm])
+  @@index([usuarioId, lida, criadoEm])
+  @@index([compromissoId])
 }
 
 // --- Denúncias e moderação (Fase 6.3) ---------------------------------------
@@ -970,4 +990,142 @@ model Municipio {
   longitude Float
 
   @@unique([uf, nomeBusca])
+}
+
+// --- Calendário e lembretes ---------------------------------------------------
+// Data, hora e fuso ficam como o usuário digitou (data/horaInicio/horaFim locais + fuso IANA); inicioEm e
+// fimEm são os instantes em UTC derivados deles, usados para agendar lembretes e para saber se já passou.
+// Compromisso de dia inteiro: inicioEm é a meia-noite local e fimEm o último instante do dia local.
+
+enum CategoriaCompromissoDb {
+  reuniao
+  visita
+  prazo
+  financeiro
+  pessoal
+  outro
+}
+
+enum StatusCompromissoDb {
+  agendado
+  concluido
+  cancelado
+}
+
+model Compromisso {
+  id           String                 @id @default(uuid())
+  empresaId    String
+  empresa      Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  /// Responsável: único que edita, exclui e compartilha.
+  criadoPorId  String
+  criadoPor    Usuario                @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+  titulo       String
+  descricao    String?                @db.Text
+  categoria    CategoriaCompromissoDb @default(outro)
+  status       StatusCompromissoDb    @default(agendado)
+  /// "AAAA-MM-DD" no fuso do compromisso.
+  data         String
+  diaInteiro   Boolean                @default(false)
+  /// "HH:mm" locais; nulos em dia inteiro.
+  horaInicio   String?
+  horaFim      String?
+  fuso         String
+  inicioEm     String
+  fimEm        String
+  criadoEm     String
+  atualizadoEm String
+
+  participantes CompromissoParticipante[]
+  lembretes     LembreteCompromisso[]
+  notificacoes  Notificacao[]
+
+  @@index([empresaId, data])
+  @@index([criadoPorId, data])
+}
+
+/// Quem recebe o compromisso no próprio calendário, além do criador. Sair daqui tira o acesso.
+model CompromissoParticipante {
+  compromissoId String
+  compromisso   Compromisso @relation(fields: [compromissoId], references: [id], onDelete: Cascade)
+  usuarioId     String
+  usuario       Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  criadoEm      String
+
+  @@id([compromissoId, usuarioId])
+  @@index([usuarioId])
+}
+
+enum TipoLembreteDb {
+  vespera
+  dia
+}
+
+enum StatusLembreteDb {
+  pendente
+  /// Reservado por um processamento em andamento (expira em travadoAte, para sobreviver a queda).
+  processando
+  /// Entregas criadas para os destinatários; o resto é com EntregaLembrete.
+  processado
+  /// Não será enviado (compromisso cancelado, concluído, já passado ou horário do lembrete no passado).
+  ignorado
+}
+
+/// No máximo um lembrete de cada tipo por compromisso (unicidade = agendamento idempotente).
+model LembreteCompromisso {
+  id            String           @id @default(uuid())
+  compromissoId String
+  compromisso   Compromisso      @relation(fields: [compromissoId], references: [id], onDelete: Cascade)
+  tipo          TipoLembreteDb
+  /// Instante UTC do disparo.
+  disparoEm     String
+  /// Sobe a cada reagendamento: uma entrega é única por (lembrete, versão, usuário, canal), então remarcar
+  /// o compromisso permite avisar de novo sem abrir brecha para duplicar no reprocessamento.
+  versao        Int              @default(1)
+  status        StatusLembreteDb @default(pendente)
+  travadoAte    String?
+  processadoEm  String?
+  criadoEm      String
+  atualizadoEm  String
+
+  entregas EntregaLembrete[]
+
+  @@unique([compromissoId, tipo])
+  @@index([status, disparoEm])
+}
+
+enum CanalLembreteDb {
+  email
+  app
+}
+
+enum StatusEntregaDb {
+  pendente
+  enviada
+  /// Esgotou as tentativas.
+  falhou
+  /// Deixou de fazer sentido (compromisso cancelado, concluído ou já encerrado).
+  ignorada
+}
+
+/// Estado e histórico de cada envio: um por destinatário e canal.
+model EntregaLembrete {
+  id                 String              @id @default(uuid())
+  lembreteId         String
+  lembrete           LembreteCompromisso @relation(fields: [lembreteId], references: [id], onDelete: Cascade)
+  versao             Int
+  usuarioId          String
+  usuario            Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  canal              CanalLembreteDb
+  status             StatusEntregaDb     @default(pendente)
+  tentativas         Int                 @default(0)
+  proximaTentativaEm String?
+  travadoAte         String?
+  /// Motivo curto da última falha; nunca e-mail, token ou corpo da mensagem.
+  ultimoErro         String?
+  enviadoEm          String?
+  criadoEm           String
+  atualizadoEm       String
+
+  @@unique([lembreteId, versao, usuarioId, canal])
+  @@index([status, proximaTentativaEm])
 }

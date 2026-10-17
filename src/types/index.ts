@@ -12,3 +12,5 @@ export * from "./admin";
 export * from "./rede";
 export * from "./verificacao";
 export * from "./usuarioEmpresa";
+
+export * from "./calendario";

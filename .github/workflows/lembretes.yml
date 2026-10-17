@@ -1,0 +1,38 @@
+name: Lembretes do calendário
+
+# Dispara o processamento dos lembretes (e-mail e notificação no app) a cada 5 minutos. O GitHub pode atrasar
+# execuções agendadas em horários de pico; o processamento recupera o que ficou para trás, então um atraso só
+# adia o aviso. Em repositório público, o GitHub desativa agendamentos após 60 dias sem atividade.
+#
+# Segredos do repositório (Settings > Secrets and variables > Actions):
+#   APP_URL      endereço do site em produção, sem barra final (ex.: https://seu-site.vercel.app)
+#   CRON_SECRET  o mesmo valor definido como variável de ambiente CRON_SECRET na Vercel
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: lembretes
+  cancel-in-progress: false
+
+jobs:
+  processar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Chamar a rota de lembretes
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Configure os segredos APP_URL e CRON_SECRET no repositório." >&2
+            exit 1
+          fi
+          curl --silent --show-error --fail-with-body --retry 2 --retry-delay 5 --max-time 90 \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/lembretes"

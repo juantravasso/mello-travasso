@@ -11,3 +11,4 @@ export * from "./movimentoEstoque";
 export * from "./admin";
 export * from "./rede";
 export * from "./verificacao";
+export * from "./usuarioEmpresa";

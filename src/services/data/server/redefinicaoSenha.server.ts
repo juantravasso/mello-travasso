@@ -41,9 +41,9 @@ export async function enviarLinkDeRedefinicao(email: string): Promise<void> {
   }
   const usuario = await prisma.usuario.findUnique({
     where: { email },
-    select: { id: true, nome: true, email: true, emailConfirmadoEm: true, bloqueadoPlataformaEm: true, empresa: { select: { bloqueadaEm: true } } },
+    select: { id: true, nome: true, email: true, emailConfirmadoEm: true, bloqueadoPlataformaEm: true, desativadoEm: true, empresa: { select: { bloqueadaEm: true } } },
   });
-  if (!usuario || usuario.bloqueadoPlataformaEm || usuario.empresa.bloqueadaEm) return;
+  if (!usuario || usuario.bloqueadoPlataformaEm || usuario.desativadoEm || usuario.empresa.bloqueadaEm) return;
 
   const proprio = await verificarLimite("email-redefinicao-dia", LIMITE_REDEFINICAO_DIA, UM_DIA_MS);
   const global = await verificarLimite("email-global-dia", LIMITE_GLOBAL_DIA, UM_DIA_MS);
@@ -129,14 +129,14 @@ export async function redefinirSenhaComToken(token: string, senhaNova: string): 
   const registro = await prisma.tokenEmail.findUnique({
     where: { tokenHash: hashToken(token) },
     include: {
-      usuario: { select: { id: true, nome: true, email: true, emailConfirmadoEm: true, papelPlataforma: true, bloqueadoPlataformaEm: true, empresa: { select: { bloqueadaEm: true } } } },
+      usuario: { select: { id: true, nome: true, email: true, emailConfirmadoEm: true, papelPlataforma: true, bloqueadoPlataformaEm: true, desativadoEm: true, empresa: { select: { bloqueadaEm: true } } } },
     },
   });
   if (!registro || registro.tipo !== TIPO || registro.usadoEm) return "invalido";
   if (new Date(registro.expiraEm).getTime() <= Date.now()) return "invalido";
   const usuario = registro.usuario;
   if (usuario.email !== registro.email) return "invalido";
-  if (usuario.bloqueadoPlataformaEm || usuario.empresa.bloqueadaEm) return "invalido";
+  if (usuario.bloqueadoPlataformaEm || usuario.desativadoEm || usuario.empresa.bloqueadaEm) return "invalido";
 
   const novoHash = await gerarHash(senhaNova);
   const agora = new Date().toISOString();
@@ -150,6 +150,7 @@ export async function redefinirSenhaComToken(token: string, senhaNova: string): 
       data: {
         senhaHash: novoHash,
         trocarSenha: false,
+        senhaTemporariaExpiraEm: null,
         falhasLogin: 0,
         bloqueadoAte: null,
         ultimaFalhaLoginEm: null,

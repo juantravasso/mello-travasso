@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { PreferenciasTemaForm } from "@/components/layout/PreferenciasTemaForm";
 import { TrocarSenhaForm } from "@/components/layout/TrocarSenhaForm";
 import { EmpresaForm } from "@/components/layout/EmpresaForm";
+import { UsuariosEmpresa } from "@/components/layout/UsuariosEmpresa";
 import { SairButton } from "@/components/layout/SairButton";
 import { exigirSessao } from "@/lib/auth/dal";
 import { obterEmpresaAtual, obterStatusPlanoAtual } from "@/services/data/server/empresaActions";
@@ -42,6 +43,7 @@ export default async function ConfiguracoesPage() {
         )}
       </Card>
       {empresa && <EmpresaForm empresa={empresa} />}
+      {sessao.papel === "dono" && <UsuariosEmpresa />}
       <PreferenciasTemaForm />
       <Suspense fallback={null}>
         <TrocarSenhaForm />

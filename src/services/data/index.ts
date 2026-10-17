@@ -16,6 +16,7 @@ import type {
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
+  UsuariosEmpresaRepositorio,
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
 } from "./repositorios";
@@ -24,6 +25,13 @@ import { contarSolicitacoesPendentes, decidirSolicitacao, desfazerSolicitacao, l
 import { alterarPlanoEmpresa, bloquearEmpresa, desbloquearEmpresa, listarEmpresasAdmin } from "./server/empresaAdminActions";
 import { obterMatrizPlanos, salvarRecursosDoPlano } from "./server/planoAdminActions";
 import { bloquearUsuario, desbloquearUsuario, encerrarSessoesDoUsuario, listarUsuariosAdmin } from "./server/usuarioAdminActions";
+import {
+  criarUsuarioDaEmpresa,
+  desativarUsuarioDaEmpresa,
+  listarUsuariosDaEmpresa,
+  reativarUsuarioDaEmpresa,
+  redefinirAcessoDoUsuario,
+} from "./server/usuariosEmpresaActions";
 import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
 import { complementarDenuncia, denunciar, listarMinhasDenuncias } from "./server/denunciaActions";
 import {
@@ -261,6 +269,14 @@ export const usuariosAdminRepositorio: UsuariosAdminRepositorio = {
   encerrarSessoes: encerrarSessoesDoUsuario,
 };
 
+export const usuariosEmpresaRepositorio: UsuariosEmpresaRepositorio = {
+  listar: listarUsuariosDaEmpresa,
+  criar: criarUsuarioDaEmpresa,
+  redefinirAcesso: redefinirAcessoDoUsuario,
+  desativar: desativarUsuarioDaEmpresa,
+  reativar: reativarUsuarioDaEmpresa,
+};
+
 export const verificacaoRepositorio: VerificacaoRepositorio = {
   criar: criarSolicitacao,
   listarMinhas: listarMinhasSolicitacoes,
@@ -299,6 +315,7 @@ export type {
   RedeRepositorio,
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
+  UsuariosEmpresaRepositorio,
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
 } from "./repositorios";

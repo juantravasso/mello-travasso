@@ -1,4 +1,5 @@
 import type {
+  AcessoTemporario,
   AcaoDecisaoDenuncia,
   AcaoModeracaoAvaliacao,
   AtualizarCategoriaInput,
@@ -63,6 +64,7 @@ import type {
   TrabalhoInput,
   SalvarPerfilInput,
   TipoConta,
+  ListaUsuariosEmpresa,
 } from "@/types";
 
 /**
@@ -213,6 +215,15 @@ export interface UsuariosAdminRepositorio {
   bloquear(usuarioId: string, motivo: string, senha?: string): Promise<ResultadoAction<null>>;
   desbloquear(usuarioId: string, senha?: string): Promise<ResultadoAction<null>>;
   encerrarSessoes(usuarioId: string, senha?: string): Promise<ResultadoAction<null>>;
+}
+
+/** Usuários da própria empresa (só o dono). A senha do dono confirma criar e redefinir. */
+export interface UsuariosEmpresaRepositorio {
+  listar(): Promise<ResultadoAction<ListaUsuariosEmpresa>>;
+  criar(dados: { nome: string; email: string }, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
+  redefinirAcesso(usuarioId: string, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
+  desativar(usuarioId: string): Promise<ResultadoAction<null>>;
+  reativar(usuarioId: string): Promise<ResultadoAction<null>>;
 }
 
 export interface PlanosAdminRepositorio {

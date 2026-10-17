@@ -67,6 +67,8 @@ export interface SessaoValida {
   admin: boolean;
   /** O titular já abriu o link enviado a este e-mail. */
   emailConfirmado: boolean;
+  /** Entrou com a senha temporária: só pode trocar a senha (ver exigirSessaoAction e o layout de (app)). */
+  trocaSenhaPendente: boolean;
 }
 
 /**
@@ -93,7 +95,8 @@ export async function lerSessao(): Promise<SessaoValida | null> {
 
   // Bloqueio pela administração (usuário ou empresa): vale em toda página, ação e rota, porque
   // todas leem a sessão por aqui. Falha fechada: a sessão é apagada e o visitante vira anônimo.
-  if (sessao.usuario.bloqueadoPlataformaEm || sessao.usuario.empresa.bloqueadaEm) {
+  // Desativado pelo dono da empresa: mesma regra, a sessão cai na próxima requisição.
+  if (sessao.usuario.bloqueadoPlataformaEm || sessao.usuario.empresa.bloqueadaEm || sessao.usuario.desativadoEm) {
     await prisma.sessao.delete({ where: { id: sessao.id } }).catch(ignorarSeNaoEncontrado);
     return null;
   }
@@ -137,6 +140,7 @@ export async function lerSessao(): Promise<SessaoValida | null> {
     papel: sessao.usuario.papel,
     admin: sessao.usuario.papelPlataforma === "admin",
     emailConfirmado: sessao.usuario.emailConfirmadoEm !== null,
+    trocaSenhaPendente: sessao.usuario.trocarSenha,
   };
 }
 

@@ -3,6 +3,7 @@ import type { ContaFinanceira, Obra } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { PrecisaCompletarBadge } from "@/components/ui/PrecisaCompletarBadge";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
+import { lancadoPor } from "@/lib/autoria";
 import { formatarData, formatarMoeda } from "@/lib/formatadores";
 
 export function ContaListItem({ conta, obra }: { conta: ContaFinanceira; obra?: Obra }) {
@@ -20,6 +21,7 @@ export function ContaListItem({ conta, obra }: { conta: ContaFinanceira; obra?: 
           </p>
           <p className="truncate text-sm text-muted">{conta.descricao}</p>
           {obra && <p className="truncate text-xs text-muted">{obra.nome}</p>}
+          {lancadoPor(conta) && <p className="truncate text-xs text-muted">Lançado por {lancadoPor(conta)}</p>}
         </div>
 
         <div className="flex flex-shrink-0 flex-col items-end gap-1">

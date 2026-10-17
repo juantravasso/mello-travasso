@@ -3,6 +3,7 @@ import type { ContaFinanceira, Obra } from "@/types";
 import { Card } from "@/components/ui/Card";
 import { PrecisaCompletarBadge } from "@/components/ui/PrecisaCompletarBadge";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
+import { lancadoPor } from "@/lib/autoria";
 import { formatarData, formatarMoeda } from "@/lib/formatadores";
 
 export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[]; obraPorId: Map<string, Obra> }) {
@@ -13,6 +14,7 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
           <tr className="border-b border-border text-left text-muted">
             <th className="p-3 font-medium">Fornecedor/Cliente</th>
             <th className="p-3 font-medium">Projeto</th>
+            <th className="p-3 font-medium">Lançado por</th>
             <th className="p-3 font-medium">Vencimento</th>
             <th className="p-3 font-medium text-right">Valor</th>
             <th className="p-3 font-medium">Status</th>
@@ -32,6 +34,7 @@ export function ContasTabela({ contas, obraPorId }: { contas: ContaFinanceira[];
                 <p className="truncate text-xs text-muted">{conta.descricao}</p>
               </td>
               <td className="p-3 text-muted">{obraPorId.get(conta.obraId)?.nome ?? "—"}</td>
+              <td className="p-3 text-muted">{lancadoPor(conta) ?? "—"}</td>
               <td className="p-3 text-muted">{formatarData(conta.dataVencimento)}</td>
               <td className="p-3 text-right font-medium">{formatarMoeda(conta.valor)}</td>
               <td className="p-3">

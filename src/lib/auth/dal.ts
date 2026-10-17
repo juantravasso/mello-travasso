@@ -12,8 +12,15 @@ import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
 
 const obterSessao = cache(async (): Promise<SessaoValida | null> => lerSessao());
 
-/** Sessão se houver, sem redirecionar nem lançar — para páginas públicas que mudam conforme o visitante está logado. */
-export const obterSessaoOpcional = obterSessao;
+/**
+ * Sessão se houver, sem redirecionar nem lançar — para páginas públicas que mudam conforme o visitante está
+ * logado e para rotas que servem arquivos. Quem ainda não trocou a senha temporária conta como visitante
+ * aqui: enquanto a troca não acontece, a conta não enxerga nada que dependa de login.
+ */
+export const obterSessaoOpcional = cache(async (): Promise<SessaoValida | null> => {
+  const sessao = await obterSessao();
+  return sessao && !sessao.trocaSenhaPendente ? sessao : null;
+});
 
 /**
  * Garante que existe uma sessão válida. Fora de uma rota (ex.: em página),
@@ -35,10 +42,15 @@ export async function exigirSessao(next?: string): Promise<SessaoValida> {
  * redirect() não é o comportamento certo — devolve a sessão ou lança, para o
  * chamador decidir o formato do erro (CodigoErro "NAO_AUTENTICADO").
  */
-export async function exigirSessaoAction(): Promise<SessaoValida> {
+export async function exigirSessaoAction(opcoes?: { permitirTrocaPendente?: boolean }): Promise<SessaoValida> {
   const sessao = await obterSessao();
   if (!sessao) {
     throw new Error("NAO_AUTENTICADO");
+  }
+  // Entrou com a senha temporária e ainda não a trocou: toda ação, API e leitura fica trancada, para
+  // não bastar abrir outra rota ou chamar a ação direto. Só a troca de senha passa `permitirTrocaPendente`.
+  if (sessao.trocaSenhaPendente && !opcoes?.permitirTrocaPendente) {
+    throw new Error("TROCA_SENHA_PENDENTE");
   }
   return sessao;
 }

@@ -338,6 +338,10 @@ model Usuario {
   /// temporária por falhas de senha.
   bloqueadoPlataformaEm    String?
   bloqueioPlataformaMotivo String?
+  /// Desativado pelo dono da empresa (usuário criado por ele). Distinto de `bloqueadoPlataformaEm`, que é a administração da plataforma.
+  desativadoEm             String?
+  /// Até quando a senha temporária (definida pelo dono ao criar ou redefinir) ainda entra. Só vale com `trocarSenha` ligado.
+  senhaTemporariaExpiraEm  String?
   criadoEm                 String
   atualizadoEm             String
 

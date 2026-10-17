@@ -13,6 +13,7 @@ const AUTORIZACAO: Record<string, { erro: CodigoErro; mensagem: string }> = {
   NAO_AUTENTICADO: { erro: "NAO_AUTENTICADO", mensagem: "Sua sessão acabou. Entre de novo para continuar." },
   PLANO_SEM_ACESSO: { erro: "GENERICO", mensagem: "O plano da sua empresa não inclui este recurso." },
   SEM_PERMISSAO: { erro: "GENERICO", mensagem: "Você não tem permissão para fazer isso." },
+  TROCA_SENHA_PENDENTE: { erro: "GENERICO", mensagem: "Defina uma nova senha para continuar usando o sistema." },
 };
 
 export async function executar<T>(corpo: () => Promise<T>): Promise<ResultadoAction<T>> {

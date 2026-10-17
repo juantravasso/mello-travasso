@@ -98,6 +98,17 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
   if (usuario.bloqueadoPlataformaEm || empresa?.bloqueadaEm) {
     return { ok: false, erro: "VALIDACAO", mensagem: MENSAGEM_CONTA_BLOQUEADA };
   }
+  // Usuário desativado ou com a senha temporária vencida: também só depois de a senha conferir.
+  if (usuario.desativadoEm) {
+    return { ok: false, erro: "VALIDACAO", mensagem: "Esta conta foi desativada. Fale com o responsável pela sua empresa." };
+  }
+  if (usuario.trocarSenha && usuario.senhaTemporariaExpiraEm && new Date(usuario.senhaTemporariaExpiraEm).getTime() <= Date.now()) {
+    return {
+      ok: false,
+      erro: "VALIDACAO",
+      mensagem: "A senha temporária venceu. Peça ao responsável pela sua empresa para redefinir o seu acesso.",
+    };
+  }
 
   await prisma.usuario.update({
     where: { id: usuario.id },
@@ -123,13 +134,17 @@ export async function sair(): Promise<ResultadoAction<null>> {
 }
 
 export async function trocarSenha(input: unknown): Promise<ResultadoAction<null>> {
-  const sessao = await exigirSessaoAction();
+  // É a única ação que passa com a troca de senha pendente.
+  const sessao = await exigirSessaoAction({ permitirTrocaPendente: true });
 
   const parsed = trocarSenhaSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, erro: "VALIDACAO", mensagem: "Confira os campos de senha.", campos: formatarErrosZod(parsed) };
   }
   const { senhaAtual, senhaNova } = parsed.data;
+  if (senhaNova === senhaAtual) {
+    return { ok: false, erro: "VALIDACAO", mensagem: "A nova senha precisa ser diferente da atual.", campos: { senhaNova: "A nova senha precisa ser diferente da atual." } };
+  }
 
   const usuario = await prisma.usuario.findUnique({ where: { id: sessao.usuarioId } });
   if (!usuario) {
@@ -146,7 +161,7 @@ export async function trocarSenha(input: unknown): Promise<ResultadoAction<null>
   const novoHash = await gerarHash(senhaNova);
   await prisma.usuario.update({
     where: { id: usuario.id },
-    data: { senhaHash: novoHash, trocarSenha: false, atualizadoEm: isoAgora() },
+    data: { senhaHash: novoHash, trocarSenha: false, senhaTemporariaExpiraEm: null, atualizadoEm: isoAgora() },
   });
   await apagarOutrasSessoes(usuario.id);
 

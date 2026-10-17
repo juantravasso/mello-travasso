@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useActionState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { trocarSenha } from "@/services/data/server/authActions";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -15,9 +15,11 @@ interface EstadoTrocarSenha {
 
 const ESTADO_INICIAL: EstadoTrocarSenha = {};
 
-export function TrocarSenhaForm() {
+/** `bloqueante`: tela de troca obrigatória (senha temporária); ao concluir, recarrega o layout para liberar o app. */
+export function TrocarSenhaForm({ bloqueante = false }: { bloqueante?: boolean }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const obrigatoria = searchParams.get("trocarSenha") === "1";
+  const obrigatoria = bloqueante || searchParams.get("trocarSenha") === "1";
 
   async function acao(_estadoAnterior: EstadoTrocarSenha, formData: FormData): Promise<EstadoTrocarSenha> {
     const resultado = await trocarSenha({
@@ -32,6 +34,10 @@ export function TrocarSenhaForm() {
   }
 
   const [estado, formAction, emAndamento] = useActionState(acao, ESTADO_INICIAL);
+
+  useEffect(() => {
+    if (bloqueante && estado.sucesso) router.refresh();
+  }, [bloqueante, estado.sucesso, router]);
 
   return (
     <Card className="flex flex-col gap-3">

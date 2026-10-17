@@ -18,6 +18,7 @@ import { ModalCancelarConta } from "./ModalCancelarConta";
 import { ModalConfirmarBaixa } from "./ModalConfirmarBaixa";
 import { SelectComCriacao } from "./SelectComCriacao";
 import { SelectFornecedor } from "./SelectFornecedor";
+import { lancadoPor } from "@/lib/autoria";
 import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
 export function ContaDetalhe({ contaId }: { contaId: string }) {
@@ -153,6 +154,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
           valor={obra ? <Link href={`/obras/${obra.id}`} className="text-primary underline">{obra.nome}</Link> : "—"}
         />
         <DetalheLinha rotulo="Data de lançamento" valor={formatarData(conta.dataLancamento)} />
+        {lancadoPor(conta) && <DetalheLinha rotulo="Lançado por" valor={lancadoPor(conta) as string} />}
         <DetalheLinha rotulo="Data de vencimento" valor={formatarData(conta.dataVencimento)} />
         {conta.dataBaixa && <DetalheLinha rotulo="Data de baixa" valor={formatarData(conta.dataBaixa)} />}
         {conta.motivoCancelamento && <DetalheLinha rotulo="Motivo do cancelamento" valor={conta.motivoCancelamento} />}

@@ -134,3 +134,11 @@ export const IconeEscudo = (p: SVGProps<SVGSVGElement>) => (
     <path d="m9 12 2.2 2.2L15.2 10" />
   </Base>
 );
+
+export const IconeMenu = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M4 6h16" />
+    <path d="M4 12h16" />
+    <path d="M4 18h16" />
+  </Base>
+);

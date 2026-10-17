@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DocumentosEscolha } from "./DocumentosEscolha";
 import { NovoPedidoForm } from "./NovoPedidoForm";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const STATUS: Record<StatusSolicitacao, { rotulo: string; tom: "info" | "success" | "danger" | "neutral" | "warning" }> = {
   pendente: { rotulo: "Em análise", tom: "info" },
@@ -28,10 +29,6 @@ function titulo(s: SolicitacaoItem): string {
     relacao_comprovada: `Comprovação de relação com ${s.avaliacao?.perfilNome ?? "o avaliado"}`,
   };
   return nomes[s.tipo];
-}
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") ? erro.message : "Não foi possível concluir agora. Tente de novo.";
 }
 
 function PedidoCard({ pedido, aoMudar }: { pedido: SolicitacaoItem; aoMudar: () => Promise<void> }) {

@@ -10,12 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { TrabalhoModal } from "./TrabalhoModal";
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_")
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const TIPOS_ACEITOS = "image/jpeg,image/png,image/webp";
 

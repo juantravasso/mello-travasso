@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
 import { useSugestoesCidade } from "./useSugestoesCidade";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const MAX_PROFISSOES = 8;
 const MAX_AREAS = 20;
@@ -35,10 +36,6 @@ function paraFormulario(perfil: MeuPerfil): SalvarPerfilInput {
     site: perfil.site,
     profissaoIds: perfil.profissaoIds,
   };
-}
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") ? erro.message : "Não foi possível concluir agora. Tente de novo.";
 }
 
 function CampoPublico({

@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { PainelConfirmacao } from "./PainelConfirmacao";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   gratuito: "Gratuito (só a rede)",
@@ -21,12 +22,6 @@ const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
 };
 
 type Painel = { tipo: "bloquear" | "desbloquear" | "plano"; empresaId: string } | null;
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
 
 export function EmpresasAdmin() {
   const [busca, setBusca] = useState("");

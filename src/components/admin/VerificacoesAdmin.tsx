@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EstrelasNota } from "@/components/rede/EstrelasNota";
 import { PainelConfirmacao } from "./PainelConfirmacao";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const TIPO: Record<TipoVerificacao, string> = {
   empresa_verificada: "Selo de verificação",
@@ -25,12 +26,6 @@ const STATUS: Record<StatusSolicitacao, { rotulo: string; tom: "info" | "success
   expirada: { rotulo: "Expirada", tom: "warning" },
   revogada: { rotulo: "Desfeita", tom: "warning" },
 };
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
 
 function tamanho(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;

@@ -8,12 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 export function PerfisAdmin() {
   const [busca, setBusca] = useState("");

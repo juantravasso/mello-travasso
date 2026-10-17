@@ -11,18 +11,13 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { EstrelasNota } from "@/components/rede/EstrelasNota";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const ROTULO_ACAO: Record<AcaoModeracaoAvaliacao, string> = {
   ocultar: "Ocultar",
   remover: "Remover",
   restaurar: "Restaurar",
 };
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
 
 export function AvaliacoesAdmin() {
   const [busca, setBusca] = useState("");

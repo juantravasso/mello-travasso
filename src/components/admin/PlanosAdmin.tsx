@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PainelConfirmacao } from "./PainelConfirmacao";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   gratuito: "Gratuito",
@@ -15,12 +16,6 @@ const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   ativo: "Ativo",
   suspenso: "Suspenso (legado: não bloqueia nada, use o bloqueio de empresa)",
 };
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
-}
 
 /** Matriz plano × recurso. Só as chaves que já têm barreira no código aparecem; marcar ou desmarcar vale na próxima requisição de cada empresa. */
 export function PlanosAdmin() {

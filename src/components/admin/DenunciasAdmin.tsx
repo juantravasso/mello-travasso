@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { EstrelasNota } from "@/components/rede/EstrelasNota";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 type AcaoPainel = "informacoes" | AcaoDecisaoDenuncia;
 
@@ -37,12 +38,6 @@ function tomDoStatus(status: string): "success" | "warning" | "danger" | "info" 
   if (status === "rejeitada") return "neutral";
   if (status === "aguardando_informacoes") return "warning";
   return "info";
-}
-
-function mensagemDeErro(erro: unknown): string {
-  return erro instanceof Error && erro.message && !erro.message.startsWith("NAO_") && erro.message !== "SEM_PERMISSAO"
-    ? erro.message
-    : "Não foi possível concluir agora. Tente de novo.";
 }
 
 export function DenunciasAdmin() {

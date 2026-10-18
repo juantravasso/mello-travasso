@@ -254,6 +254,21 @@ e a volta, sobra uma pequena diferença no custo do projeto.
 transferência, devolução, última compra com conta cancelada, isolamento entre empresas e concorrência; cria empresas
 descartáveis e apaga o que criou.
 
+## Tema claro (padrão) e link de convite
+
+**Tema.** O tema claro é o padrão do site e do app: as variáveis claras ficam em `:root` ([globals.css](src/app/globals.css)) e o
+escuro só vale com `data-theme="dark"`, escolhido em Configurações e guardado no navegador (`mello-travasso:tema`). Um script
+no `<head>` ([layout.tsx](src/app/layout.tsx)) aplica o escuro antes da primeira pintura, sem flash. As cores de texto do tema
+claro foram calculadas para contraste AA (4,5:1), inclusive sobre os fundos tingidos de sucesso, aviso, erro e informação.
+
+**Link de convite.** Cada empresa tem um link (`/criar-conta?convite=CÓDIGO`) que o dono copia ou envia pelo WhatsApp em
+Configurações. Quem cria a conta por ele abre a **própria empresa**, separada da que convidou; o convite é só rastreio: grava
+`Empresa.convidadaPorId` e o dono vê **quantas** empresas se cadastraram, nunca quem. O código (8 caracteres sem 0/O/1/I/L) nasce
+na primeira vez que o dono abre o link ([conviteCore.server.ts](src/services/data/server/conviteCore.server.ts)); código inválido,
+desconhecido ou de empresa bloqueada é ignorado e o cadastro segue normalmente. Se a empresa que convidou for apagada, a convidada
+permanece (`ON DELETE SET NULL`). `yarn testar:convite` (integração, banco do `.env.local`) cobre código único, chamadas simultâneas,
+código inválido/bloqueado, contagem isolada por empresa e a exclusão; cria empresas descartáveis e apaga o que criou.
+
 ## Rodando localmente
 
 ```bash

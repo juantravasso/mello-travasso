@@ -11,6 +11,8 @@ export const CORES_MARCA = {
   ouro: "#e8b04b",
   /** Fundo escuro usado na imagem de compartilhamento. */
   noite: "#0b0e14",
+  /** Fundo do tema claro (o padrão): barra do navegador e tela de abertura do app instalado. */
+  fundoClaro: "#f5f6f8",
 } as const;
 
 export interface ProdutoMarca {

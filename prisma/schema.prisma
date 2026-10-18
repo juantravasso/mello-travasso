@@ -283,6 +283,13 @@ model Empresa {
   /// Fuso IANA em que os compromissos e lembretes da empresa são interpretados (ver src/lib/calendario/tempo.ts).
   fusoHorario        String       @default("America/Sao_Paulo")
 
+  /// Código do link de convite da empresa (8 caracteres sem 0/O/1/I/L). Criado na primeira vez que o dono abre o link.
+  codigoConvite  String?   @unique
+  /// Empresa cujo link de convite originou este cadastro. Só rastreio: não dá acesso a nada da outra empresa.
+  convidadaPorId String?
+  convidadaPor   Empresa?  @relation("ConvitesDeCadastro", fields: [convidadaPorId], references: [id], onDelete: SetNull)
+  convidadas     Empresa[] @relation("ConvitesDeCadastro")
+
   usuarios Usuario[]
 
   obras                         Obra[]
@@ -305,6 +312,8 @@ model Empresa {
   arquivos                      Arquivo[]
   solicitacoes                  SolicitacaoVerificacao[]
   compromissos                  Compromisso[]
+
+  @@index([convidadaPorId])
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de

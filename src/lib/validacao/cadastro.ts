@@ -26,6 +26,8 @@ export const criarContaSchema = z
     senha: senhaSchema,
     /** "teste": 30 dias com todos os módulos. "rede": só a rede profissional, grátis. */
     modo: z.enum(["teste", "rede"]).default("teste"),
+    /** Código do link de convite que trouxe a pessoa. Só o formato é limitado aqui: código inválido é ignorado no servidor. */
+    codigoConvite: z.string().trim().max(40).optional(),
     aceiteTermos: z.boolean().refine((v) => v === true, "É preciso aceitar os Termos e a Política de Privacidade."),
     empresaConfirmacao: z.string().max(500).optional(),
   })

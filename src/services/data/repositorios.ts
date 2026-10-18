@@ -76,6 +76,7 @@ import type {
   SalvarPerfilInput,
   TipoConta,
   ListaUsuariosEmpresa,
+  ResumoConvite,
 } from "@/types";
 
 /**
@@ -247,6 +248,11 @@ export interface UsuariosEmpresaRepositorio {
   redefinirAcesso(usuarioId: string, senhaDoDono: string): Promise<ResultadoAction<AcessoTemporario>>;
   desativar(usuarioId: string): Promise<ResultadoAction<null>>;
   reativar(usuarioId: string): Promise<ResultadoAction<null>>;
+}
+
+/** Link de convite da própria empresa (só o dono): o código e quantos cadastros vieram dele. */
+export interface ConviteRepositorio {
+  obter(): Promise<ResultadoAction<ResumoConvite>>;
 }
 
 /** Calendário do usuário: compromissos próprios e os compartilhados com ele. */

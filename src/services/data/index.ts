@@ -19,6 +19,7 @@ import type {
   TaxonomiaAdminRepositorio,
   UsuariosAdminRepositorio,
   UsuariosEmpresaRepositorio,
+  ConviteRepositorio,
   CalendarioRepositorio,
   VerificacaoRepositorio,
   VerificacoesAdminRepositorio,
@@ -50,6 +51,7 @@ import {
   reativarUsuarioDaEmpresa,
   redefinirAcessoDoUsuario,
 } from "./server/usuariosEmpresaActions";
+import { obterConvite } from "./server/conviteActions";
 import { listarAvaliacoesAdmin, moderarAvaliacao } from "./server/avaliacaoAdminActions";
 import { complementarDenuncia, denunciar, listarMinhasDenuncias } from "./server/denunciaActions";
 import {
@@ -318,6 +320,10 @@ export const usuariosEmpresaRepositorio: UsuariosEmpresaRepositorio = {
   redefinirAcesso: redefinirAcessoDoUsuario,
   desativar: desativarUsuarioDaEmpresa,
   reativar: reativarUsuarioDaEmpresa,
+};
+
+export const conviteRepositorio: ConviteRepositorio = {
+  obter: obterConvite,
 };
 
 export const verificacaoRepositorio: VerificacaoRepositorio = {

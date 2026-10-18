@@ -9,7 +9,7 @@ function aplicarTema(tema: Tema) {
 }
 
 export function useTema() {
-  const [tema, setTemaState] = useState<Tema>("dark");
+  const [tema, setTemaState] = useState<Tema>("light");
 
   useEffect(() => {
     const salvo = window.localStorage.getItem(CHAVE) as Tema | null;
@@ -23,7 +23,7 @@ export function useTema() {
   }
 
   function alternarTema() {
-    definirTema(tema === "dark" ? "light" : "dark");
+    definirTema(tema === "light" ? "dark" : "light");
   }
 
   return { tema, definirTema, alternarTema };

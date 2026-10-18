@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { MARCA, TEMPLATE_TITULO, TITULO_PADRAO } from "@/lib/marca";
+import { CORES_MARCA, MARCA, TEMPLATE_TITULO, TITULO_PADRAO } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
 import "./globals.css";
 
@@ -34,13 +34,13 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#0b0e14",
+  themeColor: CORES_MARCA.fundoClaro,
 };
 
 const SCRIPT_TEMA_INICIAL = `
 try {
   var tema = window.localStorage.getItem("mello-travasso:tema");
-  if (tema === "light") document.documentElement.setAttribute("data-theme", "light");
+  if (tema === "dark") document.documentElement.setAttribute("data-theme", "dark");
 } catch (e) {}
 `;
 
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        {/* Aplica o tema salvo antes da primeira pintura, evitando um flash do tema errado. */}
+        {/* O padrão é o tema claro. Quem escolheu o escuro o recebe antes da primeira pintura, sem flash. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
       <body className="min-h-full bg-background text-foreground">{children}</body>

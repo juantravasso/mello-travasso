@@ -26,7 +26,7 @@ interface EstadoCadastro {
 
 const ESTADO_INICIAL: EstadoCadastro = {};
 
-export function CriarContaForm() {
+export function CriarContaForm({ codigoConvite }: { codigoConvite?: string }) {
   const router = useRouter();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa>("pj");
   const [modo, setModo] = useState<ModoCadastro>("teste");
@@ -123,6 +123,7 @@ export function CriarContaForm() {
         email: String(formData.get("email") ?? ""),
         senha: String(formData.get("senha") ?? ""),
         modo,
+        codigoConvite,
         aceiteTermos: formData.get("aceiteTermos") === "on",
         empresaConfirmacao: String(formData.get("empresaConfirmacao") ?? ""),
       });
@@ -134,7 +135,7 @@ export function CriarContaForm() {
       }
       return { erroGeral: resultado.mensagem, campos: resultado.campos };
     },
-    [tipoPessoa, situacaoCadastral, modo, router],
+    [tipoPessoa, situacaoCadastral, modo, codigoConvite, router],
   );
 
   const [estadoForm, formAction, emAndamento] = useActionState(acao, ESTADO_INICIAL);

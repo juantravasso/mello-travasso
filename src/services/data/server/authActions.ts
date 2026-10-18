@@ -17,6 +17,7 @@ import { MARCA } from "@/lib/marca";
 import { VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 import type { ResultadoAction } from "@/types";
 import { emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
+import { resolverEmpresaConvidante } from "./conviteCore.server";
 
 const MENSAGEM_CADASTRO_DUPLICADO = "Não foi possível criar a conta com esses dados. Se você já tem conta, entre.";
 const LIMITE_CADASTROS_POR_HORA = 5;
@@ -228,6 +229,10 @@ export async function criarConta(
     return { ok: false, erro: "VALIDACAO", mensagem: MENSAGEM_CADASTRO_DUPLICADO };
   }
 
+  // Link de convite de outra empresa: só rastreio. Código inválido, desconhecido ou de empresa bloqueada é ignorado,
+  // e o cadastro segue (o convite nunca impede nem revela nada sobre uma conta nova).
+  const convidadaPorId = await resolverEmpresaConvidante(dadosForm.codigoConvite);
+
   const senhaHash = await gerarHash(dadosForm.senha);
   const agora = isoAgora();
   const soRede = dadosForm.modo === "rede";
@@ -255,6 +260,7 @@ export async function criarConta(
           testeTerminaEm,
           aceiteTermosVersao: VERSAO_TERMOS_ATUAL,
           aceiteTermosEm: agora,
+          convidadaPorId,
           criadoEm: agora,
           atualizadoEm: agora,
         },

@@ -12,13 +12,13 @@ export function PreferenciasTemaForm() {
     <Card className="flex flex-col gap-3">
       <div>
         <p className="font-medium text-foreground">Aparência</p>
-        <p className="text-sm text-muted">Escolha entre o tema escuro (padrão) e o tema claro.</p>
+        <p className="text-sm text-muted">Escolha entre o tema claro (padrão) e o tema escuro.</p>
       </div>
       <div className="inline-flex w-full rounded-lg border border-border bg-surface p-1">
         {(
           [
-            { valor: "dark" as const, rotulo: "Escuro", Icone: IconeLua },
             { valor: "light" as const, rotulo: "Claro", Icone: IconeSol },
+            { valor: "dark" as const, rotulo: "Escuro", Icone: IconeLua },
           ]
         ).map(({ valor, rotulo, Icone }) => (
           <button

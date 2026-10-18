@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+/* Escuro: só quando a pessoa escolhe (data-theme="dark"). O padrão é o claro, definido em :root logo abaixo. */
+:root[data-theme="dark"] {
   --background: #0b0e14;
   --foreground: #eef1f6;
 
@@ -29,7 +30,8 @@
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
+/* Claro: padrão do site e do app. */
+:root {
   --background: #f5f6f8;
   --foreground: #171b24;
 
@@ -42,17 +44,17 @@
   --color-surface-2: #eef0f4;
   --color-card: #ffffff;
   --color-border: #e1e4ea;
-  --color-muted: #667085;
+  --color-muted: #5b6475;
   --color-muted-bg: #eef0f4;
 
-  --color-success: #15803d;
-  --color-success-bg: rgba(21, 128, 61, 0.12);
-  --color-warning: #b3801f;
-  --color-warning-bg: rgba(179, 128, 31, 0.12);
-  --color-danger: #dc2626;
-  --color-danger-bg: rgba(220, 38, 38, 0.1);
-  --color-info: #2563eb;
-  --color-info-bg: rgba(37, 99, 235, 0.1);
+  --color-success: #166534;
+  --color-success-bg: rgba(22, 101, 52, 0.12);
+  --color-warning: #8a5f0a;
+  --color-warning-bg: rgba(138, 95, 10, 0.12);
+  --color-danger: #c42222;
+  --color-danger-bg: rgba(196, 34, 34, 0.1);
+  --color-info: #1d4ed8;
+  --color-info-bg: rgba(29, 78, 216, 0.1);
 
   color-scheme: light;
 }

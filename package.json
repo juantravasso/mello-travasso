@@ -13,6 +13,7 @@
     "testar:ciclo": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-ciclo-de-vida.ts",
     "testar:convite": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-convite.ts",
     "testar:metricas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-metricas.ts",
+    "testar:planos": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-planos-comerciais.ts",
     "testar:onboarding": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-onboarding.ts",
     "testar:deposito": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-deposito.ts",
     "postinstall": "prisma generate",

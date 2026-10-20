@@ -13,6 +13,8 @@ export interface EmpresaAdminItem {
   /** CNPJ completo; CPF mascarado. */
   documento: string;
   plano: PlanoEmpresa;
+  /** Chave do plano comercial contratado (conta vagas, não muda o acesso). */
+  planoComercial?: string;
   testeTerminaEm?: string;
   bloqueadaEm?: string;
   criadoEm: string;

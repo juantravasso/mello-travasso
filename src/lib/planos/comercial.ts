@@ -23,6 +23,24 @@ export function economiaAnual(p: PrecosDoPlano): { centavos: number; percentual:
   return { centavos, percentual: Math.round((centavos / cheio) * 100) };
 }
 
+/** Vagas que sobram. Nunca negativo, e sem limite (null) não existe contagem. */
+export function vagasRestantes(total: number | null, ocupadas: number): number | null {
+  if (total === null) return null;
+  return Math.max(0, total - Math.max(0, ocupadas));
+}
+
+/** Valor de cada parcela do anual; null se não divide certo (então a página não anuncia parcela). */
+export function valorDaParcela(anualCentavos: number | null, parcelas: number | null): number | null {
+  if (anualCentavos === null || parcelas === null || parcelas < 1 || anualCentavos % parcelas !== 0) return null;
+  return anualCentavos / parcelas;
+}
+
+/** Quanto sobra por ano pagando o plano barato em vez do outro, ambos pelo mensal. null se não houver diferença a favor. */
+export function diferencaAnualEntrePlanos(barato: number | null, caro: number | null): number | null {
+  if (barato === null || caro === null || caro <= barato) return null;
+  return (caro - barato) * 12;
+}
+
 export const CHAVE_PLANO = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const preco = z.number().int("Preço em centavos inteiros.").min(1, "Preço precisa ser maior que zero.").max(100_000_00, "Preço acima do limite.").nullable();
@@ -41,9 +59,17 @@ export const planoComercialSchema = z
     destaque: z.boolean(),
     publicado: z.boolean(),
     ordem: z.number().int().min(0).max(99),
+    vagasTotal: z.number().int().min(1, "Vagas: no mínimo 1.").max(10_000).nullable(),
+    parcelasSemJuros: z.number().int().min(2, "Parcelas: no mínimo 2.").max(12, "Parcelas: no máximo 12.").nullable(),
+    condicao: z.string().trim().min(3).max(120).nullable(),
   })
   .strict()
-  .refine((p) => !p.publicado || p.beneficios.length > 0, { message: "Para publicar, liste ao menos um benefício.", path: ["beneficios"] });
+  .refine((p) => !p.publicado || p.beneficios.length > 0, { message: "Para publicar, liste ao menos um benefício.", path: ["beneficios"] })
+  .refine((p) => p.parcelasSemJuros === null || p.precoAnualCentavos !== null, { message: "O parcelamento do anual precisa do preço anual.", path: ["parcelasSemJuros"] })
+  .refine((p) => p.parcelasSemJuros === null || (p.precoAnualCentavos ?? 0) % p.parcelasSemJuros === 0, {
+    message: "O preço anual precisa dividir certo pelas parcelas (sem centavos sobrando).",
+    path: ["parcelasSemJuros"],
+  });
 
 export type PlanoComercialEntrada = z.infer<typeof planoComercialSchema>;
 

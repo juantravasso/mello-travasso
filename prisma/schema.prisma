@@ -287,6 +287,8 @@ model Empresa {
   codigoConvite  String?   @unique
   /// Empresa cujo link de convite originou este cadastro. Só rastreio: não dá acesso a nada da outra empresa.
   convidadaPorId String?
+  /// Plano comercial contratado (chave de PlanoComercial). Só tem efeito de contagem de vagas; o acesso vem de `plano`.
+  planoComercialChave String?
   convidadaPor   Empresa?  @relation("ConvitesDeCadastro", fields: [convidadaPorId], references: [id], onDelete: SetNull)
   convidadas     Empresa[] @relation("ConvitesDeCadastro")
 
@@ -1270,6 +1272,13 @@ model PlanoComercial {
   destaque             Boolean  @default(false)
   publicado            Boolean  @default(false)
   ordem                Int      @default(0)
+  /// Limite de vagas (ex.: plano fundador). As vagas ocupadas são contadas nas empresas no plano ativo com esta chave; o
+  /// "restam N" mostrado ao cliente sai dessa conta, nunca de um número digitado.
+  vagasTotal           Int?
+  /// Só preenchido quando o provedor de pagamento confirmou o parcelamento sem juros; sem isso a página não promete.
+  parcelasSemJuros     Int?
+  /// Condição que vale para o preço (ex.: "Preço garantido por 12 meses").
+  condicao             String?
   criadoEm             String
   atualizadoEm         String
 }

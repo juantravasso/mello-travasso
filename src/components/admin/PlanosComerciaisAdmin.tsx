@@ -23,9 +23,12 @@ interface Rascunho {
   destaque: boolean;
   publicado: boolean;
   ordem: string;
+  vagas: string;
+  parcelas: string;
+  condicao: string;
 }
 
-const VAZIO: Rascunho = { chave: "", novo: true, nome: "", descricao: "", mensal: "", anual: "", beneficios: "", destaque: false, publicado: false, ordem: "0" };
+const VAZIO: Rascunho = { chave: "", novo: true, nome: "", descricao: "", mensal: "", anual: "", beneficios: "", destaque: false, publicado: false, ordem: "0", vagas: "", parcelas: "", condicao: "" };
 
 const doPlano = (p: PlanoComercialAdmin): Rascunho => ({
   chave: p.chave,
@@ -38,6 +41,9 @@ const doPlano = (p: PlanoComercialAdmin): Rascunho => ({
   destaque: p.destaque,
   publicado: p.publicado,
   ordem: String(p.ordem),
+  vagas: p.vagasTotal === null ? "" : String(p.vagasTotal),
+  parcelas: p.parcelasSemJuros === null ? "" : String(p.parcelasSemJuros),
+  condicao: p.condicao ?? "",
 });
 
 /** Catálogo comercial: o que a página de planos e as ofertas mostram. Não muda o acesso de ninguém (isso é "Planos e permissões"). */
@@ -74,6 +80,9 @@ export function PlanosComerciaisAdmin() {
       destaque: r.destaque,
       publicado: r.publicado,
       ordem: Number(r.ordem),
+      vagasTotal: r.vagas.trim() === "" ? null : Number(r.vagas),
+      parcelasSemJuros: r.parcelas.trim() === "" ? null : Number(r.parcelas),
+      condicao: r.condicao.trim() === "" ? null : r.condicao.trim(),
     };
   }
 
@@ -130,7 +139,7 @@ export function PlanosComerciaisAdmin() {
               {p.destaque && <Badge tom="info">Recomendado</Badge>}
             </p>
             <p className="text-sm text-muted tabular-nums">
-              {formatarPreco(p.precoMensalCentavos) ?? "sem preço mensal"} · {formatarPreco(p.precoAnualCentavos) ?? "sem preço anual"} · {p.beneficios.length} benefícios
+              {formatarPreco(p.precoMensalCentavos) ?? "sem preço mensal"} · {formatarPreco(p.precoAnualCentavos) ?? "sem preço anual"} · {p.beneficios.length} benefícios{p.vagasTotal !== null ? ` · vagas: ${p.vagasOcupadas} de ${p.vagasTotal} ocupadas` : ""}
             </p>
           </div>
           <Button type="button" variante="outline" tamanho="sm" onClick={() => { setAviso(null); setErro(null); setConfirmando(false); setRascunho(doPlano(p)); }}>
@@ -166,6 +175,14 @@ export function PlanosComerciaisAdmin() {
             <Input label="Preço anual (R$)" inputMode="decimal" value={rascunho.anual} placeholder="vazio = sem plano anual" onChange={(e) => campo("anual", e.target.value)} />
             <Input label="Ordem na página" inputMode="numeric" value={rascunho.ordem} onChange={(e) => campo("ordem", e.target.value)} />
           </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Input label="Limite de vagas" inputMode="numeric" value={rascunho.vagas} placeholder="vazio = sem limite" onChange={(e) => campo("vagas", e.target.value)} />
+            <Input label="Parcelas sem juros (anual)" inputMode="numeric" value={rascunho.parcelas} placeholder="só após o provedor confirmar" onChange={(e) => campo("parcelas", e.target.value)} />
+            <Input label="Condição do preço" value={rascunho.condicao} maxLength={120} placeholder="ex.: Preço garantido por 12 meses" onChange={(e) => campo("condicao", e.target.value)} />
+          </div>
+          <p className="text-xs text-muted">
+            O “restam N vagas” que o cliente vê é calculado: limite menos as empresas no plano Ativo com este plano comercial. Não dá para digitar o número. Só preencha as parcelas sem juros depois de confirmar que o provedor de pagamento oferece.
+          </p>
           {precoInvalido && <p className="text-xs text-danger">Preço inválido. Use só números, por exemplo 49,90.</p>}
           {economia && <p className="text-xs text-muted">O anual sai {economia.percentual}% mais barato que 12 mensalidades; a página mostra essa economia.</p>}
           <Textarea label="O que inclui (um benefício por linha)" rows={5} value={rascunho.beneficios} onChange={(e) => campo("beneficios", e.target.value)} />

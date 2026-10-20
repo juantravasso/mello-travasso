@@ -52,6 +52,7 @@ export async function listarEmpresasAdmin(busca?: string): Promise<EmpresaAdminI
     tipo: e.tipoPessoa,
     documento: documentoParaAdmin(e.tipoPessoa, e.documento),
     plano: e.plano,
+    planoComercial: e.planoComercialChave ?? undefined,
     testeTerminaEm: e.testeTerminaEm ?? undefined,
     bloqueadaEm: e.bloqueadaEm ?? undefined,
     criadoEm: e.criadoEm,

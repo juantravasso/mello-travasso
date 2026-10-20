@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { centavosParaReais, economiaAnual, planoComercialSchema, reaisParaCentavos } from "./comercial";
 
-const base = { chave: "profissional", nome: "Profissional", descricao: "Para quem gerencia projetos.", precoMensalCentavos: 4990, precoAnualCentavos: 49900, beneficios: ["Contas a pagar"], destaque: false, publicado: true, ordem: 1 };
+const base = { chave: "profissional", nome: "Profissional", descricao: "Para quem gerencia projetos.", precoMensalCentavos: 4990, precoAnualCentavos: 49900, beneficios: ["Contas a pagar"], destaque: false, publicado: true, ordem: 1, vagasTotal: null, parcelasSemJuros: null, condicao: null };
 
 describe("economia anual", () => {
   it("calcula frente a 12 mensalidades", () => {
@@ -53,5 +53,37 @@ describe("validação do plano", () => {
   });
   it("sem preço é válido (sob consulta)", () => {
     assert.ok(planoComercialSchema.safeParse({ ...base, precoMensalCentavos: null, precoAnualCentavos: null }).success);
+  });
+});
+
+describe("vagas e parcelas", () => {
+  it("vagas restantes nunca ficam negativas e sem limite não há contagem", async () => {
+    const { vagasRestantes } = await import("./comercial");
+    assert.equal(vagasRestantes(10, 3), 7);
+    assert.equal(vagasRestantes(10, 10), 0);
+    assert.equal(vagasRestantes(10, 14), 0);
+    assert.equal(vagasRestantes(null, 5), null);
+  });
+  it("parcela só existe se o anual divide certo", async () => {
+    const { valorDaParcela } = await import("./comercial");
+    assert.equal(valorDaParcela(47880, 12), 3990);
+    assert.equal(valorDaParcela(76680, 12), 6390);
+    assert.equal(valorDaParcela(47881, 12), null);
+    assert.equal(valorDaParcela(null, 12), null);
+    assert.equal(valorDaParcela(47880, null), null);
+  });
+  it("diferença anual entre planos", async () => {
+    const { diferencaAnualEntrePlanos } = await import("./comercial");
+    assert.equal(diferencaAnualEntrePlanos(4990, 7990), 36000);
+    assert.equal(diferencaAnualEntrePlanos(7990, 7990), null);
+    assert.equal(diferencaAnualEntrePlanos(null, 7990), null);
+  });
+  it("parcelamento exige anual que divida certo", async () => {
+    const { planoComercialSchema } = await import("./comercial");
+    const b = { chave: "fundador", nome: "Fundador", descricao: "Plano de fundador.", precoMensalCentavos: 4990, precoAnualCentavos: 47880, beneficios: ["x1"], destaque: true, publicado: true, ordem: 1, vagasTotal: 10, parcelasSemJuros: 12, condicao: null };
+    assert.ok(planoComercialSchema.safeParse(b).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...b, precoAnualCentavos: 47881 }).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...b, precoAnualCentavos: null }).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...b, vagasTotal: 0 }).success);
   });
 });

@@ -369,6 +369,17 @@ sem preço o plano aparece como "sob consulta"; a economia anual só é mostrada
 ([UpsellGestao.tsx](src/components/rede/UpsellGestao.tsx)) e oferta em Configurações depois do fim do teste ([OfertaContextual.tsx](src/components/planos/OfertaContextual.tsx)).
 Visualização e clique viram os eventos `oferta_visualizada` e `oferta_clicada` (uma vez por pessoa, contexto, plano e dia) e entram em **Admin > Métricas**.
 
+**Vagas limitadas (plano fundador).** O plano pode ter `vagasTotal`. O "Restam N vagas" que o cliente vê é **calculado**: limite menos as empresas no plano Ativo
+com aquela chave de plano comercial (`Empresa.planoComercialChave`, definida por **Admin > Empresas > Plano comercial**). Não existe campo para digitar o "restam", então a
+escassez mostrada é sempre a real. A atribuição confere as vagas na mesma transação, com a linha do plano travada (`planosComerciaisCore.server.ts`), e duas
+atribuições simultâneas não passam do limite. Quem sai do plano Ativo libera a vaga. Teste: `yarn testar:planos`.
+
+**Parcelamento sem juros.** O campo `parcelasSemJuros` fica vazio até o provedor de pagamento confirmar que oferece; só então a página mostra "12x de R$ X sem juros".
+A parcela é o anual dividido pelo número de parcelas e só aparece se a divisão for exata.
+
+**Conteúdo comercial** ([vitrine.ts](src/lib/planos/vitrine.ts)): os problemas do dia a dia que o sistema resolve e tudo o que o Elo Gestão inclui. Cada item descreve algo que o
+sistema faz hoje, sem prometer resultado (há teste contra absolutos como "garantido", "100%", "ilimitado"). Ao mudar uma funcionalidade, confira o texto.
+
 **Ainda não existe:** pagamento. Falta escolher o provedor (Asaas ou Mercado Pago), criar a conta e definir os planos; só então entram checkout e os eventos de assinatura,
 que só podem nascer do retorno do provedor, nunca de um clique.
 

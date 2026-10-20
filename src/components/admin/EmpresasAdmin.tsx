@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { definirPlanoComercialDaEmpresa, obterPlanosAdmin } from "@/services/data/server/planosComerciaisActions";
+import type { PlanoComercialAdmin } from "@/types";
 import { PainelConfirmacao } from "./PainelConfirmacao";
 import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
@@ -21,7 +23,7 @@ const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   suspenso: "Suspenso (legado)",
 };
 
-type Painel = { tipo: "bloquear" | "desbloquear" | "plano"; empresaId: string } | null;
+type Painel = { tipo: "bloquear" | "desbloquear" | "plano" | "comercial"; empresaId: string } | null;
 
 export function EmpresasAdmin() {
   const [busca, setBusca] = useState("");
@@ -30,6 +32,8 @@ export function EmpresasAdmin() {
   const [painel, setPainel] = useState<Painel>(null);
   const [planoEscolhido, setPlanoEscolhido] = useState<string>("ativo");
   const [ocupado, setOcupado] = useState(false);
+  const [comerciais, setComerciais] = useState<PlanoComercialAdmin[]>([]);
+  const [comercialEscolhido, setComercialEscolhido] = useState<string>("");
 
   const carregar = useCallback(async (termo: string) => {
     setEmpresas(await repo.listar(termo || undefined));
@@ -98,7 +102,7 @@ export function EmpresasAdmin() {
                     <span className="font-semibold text-foreground">{e.nome}</span>
                     <Badge tom="neutral">{e.tipo === "pj" ? "Empresa" : "Autônomo"}</Badge>
                     <Badge tom={e.plano === "ativo" || e.plano === "cortesia" ? "success" : e.plano === "suspenso" ? "warning" : "info"}>
-                      {ROTULO_PLANO[e.plano]}
+                      {`${ROTULO_PLANO[e.plano]}${e.planoComercial ? ` · ${e.planoComercial}` : ""}`}
                     </Badge>
                     {e.bloqueadaEm && <Badge tom="danger">Bloqueada</Badge>}
                     {e.propria && <Badge tom="neutral">Sua empresa</Badge>}
@@ -118,6 +122,21 @@ export function EmpresasAdmin() {
                       <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={() => { setPainel({ tipo: "plano", empresaId: e.id }); setPlanoEscolhido(e.plano === "ativo" ? "cortesia" : "ativo"); }}>
                         Alterar plano
                       </Button>
+                      {e.plano === "ativo" && (
+                        <Button
+                          type="button"
+                          tamanho="sm"
+                          variante="outline"
+                          disabled={ocupado}
+                          onClick={() => {
+                            setPainel({ tipo: "comercial", empresaId: e.id });
+                            setComercialEscolhido(e.planoComercial ?? "");
+                            obterPlanosAdmin().then((r) => r.ok && setComerciais(r.dados)).catch((err) => setErro(mensagemDeErro(err)));
+                          }}
+                        >
+                          Plano comercial
+                        </Button>
+                      )}
                       {e.bloqueadaEm ? (
                         <Button type="button" tamanho="sm" variante="outline" disabled={ocupado} onClick={() => setPainel({ tipo: "desbloquear", empresaId: e.id })}>
                           Desbloquear
@@ -151,6 +170,29 @@ export function EmpresasAdmin() {
                         rotuloBotao="Confirmar troca de plano"
                         ocupado={ocupado}
                         aoConfirmar={(motivo, senha) => executar(() => repo.alterarPlano(e.id, planoEscolhido, motivo, senha))}
+                        aoCancelar={() => setPainel(null)}
+                      />
+                    </div>
+                  )}
+                  {aberto === "comercial" && (
+                    <div className="flex flex-col gap-3 border-t border-border pt-3">
+                      <Select label="Plano comercial contratado" value={comercialEscolhido} onChange={(ev) => setComercialEscolhido(ev.target.value)}>
+                        <option value="">Nenhum</option>
+                        {comerciais.map((p) => {
+                          const semVaga = p.vagasRestantes === 0 && p.chave !== e.planoComercial;
+                          return (
+                            <option key={p.chave} value={p.chave} disabled={semVaga}>
+                              {p.nome}{p.vagasTotal !== null ? ` (${p.vagasOcupadas} de ${p.vagasTotal} vagas ocupadas)` : ""}
+                            </option>
+                          );
+                        })}
+                      </Select>
+                      <p className="text-xs text-muted">Só conta a vaga do plano e a comparação nas métricas. Não muda o acesso nem cobra.</p>
+                      <PainelConfirmacao
+                        rotuloMotivo={`Motivo (fica registrado)`}
+                        rotuloBotao="Salvar plano comercial"
+                        ocupado={ocupado}
+                        aoConfirmar={(motivo, senha) => executar(() => definirPlanoComercialDaEmpresa(e.id, comercialEscolhido || null, motivo, senha))}
                         aoCancelar={() => setPainel(null)}
                       />
                     </div>

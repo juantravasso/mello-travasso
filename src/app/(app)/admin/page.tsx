@@ -69,6 +69,12 @@ export default async function AdminPage() {
             <span className="text-sm text-muted">Duração do teste, extensões, campanhas de e-mail, quem está parado e falhas de envio.</span>
           </Card>
         </Link>
+        <Link href="/admin/metricas">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Métricas</span>
+            <span className="text-sm text-muted">Cadastros, ativação, tour, conversão do teste e e-mails, com a fórmula de cada número.</span>
+          </Card>
+        </Link>
         <Link href="/admin/planos">
           <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
             <span className="font-semibold text-foreground">Planos e permissões</span>

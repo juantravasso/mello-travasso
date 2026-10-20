@@ -341,6 +341,20 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Painel de métricas (fase 3)
+
+**Admin > Métricas** (`/admin/metricas`, só administrador, só leitura). Período de 7, 30 ou 90 dias. A leitura é por **coorte**: as
+empresas criadas no período e o que aconteceu com elas até agora ([metricasCore.server.ts](src/services/data/server/metricasCore.server.ts)).
+Cada número tem a fórmula escrita em [formulas.ts](src/lib/metricas/formulas.ts), e é o mesmo texto que o painel mostra em "Como cada número é calculado".
+
+- **Cadastros, confirmação de e-mail, ativação, indicação:** direto das tabelas. Ativada = tem projeto, conta, produto, compromisso ou perfil publicado (os fatos do checklist, não um clique).
+- **Tour:** donos por situação (concluído, pulado, em andamento, não iniciado).
+- **Conversão do teste:** entre quem iniciou o teste no período e já teve o prazo vencido (ou mudou de plano), quem está no plano "ativo". Testes em andamento ficam de fora. Hoje o plano é trocado à mão, então é conversão registrada, não pagamento. Mostra também a conversão com e sem extensão.
+- **E-mails:** fila por campanha e situação, e descadastros.
+- **Sem dado, sem número:** taxa sem base aparece como "—" (nunca 0%), amostra abaixo de 20 recebe aviso, e o painel lista o que ainda não mede (ofertas, abertura e clique de e-mail, receita).
+
+Testes: `yarn test` (fórmulas) e `yarn testar:metricas` (integração: lê o painel, cria empresas descartáveis, confere a diferença e apaga só o que criou).
+
 ## Rodando localmente
 
 ```bash

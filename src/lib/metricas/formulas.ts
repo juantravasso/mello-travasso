@@ -106,6 +106,13 @@ export const FORMULAS: readonly FormulaMetrica[] = [
     fonte: "EmailAgendado, EventoProduto (email_descadastro)",
   },
   {
+    id: "ofertas",
+    nome: "Ofertas e página de planos",
+    formula:
+      "Visualizações e cliques por lugar onde a oferta aparece, contando no máximo uma vez por pessoa, plano e dia. Taxa de clique = cliques ÷ visualizações. Clique é ir para a página de planos ou pedir contato; não é compra.",
+    fonte: "EventoProduto (oferta_visualizada, oferta_clicada)",
+  },
+  {
     id: "indicacao",
     nome: "Cadastros por indicação",
     formula: "Cadastros do período que vieram de um link de convite ÷ cadastros do período.",
@@ -115,7 +122,6 @@ export const FORMULAS: readonly FormulaMetrica[] = [
 
 /** O que o painel ainda não mede, dito às claras. */
 export const NAO_MEDIDO: readonly { nome: string; motivo: string }[] = [
-  { nome: "Visualização e clique em ofertas", motivo: "As ofertas contextuais ainda não existem." },
   { nome: "Abertura e clique nos e-mails", motivo: "O envio não recebe o retorno do provedor; só sabemos o que foi enviado ou falhou." },
   { nome: "Receita, assinaturas e cancelamentos", motivo: "Não há cobrança automática: o plano é trocado manualmente." },
 ];

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { MARCA } from "@/lib/marca";
+import { OfertaContextual } from "@/components/planos/OfertaContextual";
 import { IniciarTesteButton } from "./IniciarTesteButton";
 
 const MODULOS = [
@@ -20,6 +21,8 @@ export function UpsellGestao({ podeIniciarTeste, diasDeTeste }: { podeIniciarTes
           Seu plano inclui o {MARCA.produtos.profissionais.nome}. Os módulos abaixo fazem parte do {MARCA.produtos.gestao.nome}, que você pode experimentar quando quiser.
         </p>
       </div>
+
+      <OfertaContextual contexto="gestao_bloqueada" titulo="Quer usar o Elo Gestão no dia a dia?" />
 
       <Card className="flex flex-col gap-4">
         <ul className="flex flex-col gap-3">

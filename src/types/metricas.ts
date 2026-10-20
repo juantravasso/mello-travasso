@@ -28,6 +28,12 @@ export interface MetricasCampanha {
   naFila: number;
 }
 
+export interface MetricasOferta {
+  contexto: string;
+  vistas: number;
+  cliques: number;
+}
+
 export interface MetricasPlataforma {
   periodoDias: number;
   desde: string;
@@ -36,5 +42,6 @@ export interface MetricasPlataforma {
   eventosDesde: string | null;
   coorte: MetricasCoorte;
   teste: MetricasTeste;
+  ofertas: { porContexto: MetricasOferta[] };
   emails: { campanhas: MetricasCampanha[]; descadastros: number };
 }

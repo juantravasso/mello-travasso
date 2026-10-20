@@ -2,13 +2,14 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { DIA_MS } from "@/lib/cicloDeVida/datas";
 import { empresaAtivada, testeAmadurecido, testeConvertido } from "@/lib/metricas/formulas";
-import type { MetricasCampanha, MetricasPlataforma } from "@/types";
+import type { MetricasCampanha, MetricasOferta, MetricasPlataforma } from "@/types";
 
 // Métricas da plataforma para a administração. Tudo é lido do que existe (tabelas e eventos registrados pelo
 // backend); nada é estimado. A leitura é por coorte: as empresas criadas no período e o que aconteceu com elas.
 
 /** Teto de leitura por consulta; acima disso os números cobrem só os mais recentes e o painel avisa. */
 const LIMITE_COORTE = 5000;
+const LIMITE_EVENTOS_OFERTA = 50_000;
 
 function contagem(linhas: { empresaId: string | null }[]): Set<string> {
   return new Set(linhas.map((l) => l.empresaId).filter((id): id is string => id !== null));
@@ -28,7 +29,7 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
   const coorte = truncado ? empresas.slice(0, LIMITE_COORTE) : empresas;
   const ids = coorte.map((e) => e.id);
 
-  const [donos, obras, contas, produtos, compromissos, perfis, iniciosDeTeste, primeiroEvento, filaPorStatus, descadastros] = await Promise.all([
+  const [donos, obras, contas, produtos, compromissos, perfis, iniciosDeTeste, primeiroEvento, filaPorStatus, descadastros, eventosOferta] = await Promise.all([
     prisma.usuario.findMany({ where: { empresaId: { in: ids }, papel: "dono" }, select: { id: true, emailConfirmadoEm: true } }),
     prisma.obra.findMany({ where: { empresaId: { in: ids }, ehDeposito: false }, select: { empresaId: true }, distinct: ["empresaId"] }),
     prisma.contaFinanceira.findMany({ where: { empresaId: { in: ids } }, select: { empresaId: true }, distinct: ["empresaId"] }),
@@ -44,6 +45,11 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
     prisma.eventoProduto.findFirst({ orderBy: { criadoEm: "asc" }, select: { criadoEm: true } }),
     prisma.emailAgendado.groupBy({ by: ["campanha", "status"], where: { criadoEm: { gte: desde, lte: ate } }, _count: { _all: true } }),
     prisma.eventoProduto.count({ where: { tipo: "email_descadastro", criadoEm: { gte: desde, lte: ate } } }),
+    prisma.eventoProduto.findMany({
+      where: { tipo: { in: ["oferta_visualizada", "oferta_clicada"] }, criadoEm: { gte: desde, lte: ate } },
+      select: { tipo: true, dados: true },
+      take: LIMITE_EVENTOS_OFERTA,
+    }),
   ]);
 
   // Coorte de cadastros: confirmação, ativação, indicação e tour.
@@ -116,6 +122,17 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
     porCampanha.set(l.campanha, c);
   }
 
+  // Ofertas: um evento por pessoa, contexto, plano e dia (a chave do evento garante), agrupado pelo contexto.
+  const porContexto = new Map<string, MetricasOferta>();
+  for (const ev of eventosOferta) {
+    const dados = ev.dados;
+    const contexto = dados && typeof dados === "object" && !Array.isArray(dados) && typeof dados.contexto === "string" ? dados.contexto : "desconhecido";
+    const o = porContexto.get(contexto) ?? { contexto, vistas: 0, cliques: 0 };
+    if (ev.tipo === "oferta_visualizada") o.vistas++;
+    else o.cliques++;
+    porContexto.set(contexto, o);
+  }
+
   return {
     periodoDias,
     desde,
@@ -130,6 +147,7 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
       tour,
     },
     teste,
+    ofertas: { porContexto: [...porContexto.values()].sort((a, b) => a.contexto.localeCompare(b.contexto)) },
     emails: { campanhas: [...porCampanha.values()].sort((a, b) => a.campanha.localeCompare(b.campanha)), descadastros },
   };
 }

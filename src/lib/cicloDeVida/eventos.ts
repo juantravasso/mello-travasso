@@ -15,6 +15,8 @@ export const TIPOS_EVENTO = [
   "onboarding_concluido",
   "tutorial_visualizado",
   "item_checklist_concluido",
+  "oferta_visualizada",
+  "oferta_clicada",
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];

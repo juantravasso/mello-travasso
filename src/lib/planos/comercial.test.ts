@@ -1,0 +1,57 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { centavosParaReais, economiaAnual, planoComercialSchema, reaisParaCentavos } from "./comercial";
+
+const base = { chave: "profissional", nome: "Profissional", descricao: "Para quem gerencia projetos.", precoMensalCentavos: 4990, precoAnualCentavos: 49900, beneficios: ["Contas a pagar"], destaque: false, publicado: true, ordem: 1 };
+
+describe("economia anual", () => {
+  it("calcula frente a 12 mensalidades", () => {
+    assert.deepEqual(economiaAnual({ precoMensalCentavos: 5000, precoAnualCentavos: 48000 }), { centavos: 12000, percentual: 20 });
+  });
+  it("sem um dos preços não há economia", () => {
+    assert.equal(economiaAnual({ precoMensalCentavos: null, precoAnualCentavos: 48000 }), null);
+    assert.equal(economiaAnual({ precoMensalCentavos: 5000, precoAnualCentavos: null }), null);
+  });
+  it("anual igual ou mais caro não anuncia economia", () => {
+    assert.equal(economiaAnual({ precoMensalCentavos: 5000, precoAnualCentavos: 60000 }), null);
+    assert.equal(economiaAnual({ precoMensalCentavos: 5000, precoAnualCentavos: 70000 }), null);
+  });
+});
+
+describe("preço digitado", () => {
+  it("aceita vírgula, ponto e R$", () => {
+    assert.equal(reaisParaCentavos("49,90"), 4990);
+    assert.equal(reaisParaCentavos("49.9"), 4990);
+    assert.equal(reaisParaCentavos("R$ 100"), 10000);
+  });
+  it("vazio é sem preço e lixo é recusado", () => {
+    assert.equal(reaisParaCentavos("  "), null);
+    assert.ok(Number.isNaN(reaisParaCentavos("abc")));
+    assert.ok(Number.isNaN(reaisParaCentavos("-5")));
+    assert.ok(Number.isNaN(reaisParaCentavos("1.234,56")));
+  });
+  it("volta para texto", () => {
+    assert.equal(centavosParaReais(4990), "49,90");
+    assert.equal(centavosParaReais(null), "");
+  });
+});
+
+describe("validação do plano", () => {
+  it("aceita um plano completo", () => assert.ok(planoComercialSchema.safeParse(base).success));
+  it("recusa campos extras e chave inválida", () => {
+    assert.ok(!planoComercialSchema.safeParse({ ...base, extra: 1 }).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...base, chave: "Plano Ruim" }).success);
+  });
+  it("recusa preço zero, negativo ou fracionado", () => {
+    assert.ok(!planoComercialSchema.safeParse({ ...base, precoMensalCentavos: 0 }).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...base, precoMensalCentavos: -1 }).success);
+    assert.ok(!planoComercialSchema.safeParse({ ...base, precoMensalCentavos: 49.9 }).success);
+  });
+  it("publicar exige benefício; rascunho não", () => {
+    assert.ok(!planoComercialSchema.safeParse({ ...base, beneficios: [] }).success);
+    assert.ok(planoComercialSchema.safeParse({ ...base, beneficios: [], publicado: false }).success);
+  });
+  it("sem preço é válido (sob consulta)", () => {
+    assert.ok(planoComercialSchema.safeParse({ ...base, precoMensalCentavos: null, precoAnualCentavos: null }).success);
+  });
+});

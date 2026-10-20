@@ -75,6 +75,12 @@ export default async function AdminPage() {
             <span className="text-sm text-muted">Cadastros, ativação, tour, conversão do teste e e-mails, com a fórmula de cada número.</span>
           </Card>
         </Link>
+        <Link href="/admin/planos-comerciais">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Planos comerciais</span>
+            <span className="text-sm text-muted">Nome, preço e benefícios que aparecem na página Planos e nas ofertas.</span>
+          </Card>
+        </Link>
         <Link href="/admin/planos">
           <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
             <span className="font-semibold text-foreground">Planos e permissões</span>

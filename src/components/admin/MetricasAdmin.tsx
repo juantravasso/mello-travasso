@@ -19,6 +19,12 @@ const ROTULO_CAMPANHA: Record<string, string> = {
   teste_estendido: "Teste estendido",
 };
 
+const ROTULO_CONTEXTO: Record<string, string> = {
+  gestao_bloqueada: "Oferta ao abrir o Elo Gestão sem acesso",
+  teste_encerrado: "Oferta após o fim do teste",
+  pagina_planos: "Página de planos",
+};
+
 function Linha({ rotulo, valor, base, nota }: { rotulo: string; valor: number; base?: number; nota?: string }) {
   const t = base === undefined ? null : taxa(valor, base);
   return (
@@ -172,6 +178,16 @@ export function MetricasAdmin() {
               </div>
             </Secao>
           </div>
+
+          <Secao titulo="Ofertas e página de planos" descricao="Uma vez por pessoa, plano e dia. Só aparecem se houver plano publicado.">
+            {dados.ofertas.porContexto.length === 0 ? (
+              <p className="text-sm text-muted">Nenhuma oferta vista neste período.</p>
+            ) : (
+              dados.ofertas.porContexto.map((o) => (
+                <Linha key={o.contexto} rotulo={ROTULO_CONTEXTO[o.contexto] ?? o.contexto} valor={o.cliques} base={o.vistas} nota={`${o.vistas} visualizações, ${o.cliques} cliques`} />
+              ))
+            )}
+          </Secao>
 
           <Secao titulo="O que este painel ainda não mede">
             <ul className="flex flex-col gap-1.5 text-sm">

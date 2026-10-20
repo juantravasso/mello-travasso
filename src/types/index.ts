@@ -21,3 +21,4 @@ export * from "./convite";
 export * from "./cicloDeVida";
 export * from "./onboarding";
 export * from "./metricas";
+export * from "./planosComerciais";

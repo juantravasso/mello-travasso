@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { MARCA } from "@/lib/marca";
 import { useStatusPlano } from "./StatusPlanoContext";
 
@@ -18,9 +19,14 @@ export function FaixaTeste() {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-danger bg-danger-bg px-4 py-2 text-sm text-danger sm:px-8">
         <span>Teste encerrado — os dados continuam disponíveis para consulta.</span>
-        <a href={`mailto:${MARCA.emailContato}`} className="font-medium underline underline-offset-2">
-          Falar com a equipe
-        </a>
+        <span className="flex gap-3">
+          <Link href="/planos" className="font-medium underline underline-offset-2">
+            Ver planos
+          </Link>
+          <a href={`mailto:${MARCA.emailContato}`} className="font-medium underline underline-offset-2">
+            Falar com a equipe
+          </a>
+        </span>
       </div>
     );
   }

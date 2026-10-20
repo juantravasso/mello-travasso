@@ -1255,3 +1255,21 @@ model ProgressoOnboarding {
   criadoEm          String
   atualizadoEm      String
 }
+
+/// Catálogo comercial de planos (nome, preço, benefícios) para a página de planos e as ofertas. É só vitrine: não
+/// concede acesso nem cobra (os recursos de cada plano vêm de PlanoRecurso). Preços em centavos; sem preço, o plano
+/// aparece como "sob consulta". Nenhum plano existe até o administrador cadastrar e publicar.
+model PlanoComercial {
+  id                   String   @id @default(uuid())
+  chave                String   @unique
+  nome                 String
+  descricao            String
+  precoMensalCentavos  Int?
+  precoAnualCentavos   Int?
+  beneficios           String[] @default([])
+  destaque             Boolean  @default(false)
+  publicado            Boolean  @default(false)
+  ordem                Int      @default(0)
+  criadoEm             String
+  atualizadoEm         String
+}

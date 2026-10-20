@@ -1,3 +1,4 @@
+import { OfertaContextual } from "@/components/planos/OfertaContextual";
 import { Suspense } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
@@ -46,6 +47,16 @@ export default async function ConfiguracoesPage() {
           <span className="rounded-full bg-danger-bg px-2.5 py-1 text-xs font-medium text-danger">Somente leitura</span>
         )}
       </Card>
+      {statusPlano.somenteLeitura ? (
+        <OfertaContextual contexto="teste_encerrado" titulo="Seu teste terminou. Quer continuar lançando e editando?" />
+      ) : (
+        <Link href="/planos">
+          <Card className="flex flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-medium text-foreground">Planos</span>
+            <span className="text-sm text-muted">Veja o que cada plano inclui e os valores.</span>
+          </Card>
+        </Link>
+      )}
       <Link href="/ajuda">
         <Card className="flex flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
           <span className="font-medium text-foreground">Ajuda e tutoriais</span>

@@ -355,6 +355,23 @@ Cada número tem a fórmula escrita em [formulas.ts](src/lib/metricas/formulas.t
 
 Testes: `yarn test` (fórmulas) e `yarn testar:metricas` (integração: lê o painel, cria empresas descartáveis, confere a diferença e apaga só o que criou).
 
+## Planos comerciais, página de planos e ofertas (fase 3)
+
+**Catálogo** em **Admin > Planos comerciais** (`PlanoComercial`): nome, descrição, preço mensal e anual (opcionais), benefícios, "recomendado", publicado e ordem.
+Salvar pede motivo e a senha do admin e entra no registro de ações. Não há exclusão: tirar do ar é despublicar. É só vitrine: **não concede acesso nem cobra**
+(o acesso continua em Planos e permissões, e a contratação é combinada com a equipe por e-mail).
+
+**Nada inventado.** Sem plano publicado, a página `/planos` diz que os planos ainda não foram publicados e as ofertas não aparecem. O preço é sempre o cadastrado;
+sem preço o plano aparece como "sob consulta"; a economia anual só é mostrada quando os dois preços existem e o anual realmente sai mais barato
+([comercial.ts](src/lib/planos/comercial.ts)). Publicar exige ao menos um benefício.
+
+**Onde aparece:** página `/planos` (cards + tabela de comparação; link em Configurações e na faixa de teste encerrado), oferta ao abrir o Elo Gestão sem acesso
+([UpsellGestao.tsx](src/components/rede/UpsellGestao.tsx)) e oferta em Configurações depois do fim do teste ([OfertaContextual.tsx](src/components/planos/OfertaContextual.tsx)).
+Visualização e clique viram os eventos `oferta_visualizada` e `oferta_clicada` (uma vez por pessoa, contexto, plano e dia) e entram em **Admin > Métricas**.
+
+**Ainda não existe:** pagamento. Falta escolher o provedor (Asaas ou Mercado Pago), criar a conta e definir os planos; só então entram checkout e os eventos de assinatura,
+que só podem nascer do retorno do provedor, nunca de um clique.
+
 ## Rodando localmente
 
 ```bash

@@ -15,6 +15,8 @@ export interface MensagemEmail {
   html: string;
   /** Mesma chave = no máximo um e-mail (o Resend guarda por 24 h). */
   chaveIdempotencia?: string;
+  /** Cabeçalhos extras (ex.: List-Unsubscribe nas mensagens promocionais). */
+  cabecalhos?: Record<string, string>;
 }
 
 // Fica em ./escapar para os modelos de e-mail puros (testáveis) usarem sem puxar o envio.
@@ -48,6 +50,7 @@ export async function enviarEmail(mensagem: MensagemEmail): Promise<boolean> {
         subject: mensagem.assunto,
         text: mensagem.texto,
         html: mensagem.html,
+        ...(mensagem.cabecalhos ? { headers: mensagem.cabecalhos } : {}),
       }),
       signal: AbortSignal.timeout(TEMPO_LIMITE_MS),
     });

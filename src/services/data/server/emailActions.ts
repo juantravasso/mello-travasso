@@ -2,11 +2,13 @@
 
 import { z } from "zod";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { exigirSessaoAction } from "@/lib/auth/dal";
 import { extrairIpConfiavel, verificarLimite } from "@/lib/auth/limite";
 import type { ResultadoAction } from "@/types";
 import { consumirTokenDeConfirmacao, emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
+import { processarCicloDeVida } from "./cicloDeVidaCore.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 const UM_MINUTO_MS = 60 * 1000;
@@ -60,6 +62,12 @@ export async function confirmarEmail(token: unknown): Promise<ResultadoAction<nu
     if (resultado !== "confirmado") {
       throw new ErroDeNegocio("Este link não é válido ou já venceu. Peça um novo e-mail de confirmação.");
     }
+    // A boas-vindas sai logo depois da confirmação, sem esperar o agendador (que também a enviaria, se isto falhar).
+    after(() =>
+      processarCicloDeVida({ somenteEnvio: true, limiteEnvio: 5 }).catch((e) => {
+        console.error("[email] falha ao enviar a boas-vindas:", e instanceof Error ? e.name : "erro");
+      }),
+    );
     return null;
   });
 }

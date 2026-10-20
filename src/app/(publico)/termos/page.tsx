@@ -43,7 +43,7 @@ export default function TermosPage() {
           </p>
           <h2 className="text-base font-semibold">3. Período de teste</h2>
           <p>
-            Novas contas começam com 30 dias de acesso gratuito. Depois desse período, sem um plano pago ativo, a
+            Novas contas começam com um período de acesso gratuito, informado no cadastro. Depois desse período, sem um plano pago ativo, a
             conta passa a permitir só consulta dos dados já cadastrados, sem novos lançamentos.
           </p>
           <h2 className="text-base font-semibold">4. Seus dados</h2>

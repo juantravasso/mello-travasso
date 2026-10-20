@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/layout/Logo";
 import { PARAMETRO_CONVITE } from "@/lib/convite";
+import { obterConfigCiclo } from "@/services/data/server/cicloDeVidaCore.server";
 import { CriarContaForm } from "./CriarContaForm";
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export default async function CriarContaPage({ searchParams }: { searchParams: P
   // Link de convite de outra empresa (/criar-conta?convite=…). Aqui só se limita o tamanho; quem decide se o código vale é o servidor.
   const convite = (await searchParams)[PARAMETRO_CONVITE];
   const codigoConvite = typeof convite === "string" ? convite.slice(0, 40) : undefined;
+  const { testeDias } = await obterConfigCiclo();
 
   return (
     <main className="mx-auto flex min-h-svh max-w-3xl flex-col gap-8 px-6 py-12 sm:px-[6vw]">
@@ -24,10 +26,10 @@ export default async function CriarContaPage({ searchParams }: { searchParams: P
 
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-foreground">Criar conta</h1>
-        <p className="text-sm text-muted">Para empresas, prestadores de serviços e autônomos. 30 dias grátis para começar.</p>
+        <p className="text-sm text-muted">Para empresas, prestadores de serviços e autônomos. {testeDias} dias grátis para começar.</p>
       </div>
 
-      <CriarContaForm codigoConvite={codigoConvite} />
+      <CriarContaForm codigoConvite={codigoConvite} diasDeTeste={testeDias} />
     </main>
   );
 }

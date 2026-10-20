@@ -46,3 +46,11 @@ export const desfazerSolicitacaoSchema = z
     motivo: z.string().trim().min(5, "Descreva o motivo (mínimo 5 letras).").max(500),
   })
   .strict();
+
+export const estenderTesteSchema = z
+  .object({
+    empresaId: z.string().uuid(),
+    dias: z.number().int("Informe um número inteiro de dias.").min(1, "Informe de 1 dia em diante.").max(120),
+    motivo,
+  })
+  .strict();

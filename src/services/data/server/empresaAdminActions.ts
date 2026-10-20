@@ -7,6 +7,8 @@ import { formatarCpfCnpj } from "@/lib/documento";
 import { alterarPlanoSchema, alvoSchema, bloquearSchema, buscaAdminSchema } from "@/lib/validacao/admin";
 import type { EmpresaAdminItem, ResultadoAction } from "@/types";
 import { registrarLogAdmin } from "./adminLog.server";
+import { obterConfigCiclo } from "./cicloDeVidaCore.server";
+import { registrarEvento } from "./eventosCore.server";
 import { nomeParaAdmin } from "./avaliacaoCore.server";
 import { aplicarSuspensaoPerfil } from "./moderacaoCore.server";
 import { exigirSenhaDoAdmin } from "./reautenticacao.server";
@@ -129,7 +131,7 @@ export async function desbloquearEmpresa(empresaId: string, senha?: string): Pro
   });
 }
 
-/** Troca o plano. "teste" começa um período novo de 30 dias; os demais planos não têm data de fim. */
+/** Troca o plano. "teste" começa um período novo (duração da configuração da plataforma); os demais planos não têm data de fim. */
 export async function alterarPlanoEmpresa(empresaId: string, plano: string, motivo: string, senha?: string): Promise<ResultadoAction<null>> {
   const admin = await exigirAdminAction();
   return executar(async () => {
@@ -141,13 +143,14 @@ export async function alterarPlanoEmpresa(empresaId: string, plano: string, moti
       if (!empresa) throw new ErroDeNegocio("Empresa não encontrada.");
       if (empresa.plano === parsed.data.plano) throw new ErroDeNegocio("A empresa já está neste plano.");
       const agora = new Date().toISOString();
-      const fim = parsed.data.plano === "teste" ? calcularFimDoTeste() : null;
+      const fim = parsed.data.plano === "teste" ? calcularFimDoTeste((await obterConfigCiclo()).testeDias) : null;
       // O plano lido entra no where: dois admins trocando ao mesmo tempo não gravam um "de" errado no log.
       const trocadas = await tx.empresa.updateMany({
         where: { id: empresa.id, plano: empresa.plano },
         data: { plano: parsed.data.plano, testeTerminaEm: fim, atualizadoEm: agora },
       });
       if (trocadas.count === 0) throw new ErroDeNegocio("O plano mudou em outra aba. Recarregue a página.");
+      if (fim) await registrarEvento(tx, { tipo: "teste_iniciado", empresaId: empresa.id, usuarioId: admin.usuarioId, chave: `teste:${empresa.id}:${fim}`, dados: { origem: "admin" } });
       await registrarLogAdmin(tx, admin.usuarioId, "empresa.alterar_plano", "Empresa", empresa.id, {
         de: empresa.plano,
         para: parsed.data.plano,

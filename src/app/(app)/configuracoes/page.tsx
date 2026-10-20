@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PreferenciasTemaForm } from "@/components/layout/PreferenciasTemaForm";
 import { TrocarSenhaForm } from "@/components/layout/TrocarSenhaForm";
 import { EmpresaForm } from "@/components/layout/EmpresaForm";
 import { PreferenciasLembretes } from "@/components/layout/PreferenciasLembretes";
+import { PreferenciasComunicacao } from "@/components/layout/PreferenciasComunicacao";
 import { UsuariosEmpresa } from "@/components/layout/UsuariosEmpresa";
 import { ConviteEmpresa } from "@/components/layout/ConviteEmpresa";
 import { SairButton } from "@/components/layout/SairButton";
@@ -15,7 +17,7 @@ import { obterEmpresaAtual, obterStatusPlanoAtual } from "@/services/data/server
 function rotuloStatusPlano(status: Awaited<ReturnType<typeof obterStatusPlanoAtual>>): string {
   if (status.plano === "teste") {
     if (status.somenteLeitura) return "Teste encerrado";
-    return `Teste — ${status.diasRestantes} dia${status.diasRestantes === 1 ? "" : "s"} restante${status.diasRestantes === 1 ? "" : "s"}`;
+    return `Teste — ${status.diasRestantes} dia${status.diasRestantes === 1 ? "" : "s"} restante${status.diasRestantes === 1 ? "" : "s"} (até ${status.dataFimFormatada})`;
   }
   if (status.plano === "cortesia") return "Cortesia";
   if (status.plano === "ativo") return "Ativo";
@@ -44,10 +46,17 @@ export default async function ConfiguracoesPage() {
           <span className="rounded-full bg-danger-bg px-2.5 py-1 text-xs font-medium text-danger">Somente leitura</span>
         )}
       </Card>
+      <Link href="/ajuda">
+        <Card className="flex flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+          <span className="font-medium text-foreground">Ajuda e tutoriais</span>
+          <span className="text-sm text-muted">Rever o tour, os primeiros passos e o passo a passo de cada área.</span>
+        </Card>
+      </Link>
       {empresa && <EmpresaForm empresa={empresa} />}
       {sessao.papel === "dono" && <UsuariosEmpresa />}
       {sessao.papel === "dono" && <ConviteEmpresa />}
       <PreferenciasLembretes />
+      <PreferenciasComunicacao />
       <PreferenciasTemaForm />
       <Suspense fallback={null}>
         <TrocarSenhaForm />

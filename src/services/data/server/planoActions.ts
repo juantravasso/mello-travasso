@@ -4,9 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { exigirSessaoAction } from "@/lib/auth/dal";
 import { calcularFimDoTeste } from "@/lib/auth/plano";
 import type { ResultadoAction } from "@/types";
+import { obterConfigCiclo } from "./cicloDeVidaCore.server";
+import { registrarEvento } from "./eventosCore.server";
 
 /**
- * Empresa do plano gratuito (só rede) começa o teste de 30 dias dos módulos
+ * Empresa do plano gratuito (só rede) começa o teste (duração da configuração da plataforma, 14 dias por padrão) dos módulos
  * de gestão. O where com plano "gratuito" torna a troca atômica e única: quem
  * já está em teste, cortesia ou ativo não é afetado, e um duplo clique não
  * estende o prazo.
@@ -18,7 +20,8 @@ export async function iniciarTesteGratis(): Promise<ResultadoAction<null>> {
   }
 
   const agora = new Date().toISOString();
-  const testeTerminaEm = calcularFimDoTeste();
+  const config = await obterConfigCiclo();
+  const testeTerminaEm = calcularFimDoTeste(config.testeDias);
   const resultado = await prisma.$transaction(async (tx) => {
     const atualizados = await tx.empresa.updateMany({
       where: { id: sessao.empresaId, plano: "gratuito" },
@@ -32,6 +35,13 @@ export async function iniciarTesteGratis(): Promise<ResultadoAction<null>> {
           detalhes: { usuarioId: sessao.usuarioId, testeTerminaEm },
           criadoEm: agora,
         },
+      });
+      await registrarEvento(tx, {
+        tipo: "teste_iniciado",
+        empresaId: sessao.empresaId,
+        usuarioId: sessao.usuarioId,
+        chave: `teste:${sessao.empresaId}:${testeTerminaEm}`,
+        dados: { dias: config.testeDias, origem: "rede" },
       });
     }
     return atualizados.count;

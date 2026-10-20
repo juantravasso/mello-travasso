@@ -9,6 +9,7 @@ import { Topbar } from "./Topbar";
 import { AvisoEmail } from "./AvisoEmail";
 import { FaixaTeste } from "./FaixaTeste";
 import { StatusPlanoProvider } from "./StatusPlanoContext";
+import { TourInicial } from "@/components/onboarding/TourInicial";
 
 // Só é renderizado dentro de src/app/(app)/layout.tsx agora — quem decide se
 // uma rota tem chrome ou não é o route group ((app) tem, (publico) não),
@@ -52,6 +53,7 @@ export function ShellWrapper({
             <ColunaPrincipal>
               {!emailConfirmado && <AvisoEmail email={emailUsuario} />}
               <FaixaTeste />
+              <TourInicial />
               <Topbar />
               <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-6">
                 {children}

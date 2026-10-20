@@ -269,6 +269,78 @@ desconhecido ou de empresa bloqueada é ignorado e o cadastro segue normalmente.
 permanece (`ON DELETE SET NULL`). `yarn testar:convite` (integração, banco do `.env.local`) cobre código único, chamadas simultâneas,
 código inválido/bloqueado, contagem isolada por empresa e a exclusão; cria empresas descartáveis e apaga o que criou.
 
+## Ciclo de vida do cliente: teste, extensão, e-mails e eventos (fase 1)
+
+**Teste.** A duração padrão é **14 dias** (`ConfiguracaoPlataforma`, chave `ciclo_de_vida`, editável em **Admin > Teste e e-mails**; valor
+ausente ou inválido volta ao padrão de [config.ts](src/lib/cicloDeVida/config.ts)). Vale só para novos testes: quem já está em teste
+mantém a data. O teste começa no cadastro (a pessoa escolhe "Teste de N dias" ou "Só o Elo Profissionais") ou pelo botão da rede
+(`iniciarTesteGratis`); nada começa em silêncio. Ao vencer, a conta fica **somente para consulta** (escrita e IA bloqueadas no
+servidor, regra que já existia): **nada é apagado** e o plano não muda sozinho.
+
+**Extensão.** Só a administração concede (senha de novo + motivo, registrada em `LogAdmin` e em `ExtensaoTeste`). Limites
+configuráveis (padrão: 1 extensão por empresa, até 14 dias, 14 no total) conferidos **no servidor, dentro da transação**
+([extensaoCore.server.ts](src/services/data/server/extensaoCore.server.ts)); duas extensões simultâneas não passam juntas. Teste já vencido
+conta a partir de hoje. A empresa recebe aviso no app e e-mail com a nova data; o histórico (fim original, extensões, quem concedeu e
+por quê) aparece na administração.
+
+**E-mails.** [cicloDeVidaCore.server.ts](src/services/data/server/cicloDeVidaCore.server.ts) mantém uma fila (`EmailAgendado`) com chave única
+(sem duplicar), reserva por UPDATE condicional (seguro em paralelo), tentativas com espera crescente (até `MAX_TENTATIVAS`), teto diário
+(`EMAIL_LIMITE_CICLO_DIA`, padrão 50) e no máximo **uma mensagem promocional a cada 2 dias** por pessoa. Antes de enviar, cada e-mail é
+conferido de novo e **cancelado** se deixou de fazer sentido (pessoa já fez a ação, descadastrou, o fim do teste mudou, empresa bloqueada).
+Duas categorias, separadas: **transacional** (boas-vindas, fim do teste, extensão: sobre a conta, ignora a preferência) e **promocional**
+(dicas de uso: respeita o descadastro, leva o link e os cabeçalhos `List-Unsubscribe` de um clique). Campanhas: boas-vindas (depois de
+confirmar o e-mail), dica da primeira ação (D+1), dica do problema do dia a dia (D+3), recursos não usados (D+7) e aviso do fim do teste
+(D-3, D-1, D0). Dias e liga/desliga de cada uma ficam na configuração. **Tudo vem desligado**: ligar "Enviar e-mails de ciclo de vida"
+grava o instante, e dicas e boas-vindas só valem para quem se cadastrar depois dele (ninguém antigo recebe rajada). Os avisos de fim do
+teste também aparecem no app (sino) e não dependem da chave de e-mails. O descadastro é em `/descadastrar/<token>` (página com botão; o GET
+não muda nada) e em `POST /api/descadastrar/<token>` (um clique do provedor), e a preferência fica em Configurações.
+
+**Eventos.** `EventoProduto` (sem relações, sem conteúdo sensível, `chave` única = idempotente): `cadastro_concluido`, `primeiro_acesso`,
+`teste_iniciado`, `teste_estendido`, `teste_encerrado`, `aviso_fim_teste_app`, `email_enviado`, `email_falhou`, `email_descadastro`. Nenhum evento
+é inventado: assinatura confirmada e checkout só existirão quando houver cobrança real. "E-mail entregue/aberto" depende do webhook do
+provedor, que ainda não está ligado.
+
+**Agendador.** [.github/workflows/ciclo-de-vida.yml](.github/workflows/ciclo-de-vida.yml) chama `POST /api/cron/ciclo-de-vida` a cada 15 minutos com
+`CRON_SECRET` (mesmos segredos `APP_URL` e `CRON_SECRET` de lembretes.yml; sem `CRON_SECRET` a rota fica fechada com 503). É idempotente.
+
+**Para ativar em produção** (nada disso eu configuro por você): `RESEND_API_KEY` e `EMAIL_REMETENTE` (domínio verificado na Resend),
+`NEXT_PUBLIC_SITE_URL` (https, com o endereço principal), `CRON_SECRET` na Vercel e `APP_URL` + `CRON_SECRET` nos segredos do GitHub,
+`NEXT_PUBLIC_EMAIL_CONTATO` (e-mail de contato mostrado na faixa de teste encerrado e nos e-mails), e então ligar a chave em Admin > Teste e e-mails.
+Atenção ao teto de envio do plano da Resend (a conta é compartilhada com o que mais enviar por ela).
+
+**Testes.** `yarn test` (regras puras: datas, extensão, configuração, quando cada campanha se aplica, modelos de e-mail) e
+`yarn testar:ciclo` (integração, banco do `.env.local`, nenhum e-mail real: fila, duplicidade, concorrência, falhas e tentativas, descadastro,
+fim do teste, extensão, encerramento; cria empresas descartáveis, não toca na configuração real e apaga o que criou).
+
+## Onboarding: tour, "Como funciona?" e checklist de ativação (fase 2)
+
+**Tour inicial.** [TourInicial.tsx](src/components/onboarding/TourInicial.tsx) abre sozinho **só para quem se cadastrou nos últimos 14 dias** e
+ainda não viu o tour; quem já usa o sistema não leva susto. Os passos vêm filtrados **no servidor** pelo plano e pelos módulos da pessoa
+([tour.ts](src/lib/onboarding/tour.ts)): quem só usa a rede não vê passo de gestão (e recebe o convite para conhecer o Elo Gestão), e o
+funcionário só vê o que o dono liberou. Dá para avançar, voltar, **pular** ("pulado") e **retomar**: fechar (X, ESC) guarda o passo em
+que parou ("em andamento") e o tour nunca reabre sozinho depois de começado. Em **Ajuda e tutoriais** (`/ajuda`, também em Configurações) há
+"Continuar de onde parei", "Recomeçar" e "Rever".
+
+**Como funciona?** Botão ao lado do título das telas de cada módulo ([AjudaDaPagina.tsx](src/components/onboarding/AjudaDaPagina.tsx), dentro do
+`PageHeader`). Cada tutorial tem as seis partes pedidas: o que é, qual problema resolve, o que você ganha, como usar (passo a passo),
+exemplo prático e o botão da próxima ação ([ajuda.ts](src/lib/onboarding/ajuda.ts)). O texto só descreve o que a tela faz e fala de benefício
+possível, nunca de resultado garantido (há teste que confere que cada botão leva à tela do módulo certo). **Ao mudar uma tela, confira o
+tutorial dela.** Abrir um tutorial grava "tutorial visto" (uma vez por pessoa) e vira o evento `tutorial_visualizado`.
+
+**Checklist de ativação.** [checklist.ts](src/lib/onboarding/checklist.ts): cada item é "feito" por um **fato real nos dados** (projeto criado,
+conta lançada, produto cadastrado, compromisso criado, perfil publicado, dados da empresa preenchidos). **Não existe botão de "marcar como
+feito"**, e a conclusão não é guardada como marcação: é calculada a cada leitura. A lista é personalizada pelo plano e pelos módulos (o
+funcionário vê só os dele, e itens de dono só o dono vê). A primeira vez que um item aparece feito vira o evento `item_checklist_concluido`
+(um por empresa e item). O progresso por pessoa (estado do tour, checklist oculto, tutoriais vistos) fica em `ProgressoOnboarding`. Aparece no
+Dashboard e no Perfil da rede, e sempre em Ajuda; "Ocultar do painel" é por pessoa e reversível.
+
+**Eventos novos:** `onboarding_iniciado`, `onboarding_concluido`, `tutorial_visualizado`, `item_checklist_concluido` (todos idempotentes por chave).
+
+**Testes.** `yarn test` (conteúdo e regras: cada módulo tem tutorial completo, links no módulo certo, filtro por plano e módulos, checklist
+só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.local`: estado inicial sem gravar, tour e eventos sem repetir,
+entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
+o que criou).
+
 ## Rodando localmente
 
 ```bash

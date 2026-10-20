@@ -15,7 +15,7 @@ import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 
 const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   gratuito: "Gratuito (só a rede)",
-  teste: "Teste (30 dias)",
+  teste: "Teste",
   cortesia: "Cortesia",
   ativo: "Ativo",
   suspenso: "Suspenso (legado)",

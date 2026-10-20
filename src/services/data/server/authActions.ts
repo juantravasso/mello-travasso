@@ -18,6 +18,8 @@ import { VERSAO_TERMOS_ATUAL } from "@/lib/termos";
 import type { ResultadoAction } from "@/types";
 import { emitirConfirmacaoDeEmail } from "./emailConfirmacao.server";
 import { resolverEmpresaConvidante } from "./conviteCore.server";
+import { obterConfigCiclo } from "./cicloDeVidaCore.server";
+import { registrarEvento, registrarEventoSeguro } from "./eventosCore.server";
 
 const MENSAGEM_CADASTRO_DUPLICADO = "Não foi possível criar a conta com esses dados. Se você já tem conta, entre.";
 const LIMITE_CADASTROS_POR_HORA = 5;
@@ -117,6 +119,9 @@ export async function entrar(input: unknown): Promise<ResultadoAction<{ redireci
     data: { falhasLogin: 0, bloqueadoAte: null, atualizadoEm: isoAgora() },
   });
   await criarSessao(usuario.id);
+  // Primeiro acesso de verdade (funcionário que entra pela primeira vez com a senha temporária, por exemplo). A chave única
+  // faz os logins seguintes não contarem de novo.
+  await registrarEventoSeguro({ tipo: "primeiro_acesso", empresaId: usuario.empresaId, usuarioId: usuario.id, chave: `primeiro-acesso:${usuario.id}` });
 
   // Empresa só com a rede (plano gratuito) não tem dashboard: entra na rede.
   // O funcionário começa no primeiro módulo que o dono liberou para ele (o dono, no dashboard).
@@ -236,7 +241,8 @@ export async function criarConta(
   const senhaHash = await gerarHash(dadosForm.senha);
   const agora = isoAgora();
   const soRede = dadosForm.modo === "rede";
-  const testeTerminaEm = soRede ? null : calcularFimDoTeste();
+  const configCiclo = await obterConfigCiclo();
+  const testeTerminaEm = soRede ? null : calcularFimDoTeste(configCiclo.testeDias);
 
   try {
     const resultado = await prisma.$transaction(async (tx) => {
@@ -276,6 +282,13 @@ export async function criarConta(
           atualizadoEm: agora,
         },
       });
+      // Métricas do funil: idempotentes (a chave é o próprio fato) e na mesma transação do cadastro.
+      const quando = new Date(agora);
+      await registrarEvento(tx, { tipo: "cadastro_concluido", empresaId: empresa.id, usuarioId: usuario.id, chave: `cadastro:${empresa.id}`, dados: { modo: dadosForm.modo }, agora: quando });
+      await registrarEvento(tx, { tipo: "primeiro_acesso", empresaId: empresa.id, usuarioId: usuario.id, chave: `primeiro-acesso:${usuario.id}`, agora: quando });
+      if (!soRede) {
+        await registrarEvento(tx, { tipo: "teste_iniciado", empresaId: empresa.id, usuarioId: usuario.id, chave: `teste:${empresa.id}:${testeTerminaEm}`, dados: { dias: configCiclo.testeDias, origem: "cadastro" }, agora: quando });
+      }
       return usuario;
     });
 

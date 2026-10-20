@@ -312,8 +312,79 @@ model Empresa {
   arquivos                      Arquivo[]
   solicitacoes                  SolicitacaoVerificacao[]
   compromissos                  Compromisso[]
+  extensoesTeste                ExtensaoTeste[]
+  emailsAgendados               EmailAgendado[]
 
   @@index([convidadaPorId])
+}
+
+/// Configuração da plataforma editável pelo administrador (uma linha por chave). Hoje só `ciclo_de_vida`: duração do
+/// teste, limites de extensão e campanhas de e-mail. O formato é validado no código (src/lib/cicloDeVida/config.ts).
+model ConfiguracaoPlataforma {
+  chave           String  @id
+  valor           Json
+  atualizadoEm    String
+  atualizadoPorId String?
+}
+
+/// Cada extensão do teste concedida pela administração. O fim original do teste é o `fimAnterior` da primeira linha.
+model ExtensaoTeste {
+  id             String  @id @default(uuid())
+  empresaId      String
+  empresa        Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  dias           Int
+  motivo         String
+  concedidaPorId String
+  fimAnterior    String
+  fimNovo        String
+  criadoEm       String
+
+  @@index([empresaId, criadoEm])
+}
+
+/// Evento de produto para as métricas. Sem relações de propósito: o histórico não some com a empresa e o evento não
+/// carrega conteúdo (só ids e dados mínimos). `chave` única torna o registro idempotente (recarregar a página, rodar
+/// o agendador duas vezes ou um webhook repetido não contam duas vezes).
+model EventoProduto {
+  id        String  @id @default(uuid())
+  empresaId String?
+  usuarioId String?
+  tipo      String
+  chave     String? @unique
+  dados     Json?
+  criadoEm  String
+
+  @@index([tipo, criadoEm])
+  @@index([empresaId, criadoEm])
+}
+
+/// Fila de e-mails de ciclo de vida (boas-vindas, dicas, fim do teste). `chave` única impede duplicar o mesmo e-mail;
+/// o conteúdo é montado na hora do envio, depois de conferir de novo se ele ainda faz sentido.
+model EmailAgendado {
+  id                 String   @id @default(uuid())
+  empresaId          String
+  empresa            Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarioId          String
+  usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  campanha           String
+  /// "transacional" (sobre a conta; ignora a preferência) ou "promocional" (dicas e ofertas; respeita o descadastro).
+  categoria          String
+  chave              String   @unique
+  /// Fim do teste (ISO) ou id da extensão a que o e-mail se refere; se mudar antes do envio, o e-mail é cancelado.
+  referencia         String?
+  /// pendente | enviado | falhou | cancelado
+  status             String   @default("pendente")
+  tentativas         Int      @default(0)
+  proximaTentativaEm String
+  reservadoAte       String?
+  enviadoEm          String?
+  ultimoErro         String?
+  criadoEm           String
+  atualizadoEm       String
+
+  @@index([status, proximaTentativaEm])
+  @@index([usuarioId, categoria, enviadoEm])
+  @@index([empresaId])
 }
 
 // Auditoria de mudanças de plano/teste (Fase 4) — hoje só extensão manual de
@@ -362,13 +433,19 @@ model Usuario {
   /// Preferências dos lembretes do calendário (Configurações). Ligadas por padrão.
   lembretesPorEmail        Boolean            @default(true)
   lembretesNoApp           Boolean            @default(true)
+  /// Dicas e novidades por e-mail (campanhas educativas e promocionais). Os e-mails sobre a conta (confirmação, fim do teste) não dependem disto.
+  emailsPromocionais       Boolean            @default(true)
+  /// Vai no link de descadastro dos e-mails; só serve para desligar `emailsPromocionais`, nada mais.
+  tokenDescadastro         String             @unique @default(dbgenerated("(gen_random_uuid())::text"))
   /// Módulos que o dono liberou (chaves de src/lib/auth/modulos.ts). Só vale para membros: o dono tem todos.
   modulos                  String[]           @default([])
   criadoEm                 String
   atualizadoEm             String
 
-  sessoes     Sessao[]
-  tokensEmail TokenEmail[]
+  sessoes             Sessao[]
+  tokensEmail         TokenEmail[]
+  emailsAgendados     EmailAgendado[]
+  progressoOnboarding ProgressoOnboarding?
 
   compromissosCriados        Compromisso[]
   compromissosCompartilhados CompromissoParticipante[]
@@ -1161,4 +1238,20 @@ model RateioConta {
 
   @@unique([contaFinanceiraId, obraId])
   @@index([obraId])
+}
+
+/// Progresso do onboarding de cada usuário: estado do tour, checklist oculto e tutoriais já vistos. O que está feito no
+/// checklist NÃO é guardado aqui: sai dos dados reais (projeto criado, conta lançada...), para ninguém "marcar" sem fazer.
+model ProgressoOnboarding {
+  usuarioId         String   @id
+  usuario           Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  /// nao_iniciado | em_andamento | concluido | pulado
+  tourEstado        String   @default("nao_iniciado")
+  /// Passo em que a pessoa parou (para retomar de onde saiu).
+  tourPasso         Int      @default(0)
+  checklistOcultoEm String?
+  /// Chaves dos tutoriais ("Como funciona?") já abertos. Pode repetir por corrida; quem lê remove as repetições.
+  ajudasVistas      String[] @default([])
+  criadoEm          String
+  atualizadoEm      String
 }

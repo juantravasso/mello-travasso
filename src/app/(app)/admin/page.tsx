@@ -63,6 +63,12 @@ export default async function AdminPage() {
             <span className="text-sm text-muted">Bloqueie um usuário ou encerre as sessões abertas dele.</span>
           </Card>
         </Link>
+        <Link href="/admin/ciclo-de-vida">
+          <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
+            <span className="font-semibold text-foreground">Teste e e-mails</span>
+            <span className="text-sm text-muted">Duração do teste, extensões, campanhas de e-mail, quem está parado e falhas de envio.</span>
+          </Card>
+        </Link>
         <Link href="/admin/planos">
           <Card className="flex h-full flex-col gap-1 transition-colors hover:border-primary/60 hover:bg-surface-2">
             <span className="font-semibold text-foreground">Planos e permissões</span>

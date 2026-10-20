@@ -14,8 +14,8 @@ import { Card } from "@/components/ui/Card";
 type TipoPessoa = "pj" | "pf";
 type ModoCadastro = "teste" | "rede";
 
-const OPCOES_MODO: { valor: ModoCadastro; titulo: string; descricao: string }[] = [
-  { valor: "teste", titulo: "Teste de 30 dias", descricao: "Elo Gestão e Elo Profissionais: projetos, contas, estoque, perfil público e avaliações." },
+const opcoesDeModo = (dias: number): { valor: ModoCadastro; titulo: string; descricao: string }[] => [
+  { valor: "teste", titulo: `Teste de ${dias} dias`, descricao: "Elo Gestão e Elo Profissionais: projetos, contas, estoque, perfil público e avaliações." },
   { valor: "rede", titulo: "Só o Elo Profissionais", descricao: "Perfil público, busca e avaliações. Grátis, sem prazo." },
 ];
 
@@ -26,7 +26,7 @@ interface EstadoCadastro {
 
 const ESTADO_INICIAL: EstadoCadastro = {};
 
-export function CriarContaForm({ codigoConvite }: { codigoConvite?: string }) {
+export function CriarContaForm({ codigoConvite, diasDeTeste }: { codigoConvite?: string; diasDeTeste: number }) {
   const router = useRouter();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoa>("pj");
   const [modo, setModo] = useState<ModoCadastro>("teste");
@@ -265,7 +265,7 @@ export function CriarContaForm({ codigoConvite }: { codigoConvite?: string }) {
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium text-foreground">Como quer começar?</legend>
-          {OPCOES_MODO.map((opcao) => (
+          {opcoesDeModo(diasDeTeste).map((opcao) => (
             <label
               key={opcao.valor}
               className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${modo === opcao.valor ? "border-primary bg-primary/10" : "border-border bg-surface hover:bg-surface-2"}`}
@@ -311,7 +311,7 @@ export function CriarContaForm({ codigoConvite }: { codigoConvite?: string }) {
           {emAndamento ? "Criando conta…" : modo === "rede" ? "Criar conta grátis" : "Criar conta e começar o teste"}
         </Button>
         <p className="text-center text-xs text-muted">
-          {modo === "rede" ? "Grátis, sem prazo. Dá para testar o Elo Gestão depois." : "30 dias grátis. Sem cartão de crédito."}
+          {modo === "rede" ? "Grátis, sem prazo. Dá para testar o Elo Gestão depois." : `${diasDeTeste} dias grátis. Sem cartão de crédito.`}
         </p>
       </div>
     </form>

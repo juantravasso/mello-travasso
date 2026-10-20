@@ -5,6 +5,7 @@ import { verificarLimite } from "@/lib/auth/limite";
 import { enviarEmail, escaparHtml } from "@/lib/email/enviar.server";
 import { CORES_MARCA, MARCA } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
+import { agendarBoasVindas } from "./cicloDeVidaCore.server";
 
 // Confirmação de e-mail. O token vai por e-mail em claro e fica no banco só
 // como sha256; vale 24 h, uma vez, e só enquanto o e-mail do usuário for o
@@ -92,7 +93,7 @@ export type ResultadoConfirmacao = "confirmado" | "invalido";
 export async function consumirTokenDeConfirmacao(token: string): Promise<ResultadoConfirmacao> {
   const registro = await prisma.tokenEmail.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { usuario: { select: { id: true, email: true, emailConfirmadoEm: true } } },
+    include: { usuario: { select: { id: true, email: true, emailConfirmadoEm: true, papel: true, empresaId: true } } },
   });
   if (!registro || registro.tipo !== TIPO || registro.usadoEm) return "invalido";
   if (new Date(registro.expiraEm).getTime() <= Date.now()) return "invalido";
@@ -105,6 +106,8 @@ export async function consumirTokenDeConfirmacao(token: string): Promise<Resulta
     if (usado.count === 0) return "invalido" as const;
     if (!registro.usuario.emailConfirmadoEm) {
       await tx.usuario.update({ where: { id: registro.usuario.id }, data: { emailConfirmadoEm: agora, atualizadoEm: agora } });
+      // A boas-vindas só sai depois da confirmação (não se escreve para um endereço que pode estar errado).
+      if (registro.usuario.papel === "dono") await agendarBoasVindas(tx, { id: registro.usuario.id, empresaId: registro.usuario.empresaId }, new Date(agora));
     }
     return "confirmado" as const;
   });

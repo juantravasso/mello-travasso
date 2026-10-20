@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ChecklistAtivacao } from "@/components/onboarding/ChecklistAtivacao";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { FluxoFinanceiroChart } from "@/components/dashboard/FluxoFinanceiroChart";
 import { GastosCategoriaChart } from "@/components/dashboard/GastosCategoriaChart";
@@ -67,6 +68,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-5 animar-entrada">
       <PageHeader titulo="Dashboard" />
+
+      <ChecklistAtivacao modo="painel" />
 
       {obras.length === 0 && (
         <Card className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">

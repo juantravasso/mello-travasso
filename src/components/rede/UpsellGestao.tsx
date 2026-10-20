@@ -11,7 +11,7 @@ const MODULOS = [
   { titulo: "Funcionários e fornecedores", texto: "Cadastros ligados aos projetos e aos lançamentos." },
 ];
 
-export function UpsellGestao({ podeIniciarTeste }: { podeIniciarTeste: boolean }) {
+export function UpsellGestao({ podeIniciarTeste, diasDeTeste }: { podeIniciarTeste: boolean; diasDeTeste: number }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4 animar-entrada">
       <div className="flex flex-col gap-1">
@@ -36,9 +36,9 @@ export function UpsellGestao({ podeIniciarTeste }: { podeIniciarTeste: boolean }
 
         <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
           {podeIniciarTeste ? (
-            <IniciarTesteButton />
+            <IniciarTesteButton dias={diasDeTeste} />
           ) : (
-            <p className="text-sm text-muted">Peça ao responsável pela conta para iniciar o teste de 30 dias.</p>
+            <p className="text-sm text-muted">Peça ao responsável pela conta para iniciar o teste de {diasDeTeste} dias.</p>
           )}
           <Link
             href="/rede"

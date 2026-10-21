@@ -4,9 +4,19 @@
     {
       "name": "mello-travasso-dev",
       "runtimeExecutable": "yarn",
-      "runtimeArgs": ["dev"],
+      "runtimeArgs": [
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "mello-travasso-demo",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "demo:dev"
+      ],
+      "port": 3100
     }
   ]
 }

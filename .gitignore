@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Scripts temporarios de teste (criam contas com senha conhecida): nunca versionar
 scripts/_tmp-*
+
+# credenciais da demonstração (dados fictícios, só no computador de quem grava)
+.demo-credenciais.txt

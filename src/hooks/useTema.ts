@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type Tema = "dark" | "light";
 
-const CHAVE = "mello-travasso:tema";
+const CHAVE = "elo:tema";
 
 function aplicarTema(tema: Tema) {
   document.documentElement.setAttribute("data-theme", tema);

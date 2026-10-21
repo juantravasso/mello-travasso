@@ -2,7 +2,7 @@
 <!-- origem: docs/prd/multiempresa-login-trial.md#fase-1 · gerado em 2026-09-22 -->
 
 ## Objetivo
-Depois desta fase, a empresa atual (Mello e Travasso) só entra no app com e-mail e senha, com sessão persistida no Postgres — nenhuma rota do app fica acessível sem login, e o app inteiro continua funcionando exatamente como hoje para quem está logado. RFs cobertos: RF-08, RF-09, RF-10, RF-11, RF-12, RF-17, RF-19 (`docs/prd/multiempresa-login-trial.md`, seção 4).
+Depois desta fase, a empresa atual (cliente original) só entra no app com e-mail e senha, com sessão persistida no Postgres — nenhuma rota do app fica acessível sem login, e o app inteiro continua funcionando exatamente como hoje para quem está logado. RFs cobertos: RF-08, RF-09, RF-10, RF-11, RF-12, RF-17, RF-19 (`docs/prd/multiempresa-login-trial.md`, seção 4).
 
 Isolamento por empresa (`empresaId` nas 28 Server Actions), cadastro público com CNPJ/CPF e o período de teste **não fazem parte desta fase** — ficam para as Fases 2, 3 e 4 do mesmo PRD. NUNCA implemente nada disso agora, mesmo que pareça natural (ex.: não adicione `empresaId` ao schema além do que esta fase pede). Implemente só o que está listado em "Passos"; não faça refatorações, limpezas ou melhorias fora do escopo, mesmo que veja oportunidade.
 
@@ -166,7 +166,7 @@ Execute na ordem. Depois de cada passo, rode `yarn tsc --noEmit` sobre os arquiv
 - [ ] `yarn typecheck` (`tsc --noEmit`) sem erros
 - [ ] `yarn lint` sem erros
 - [ ] `yarn build` passa
-- [ ] Sem suíte de testes no projeto: verificar no navegador via preview (`mello-travasso-dev`): acessar `/dashboard` sem cookie redireciona para `/login?next=/dashboard`; login com credencial errada 5x bloqueia por 15 min com mensagem genérica; login correto entra e volta para a rota de origem; logout limpa a sessão; troca de senha invalida outras sessões (testar com 2 abas); `/` (landing) continua acessível sem login; tema claro/escuro e mobile (375px) na tela de login
+- [ ] Sem suíte de testes no projeto: verificar no navegador via preview (`elo-dev`): acessar `/dashboard` sem cookie redireciona para `/login?next=/dashboard`; login com credencial errada 5x bloqueia por 15 min com mensagem genérica; login correto entra e volta para a rota de origem; logout limpa a sessão; troca de senha invalida outras sessões (testar com 2 abas); `/` (landing) continua acessível sem login; tema claro/escuro e mobile (375px) na tela de login
 - [ ] Migração rodada com sucesso: a empresa atual e o usuário dono existem no banco, a senha temporária funciona e força troca no primeiro login
 - [ ] Checklist de segurança atendido; `security-reviewer` sem crítica/alta
 - [ ] `design-director` ≥ 8/10 na tela de login (rode se o agente estiver disponível; caso contrário, confira manualmente contra a seção "Design" acima)

@@ -39,7 +39,7 @@ export const viewport: Viewport = {
 
 const SCRIPT_TEMA_INICIAL = `
 try {
-  var tema = window.localStorage.getItem("mello-travasso:tema");
+  var tema = window.localStorage.getItem("elo:tema");
   if (tema === "dark") document.documentElement.setAttribute("data-theme", "dark");
 } catch (e) {}
 `;

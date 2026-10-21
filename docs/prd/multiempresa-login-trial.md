@@ -12,7 +12,7 @@
 | Dono / sócio de construtora pequena (PJ) | Cria a conta, cadastra obras, acompanha o financeiro | Desktop no escritório, celular na obra |
 | Engenheiro ou empreiteiro autônomo (PF, CPF) | Controla as próprias obras sem ter CNPJ | Principalmente celular |
 | Financeiro / assistente (membro) | Lança comprovantes e dá baixa | Desktop; convites ficam para fase futura, mas o modelo já suporta |
-| Empresa atual (Mello e Travasso) | Continua usando sem interrupção, com plano cortesia | Os dois |
+| Empresa atual (cliente original) | Continua usando sem interrupção, com plano cortesia | Os dois |
 
 Frequência: login ~1×/semana por dispositivo (sessão de 30 dias); cadastro 1× por empresa.
 
@@ -370,7 +370,7 @@ Sempre com branch de backup no Neon antes.
 | Sem verificação de e-mail/posse do CNPJ: alguém registra o CNPJ de outra empresa, com dados da BrasilAPI (dado de terceiro, sem consentimento dele) preenchidos na ficha | Baixa | Médio | Processo manual de contestação; verificação de e-mail na próxima fase; os dados preenchidos automaticamente não são exibidos como "verificados" — a ficha marca a origem ("Dados da Receita — confirme ou corrija") |
 | BrasilAPI fora do ar ou com rate limit | Média | Baixo | Timeout de 5 s + preenchimento manual (RF-02) |
 | Rate limit em Postgres sob carga | Baixa | Baixo | Janela fixa com upsert atômico; reavaliar Upstash |
-| Nome do produto: a landing diz "MELLO E TRAVASSO", mas o produto passa a servir outras empresas | — | Médio | **Pendência:** definir nome e marca do produto e ajustar a landing |
+| Nome do produto: a landing dizia o nome do cliente original, mas o produto passa a servir outras empresas | — | Médio | **Pendência:** definir nome e marca do produto e ajustar a landing |
 | Texto de Termos e Política de Privacidade | — | Alto (LGPD) | **Pendência:** o dono do produto fornece o texto (versão `2026-10`) |
 | Canal do "Falar com a equipe" (e-mail ou WhatsApp) | — | Baixo | **Pendência:** definir o destino |
 | CAPTCHA no cadastro | — | Médio | Honeypot + rate limit agora; Turnstile se houver abuso (exige chave e aprovação) |

@@ -19,7 +19,7 @@ function lerArgs(): { documento: string; email: string; razaoSocial: string } {
 
   const documento = (mapa.get("documento") ?? "").replace(/\D/g, "");
   const email = (mapa.get("email") ?? "").trim().toLowerCase();
-  const razaoSocial = mapa.get("razaoSocial") ?? "Mello e Travasso";
+  const razaoSocial = mapa.get("razaoSocial") ?? "Empresa atual";
 
   if (!documento || (documento.length !== 11 && documento.length !== 14)) {
     console.error("Uso: yarn migrar:empresa-atual --documento <CNPJ ou CPF, só dígitos> --email <email> [--razaoSocial \"Nome\"]");

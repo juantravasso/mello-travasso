@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mello-travasso-dev",
+      "name": "elo-dev",
       "runtimeExecutable": "yarn",
       "runtimeArgs": [
         "dev"
@@ -11,7 +11,7 @@
       "autoPort": true
     },
     {
-      "name": "mello-travasso-demo",
+      "name": "elo-demo",
       "runtimeExecutable": "yarn",
       "runtimeArgs": [
         "demo:dev"

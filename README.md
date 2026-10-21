@@ -257,7 +257,7 @@ descartáveis e apaga o que criou.
 ## Tema claro (padrão) e link de convite
 
 **Tema.** O tema claro é o padrão do site e do app: as variáveis claras ficam em `:root` ([globals.css](src/app/globals.css)) e o
-escuro só vale com `data-theme="dark"`, escolhido em Configurações e guardado no navegador (`mello-travasso:tema`). Um script
+escuro só vale com `data-theme="dark"`, escolhido em Configurações e guardado no navegador (`elo:tema`). Um script
 no `<head>` ([layout.tsx](src/app/layout.tsx)) aplica o escuro antes da primeira pintura, sem flash. As cores de texto do tema
 claro foram calculadas para contraste AA (4,5:1), inclusive sobre os fundos tingidos de sucesso, aviso, erro e informação.
 

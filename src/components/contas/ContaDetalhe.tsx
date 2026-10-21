@@ -192,7 +192,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             </p>
             <p className="text-sm text-muted">
               {somenteLeitura
-                ? "Teste encerrado — os dados continuam disponíveis para consulta."
+                ? "Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta."
                 : conta.precisaCompletarCadastro
                   ? "Este lançamento foi criado rapidamente pela câmera. Preencha o que faltar."
                   : "Só é possível editar enquanto o lançamento está em aberto."}
@@ -265,7 +265,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
       {conta.status === "em_aberto" && (
         <Card className="flex flex-col gap-3">
           {somenteLeitura && (
-            <p className="text-sm text-muted">Teste encerrado — os dados continuam disponíveis para consulta.</p>
+            <p className="text-sm text-muted">Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta.</p>
           )}
           <Input label="Data" type="date" value={dataBaixa} onChange={(e) => setDataBaixa(e.target.value)} />
           <Button onClick={confirmarBaixa} disabled={baixando || somenteLeitura}>

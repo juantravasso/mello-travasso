@@ -316,6 +316,7 @@ model Empresa {
   compromissos                  Compromisso[]
   extensoesTeste                ExtensaoTeste[]
   emailsAgendados               EmailAgendado[]
+  assinaturasComerciais         AssinaturaComercial[]
 
   @@index([convidadaPorId])
 }
@@ -1281,4 +1282,33 @@ model PlanoComercial {
   condicao             String?
   criadoEm             String
   atualizadoEm         String
+  assinaturas          AssinaturaComercial[]
+}
+
+/// Cobrança real de um plano comercial via Mercado Pago. Mensal é assinatura recorrente (preapproval); anual é
+/// pagamento único parcelado (Checkout Pro) — o Mercado Pago não tem "assinatura parcelada", então o ciclo anual
+/// não tem recorrência de verdade no provedor: a renovação é um novo pagamento, avisado por e-mail antes do vencimento.
+model AssinaturaComercial {
+  id             String         @id @default(uuid())
+  empresaId      String
+  empresa        Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planoChave     String
+  planoComercial PlanoComercial @relation(fields: [planoChave], references: [chave])
+  /// "mensal" (preapproval) ou "anual" (pagamento único parcelado)
+  ciclo          String
+  /// reservada | ativa | pausada | cancelada | expirada | paga_sem_vaga
+  status         String
+  /// Id do preapproval (mensal) ou do payment (anual) confirmado pelo Mercado Pago; null enquanto só reservada.
+  referenciaExterna String?     @unique
+  parcelas       Int?
+  valorCentavos  Int
+  /// Só setado durante "reservada": passado esse prazo, a reserva deixa de contar na ocupação de vagas.
+  reservaExpiraEm   String?
+  /// Mensal: início do próximo ciclo do preapproval. Anual: quando a renovação (novo pagamento) vence.
+  proximaCobrancaEm String?
+  criadoEm       String
+  atualizadoEm   String
+
+  @@index([empresaId])
+  @@index([planoChave, status])
 }

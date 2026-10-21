@@ -2,7 +2,7 @@
 
 export type PlanoEmpresa = "teste" | "cortesia" | "ativo" | "suspenso" | "gratuito";
 
-/** Planos que a administração pode atribuir. "suspenso" é legado: para barrar uma conta, bloqueie a empresa. */
+/** Planos que a administração pode atribuir. "suspenso" é somente leitura (assinatura inativa); para barrar a conta inteira, bloqueie a empresa. */
 export const PLANOS_ATRIBUIVEIS: readonly PlanoEmpresa[] = ["gratuito", "teste", "cortesia", "ativo"];
 
 export interface EmpresaAdminItem {

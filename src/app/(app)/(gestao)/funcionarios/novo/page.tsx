@@ -55,7 +55,7 @@ export default function NovoFuncionarioPage() {
       <PageHeader titulo="Novo funcionário" />
       {somenteLeitura && (
         <Card className="mb-3 border-warning bg-warning-bg text-sm text-warning">
-          Teste encerrado — os dados continuam disponíveis para consulta.
+          Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta.
         </Card>
       )}
       <Card className="flex flex-col gap-3">

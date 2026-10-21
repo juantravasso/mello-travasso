@@ -198,7 +198,7 @@ function ListaProdutos({
                     tamanho="sm"
                     variante="outline"
                     disabled={bloqueado}
-                    title={bloqueado ? "Teste encerrado — os dados continuam disponíveis para consulta." : undefined}
+                    title={bloqueado ? "Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta." : undefined}
                     onClick={() => aoTransferir(p)}
                   >
                     Transferir

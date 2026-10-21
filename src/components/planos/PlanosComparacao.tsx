@@ -1,16 +1,79 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { PlanoComercialPublico } from "@/types";
 import { diferencaAnualEntrePlanos, economiaAnual, formatarPreco, valorDaParcela } from "@/lib/planos/comercial";
 import { FUNCIONALIDADES, PROBLEMAS } from "@/lib/planos/vitrine";
 import { MARCA } from "@/lib/marca";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { registrarInteracaoOferta } from "@/services/data/server/planosComerciaisActions";
+import { iniciarAssinaturaMensal, iniciarPagamentoAnual } from "@/services/data/server/assinaturaComercialActions";
 
 const contato = (assunto: string) => `mailto:${MARCA.emailContato}?subject=${encodeURIComponent(assunto)}`;
+
+/** CTA do plano: checkout real do Mercado Pago quando configurado, ou o contato com a equipe (único caminho sem preço ou sem provedor). */
+function ContratarPlano({ plano, pagamentoDisponivel }: { plano: PlanoComercialPublico; pagamentoDisponivel: boolean }) {
+  const [erro, setErro] = useState<string | null>(null);
+  const [acaoPendente, setAcaoPendente] = useState<"mensal" | "anual" | null>(null);
+  const [pendente, iniciar] = useTransition();
+
+  function registrarClique() {
+    void registrarInteracaoOferta({ contexto: "pagina_planos", tipo: "clicada", planoChave: plano.chave }).catch(() => undefined);
+  }
+
+  function contratar(ciclo: "mensal" | "anual") {
+    setErro(null);
+    setAcaoPendente(ciclo);
+    registrarClique();
+    iniciar(async () => {
+      const resultado = ciclo === "mensal" ? await iniciarAssinaturaMensal(plano.chave) : await iniciarPagamentoAnual(plano.chave);
+      if (resultado.ok) {
+        window.location.href = resultado.dados.url;
+      } else {
+        setErro(resultado.mensagem);
+      }
+    });
+  }
+
+  const semPreco = plano.precoMensalCentavos === null && plano.precoAnualCentavos === null;
+  if (!pagamentoDisponivel || semPreco) {
+    return (
+      <a
+        href={contato(`Quero contratar o plano ${plano.nome}`)}
+        onClick={registrarClique}
+        className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-base font-medium text-primary-foreground transition-colors hover:opacity-90"
+      >
+        Quero este plano
+      </a>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {plano.precoMensalCentavos !== null && (
+        <Button onClick={() => contratar("mensal")} disabled={pendente}>
+          {pendente && acaoPendente === "mensal" ? "Abrindo pagamento…" : "Assinar mensal"}
+        </Button>
+      )}
+      {plano.precoAnualCentavos !== null && (
+        <Button variante="outline" onClick={() => contratar("anual")} disabled={pendente}>
+          {pendente && acaoPendente === "anual" ? "Abrindo pagamento…" : plano.parcelasSemJuros ? `Pagar o anual em ${plano.parcelasSemJuros}x sem juros` : "Pagar o anual"}
+        </Button>
+      )}
+      {erro && (
+        <p role="alert" className="text-xs text-danger">
+          {erro}
+        </p>
+      )}
+      <a href={contato(`Quero contratar o plano ${plano.nome}`)} onClick={registrarClique} className="text-center text-xs text-muted underline underline-offset-2 hover:text-foreground">
+        Prefiro combinar com a equipe
+      </a>
+    </div>
+  );
+}
 
 function textoVagas(p: PlanoComercialPublico): { texto: string; esgotado: boolean } | null {
   if (p.vagasTotal === null || p.vagasRestantes === null) return null;
@@ -50,8 +113,8 @@ function Precos({ plano }: { plano: PlanoComercialPublico }) {
   );
 }
 
-/** Página de planos: o problema que o sistema resolve primeiro, depois os planos publicados com os valores cadastrados. Não há checkout: o contato é com a equipe. */
-export function PlanosComparacao({ planos }: { planos: PlanoComercialPublico[] }) {
+/** Página de planos: o problema que o sistema resolve primeiro, depois os planos publicados com os valores cadastrados e o checkout (quando o Mercado Pago está configurado). */
+export function PlanosComparacao({ planos, pagamentoDisponivel }: { planos: PlanoComercialPublico[]; pagamentoDisponivel: boolean }) {
   useEffect(() => {
     registrarInteracaoOferta({ contexto: "pagina_planos", tipo: "visualizada" }).catch(() => undefined);
   }, []);
@@ -131,17 +194,7 @@ export function PlanosComparacao({ planos }: { planos: PlanoComercialPublico[] }
                       ))}
                     </ul>
                   )}
-                  {esgotado ? (
-                    <p className="text-sm text-muted">Sem vagas no momento.</p>
-                  ) : (
-                    <a
-                      href={contato(`Quero contratar o plano ${p.nome}`)}
-                      onClick={() => void registrarInteracaoOferta({ contexto: "pagina_planos", tipo: "clicada", planoChave: p.chave }).catch(() => undefined)}
-                      className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-4 text-base font-medium text-primary-foreground transition-colors hover:opacity-90"
-                    >
-                      Quero este plano
-                    </a>
-                  )}
+                  {esgotado ? <p className="text-sm text-muted">Sem vagas no momento.</p> : <ContratarPlano plano={p} pagamentoDisponivel={pagamentoDisponivel} />}
                 </Card>
               );
             })}
@@ -206,7 +259,11 @@ export function PlanosComparacao({ planos }: { planos: PlanoComercialPublico[] }
           </table>
         </div>
       )}
-      <p className="text-xs text-muted">Valores definidos pela administração. A contratação é combinada com a equipe: ainda não há pagamento automático no sistema.</p>
+      <p className="text-xs text-muted">
+        {pagamentoDisponivel
+          ? "Valores definidos pela administração. O pagamento é processado pelo Mercado Pago."
+          : "Valores definidos pela administração. A contratação é combinada com a equipe: ainda não há pagamento automático no sistema."}
+      </p>
     </div>
   );
 }

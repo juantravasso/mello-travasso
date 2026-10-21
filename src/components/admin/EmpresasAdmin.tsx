@@ -20,7 +20,7 @@ const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   teste: "Teste",
   cortesia: "Cortesia",
   ativo: "Ativo",
-  suspenso: "Suspenso (legado)",
+  suspenso: "Suspenso (somente leitura)",
 };
 
 type Painel = { tipo: "bloquear" | "desbloquear" | "plano" | "comercial"; empresaId: string } | null;

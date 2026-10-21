@@ -72,7 +72,7 @@ export function ProdutoDetalhe({ produtoId }: { produtoId: string }) {
           variante="outline"
           onClick={() => setModalAberto(true)}
           disabled={somenteLeitura}
-          title={somenteLeitura ? "Teste encerrado — os dados continuam disponíveis para consulta." : undefined}
+          title={somenteLeitura ? "Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta." : undefined}
         >
           + Nova movimentação
         </Button>

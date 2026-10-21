@@ -75,7 +75,7 @@ export const obterStatusPlano = cache(async (empresaId: string): Promise<StatusP
 /**
  * Igual a exigirSessaoAction(), e também bloqueia quando o teste já venceu
  * (RF-16) — lança "SOMENTE_LEITURA", que os chamadores tratam com a
- * mensagem "Teste encerrado — os dados continuam disponíveis para consulta."
+ * mensagem "Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta."
  * A checagem no servidor é a barreira real; botões desabilitados na UI são
  * só o complemento (nunca confiar apenas no frontend).
  */

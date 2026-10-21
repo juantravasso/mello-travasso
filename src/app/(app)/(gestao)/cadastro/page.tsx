@@ -46,7 +46,7 @@ export default function CadastroPage() {
         titulo="Cadastro"
         acao={
           aba === "fornecedores" ? undefined : somenteLeitura ? (
-            <Button tamanho="sm" disabled title="Teste encerrado — os dados continuam disponíveis para consulta.">
+            <Button tamanho="sm" disabled title="Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta.">
               {rotulosNovo[aba]}
             </Button>
           ) : (

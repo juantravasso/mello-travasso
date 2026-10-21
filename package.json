@@ -1,5 +1,5 @@
 {
-  "name": "mello-travasso",
+  "name": "elo-negocios",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "testar:convite": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-convite.ts",
     "testar:metricas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-metricas.ts",
     "testar:planos": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-planos-comerciais.ts",
+    "testar:assinaturas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-assinatura-comercial.ts",
     "demo:semear": "node --conditions=react-server --import tsx scripts/demo/semear-demo.ts",
     "demo:dev": "node scripts/demo/comando.mjs dev",
     "demo:migrar": "node scripts/demo/comando.mjs migrar",

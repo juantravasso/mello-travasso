@@ -62,7 +62,7 @@ export async function POST(request: Request): Promise<NextResponse<ResultadoExtr
   } catch (erro) {
     if (erro instanceof Error && erro.message === "SOMENTE_LEITURA") {
       return NextResponse.json(
-        { sucesso: false, erro: "Teste encerrado — os dados continuam disponíveis para consulta." },
+        { sucesso: false, erro: "Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta." },
         { status: 403 },
       );
     }

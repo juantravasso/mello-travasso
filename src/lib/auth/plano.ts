@@ -29,6 +29,11 @@ export function calcularFimDoTeste(dias: number = 14, agora: Date = new Date()):
 }
 
 export function calcularStatusPlano(empresa: { plano: Plano; testeTerminaEm: string | null }): StatusPlano {
+  // "suspenso" é a assinatura cancelada, pausada ou vencida sem renovar: os dados ficam disponíveis, mas nada é
+  // escrito (a barreira é exigirEscritaAction, que lê somenteLeitura daqui).
+  if (empresa.plano === "suspenso") {
+    return { plano: "suspenso", diasRestantes: null, somenteLeitura: true, dataFimFormatada: null };
+  }
   if (empresa.plano !== "teste" || !empresa.testeTerminaEm) {
     return { plano: empresa.plano, diasRestantes: null, somenteLeitura: false, dataFimFormatada: null };
   }

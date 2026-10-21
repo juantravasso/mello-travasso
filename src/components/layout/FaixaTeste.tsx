@@ -12,13 +12,14 @@ import { useStatusPlano } from "./StatusPlanoContext";
 export function FaixaTeste() {
   const status = useStatusPlano();
 
-  if (status.plano !== "teste" || status.diasRestantes === null) return null;
-  if (!status.somenteLeitura && status.diasRestantes > 7) return null;
+  // Teste vencido ou assinatura inativa (plano "suspenso"): a conta está em somente leitura.
+  const lapsado = status.somenteLeitura && (status.plano === "teste" || status.plano === "suspenso");
+  if (!lapsado && (status.plano !== "teste" || status.diasRestantes === null || status.diasRestantes > 7)) return null;
 
-  if (status.somenteLeitura) {
+  if (lapsado) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-danger bg-danger-bg px-4 py-2 text-sm text-danger sm:px-8">
-        <span>Teste encerrado — os dados continuam disponíveis para consulta.</span>
+        <span>Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta.</span>
         <span className="flex gap-3">
           <Link href="/planos" className="font-medium underline underline-offset-2">
             Ver planos
@@ -31,6 +32,7 @@ export function FaixaTeste() {
     );
   }
 
+  if (status.diasRestantes === null) return null;
   const tom = status.diasRestantes <= 1 ? "warning" : "info";
   const classeCor = tom === "warning" ? "border-warning bg-warning-bg text-warning" : "border-info bg-info-bg text-info";
 

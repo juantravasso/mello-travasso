@@ -95,7 +95,7 @@ export default function PaginaCaptura() {
       <div className="mx-auto max-w-xl animar-entrada">
         <PageHeader titulo="Captura de documentos" />
         <Card className="flex flex-col gap-2">
-          <p className="font-medium text-foreground">Teste encerrado</p>
+          <p className="font-medium text-foreground">Somente leitura</p>
           <p className="text-sm text-muted">
             Os dados continuam disponíveis para consulta. Para voltar a capturar comprovantes, fale com a equipe.
           </p>

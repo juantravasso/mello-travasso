@@ -14,7 +14,7 @@ const ROTULO_PLANO: Record<PlanoEmpresa, string> = {
   teste: "Teste",
   cortesia: "Cortesia",
   ativo: "Ativo",
-  suspenso: "Suspenso (legado: não bloqueia nada, use o bloqueio de empresa)",
+  suspenso: "Suspenso (assinatura inativa: somente leitura)",
 };
 
 /** Matriz plano × recurso. Só as chaves que já têm barreira no código aparecem; marcar ou desmarcar vale na próxima requisição de cada empresa. */

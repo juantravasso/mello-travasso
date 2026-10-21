@@ -9,7 +9,7 @@ export default async function PlanosPage() {
   return (
     <div className="animar-entrada">
       <PageHeader titulo="Planos" />
-      <PlanosComparacao planos={r.ok ? r.dados : []} />
+      <PlanosComparacao planos={r.ok ? r.dados : []} pagamentoDisponivel={!!process.env.MERCADOPAGO_ACCESS_TOKEN} />
     </div>
   );
 }

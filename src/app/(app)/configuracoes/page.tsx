@@ -22,7 +22,7 @@ function rotuloStatusPlano(status: Awaited<ReturnType<typeof obterStatusPlanoAtu
   }
   if (status.plano === "cortesia") return "Cortesia";
   if (status.plano === "ativo") return "Ativo";
-  return "Suspenso";
+  return "Assinatura inativa (somente leitura)";
 }
 
 export default async function ConfiguracoesPage() {

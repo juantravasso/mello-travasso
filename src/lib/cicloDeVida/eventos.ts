@@ -17,6 +17,13 @@ export const TIPOS_EVENTO = [
   "item_checklist_concluido",
   "oferta_visualizada",
   "oferta_clicada",
+  "mp_webhook_recebido",
+  "assinatura_mensal_ativada",
+  "assinatura_mensal_cancelada",
+  "pagamento_anual_confirmado",
+  "pagamento_anual_recusado",
+  "assinatura_renovacao_avisada",
+  "assinatura_suspensa_vencimento",
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];

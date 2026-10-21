@@ -78,7 +78,7 @@ export default function DashboardPage() {
             <p className="text-sm text-muted">É a partir dela que suas contas e materiais ficam organizados.</p>
           </div>
           {somenteLeitura ? (
-            <Button tamanho="sm" disabled title="Teste encerrado — os dados continuam disponíveis para consulta.">
+            <Button tamanho="sm" disabled title="Somente leitura: seu teste ou assinatura não está ativo. Os dados continuam disponíveis para consulta.">
               + Novo projeto
             </Button>
           ) : (

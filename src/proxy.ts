@@ -36,6 +36,6 @@ export const config = {
   // src/app/(app)/api/ai/extract-recibo). A área logada da rede fica em
   // "/minha-rede" (não "/rede"), então continua protegida por este proxy.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|login|criar-conta|confirmar-email|esqueci-senha|redefinir-senha|termos|privacidade|descadastrar/|rede(?:/|$)|empresas/|sitemap.xml|robots.txt|icon$|apple-icon$|opengraph-image$|manifest.webmanifest$|api|$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|login|criar-conta|confirmar-email|esqueci-senha|redefinir-senha|termos|privacidade|descadastrar/|rede(?:/|$)|empresas/|sitemap.xml|robots.txt|icon$|apple-icon$|icones/|opengraph-image$|manifest.webmanifest$|api|$).*)",
   ],
 };

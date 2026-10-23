@@ -334,6 +334,14 @@ funcionário vê só os dele, e itens de dono só o dono vê). A primeira vez qu
 (um por empresa e item). O progresso por pessoa (estado do tour, checklist oculto, tutoriais vistos) fica em `ProgressoOnboarding`. Aparece no
 Dashboard e no Perfil da rede, e sempre em Ajuda; "Ocultar do painel" é por pessoa e reversível.
 
+**Instalar no celular.** Em **Ajuda e tutoriais** ([InstalarNoCelular.tsx](src/components/onboarding/InstalarNoCelular.tsx)) há o passo a passo para colocar o
+ícone na tela de início do iPhone (Safari) e do Android (Chrome); abre já no aparelho da pessoa, e quem está no computador vê os dois com o aviso para abrir no celular.
+Depois da primeira ação concluída, o painel mostra **uma** sugestão ([SugestaoInstalar.tsx](src/components/onboarding/SugestaoInstalar.tsx)), só no celular e só se o site ainda
+não está instalado; "Agora não" some para sempre naquele aparelho (fica no navegador, porque a decisão é por aparelho). Textos e detecção de plataforma em
+[instalacao.ts](src/lib/onboarding/instalacao.ts), com testes; os nomes dos botões do iOS e do Chrome mudam com as versões, então reconfira os passos de vez em quando.
+O manifesto declara PNG de 192 e 512 px e uma versão **maskable** ([rota /icones/[tamanho]](src/app/icones/[tamanho]/route.tsx), pública no proxy): sem 192 e 512 o Chrome
+no Android não oferece "Instalar app". Não há botão próprio de "Instalar" (o evento `beforeinstallprompt` não existe no Safari do iPhone, e o Next recomenda não depender dele).
+
 **Eventos novos:** `onboarding_iniciado`, `onboarding_concluido`, `tutorial_visualizado`, `item_checklist_concluido` (todos idempotentes por chave).
 
 **Testes.** `yarn test` (conteúdo e regras: cada módulo tem tutorial completo, links no módulo certo, filtro por plano e módulos, checklist

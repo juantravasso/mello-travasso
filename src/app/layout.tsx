@@ -20,6 +20,8 @@ export const metadata: Metadata = {
   title: { default: TITULO_PADRAO, template: TEMPLATE_TITULO },
   description: MARCA.descricao,
   applicationName: MARCA.nome,
+  // iPhone: ao adicionar à tela de início, abre em tela cheia, com o nome curto embaixo do ícone.
+  appleWebApp: { capable: true, title: MARCA.nomeCurto, statusBarStyle: "default" },
   openGraph: {
     type: "website",
     siteName: MARCA.nome,

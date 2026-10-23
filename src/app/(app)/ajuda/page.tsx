@@ -4,6 +4,7 @@ import { ajudasDisponiveis } from "@/lib/onboarding/ajuda";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CentralDeAjuda } from "@/components/onboarding/CentralDeAjuda";
 import { ChecklistAtivacao } from "@/components/onboarding/ChecklistAtivacao";
+import { InstalarNoCelular } from "@/components/onboarding/InstalarNoCelular";
 
 export const metadata: Metadata = { title: "Ajuda e tutoriais" };
 
@@ -18,6 +19,7 @@ export default async function AjudaPage() {
       <PageHeader titulo="Ajuda e tutoriais" />
       <ChecklistAtivacao modo="ajuda" />
       <CentralDeAjuda ajudas={ajudas} />
+      <InstalarNoCelular />
     </div>
   );
 }

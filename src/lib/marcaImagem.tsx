@@ -15,3 +15,20 @@ export function SimboloImagem({ lado }: { lado: number }) {
     </svg>
   );
 }
+
+/**
+ * Versão "maskable" do símbolo: o fundo azul ocupa a imagem inteira (sem cantos arredondados) e o desenho fica
+ * dentro da zona segura central, porque o Android recorta o ícone em círculo, quadrado arredondado etc.
+ */
+export function SimboloMascaravel({ lado }: { lado: number }) {
+  return (
+    <svg width={lado} height={lado} viewBox="0 0 40 40">
+      <rect width="40" height="40" fill={CORES_MARCA.navy} />
+      <g transform="translate(20 20) scale(0.62) translate(-20 -20)" fill="none" strokeWidth="3.2" strokeLinecap="round">
+        <rect x="17" y="13.5" width="18" height="13" rx="6.5" stroke={CORES_MARCA.ouro} />
+        <rect x="5" y="13.5" width="18" height="13" rx="6.5" stroke={CORES_MARCA.elo} />
+        <path d="M23.5 13.5A6.5 6.5 0 0 0 17 20" stroke={CORES_MARCA.ouro} />
+      </g>
+    </svg>
+  );
+}

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { MAXIMO_FAVORITOS } from "@/lib/layout/favoritos";
+import { useFavoritos } from "@/hooks/useFavoritos";
 import { useBarraLateral } from "./BarraLateralContext";
-import { IconeMenu } from "./icones";
+import { IconeEstrela, IconeMenu } from "./icones";
 import { Logo } from "./Logo";
-import { itemAtivo, TITULO_GRUPO, type GrupoNavegacao } from "./navegacao";
+import { itemAtivo, TITULO_GRUPO, type GrupoNavegacao, type ItemNavegacao } from "./navegacao";
 import { ResumoPlano } from "./ResumoPlano";
 import { useItensNavegacao } from "./useItensNavegacao";
 
@@ -28,14 +30,36 @@ function ComTooltip({ rotulo, ativo, children }: { rotulo: string; ativo: boolea
 }
 
 /** Barra lateral do computador. No celular o equivalente é o MenuMovel, aberto pelo hambúrguer do topo. */
-export function Sidebar({ nomeUsuario, temGestao, admin }: { nomeUsuario: string; temGestao: boolean; admin: boolean }) {
+export function Sidebar({ temGestao, admin }: { temGestao: boolean; admin: boolean }) {
   const pathname = usePathname();
   const { expandida, alternar } = useBarraLateral();
+  const [aviso, setAviso] = useState<string | null>(null);
   // Sem o plano de gestão, os módulos continuam visíveis (apagados) e levam à página de apresentação: o gratuito vê o
   // que existe sem bloqueio agressivo. Funcionário só vê os módulos que o dono liberou (useItensNavegacao).
   const itens = useItensNavegacao(admin);
   const corpo = itens.filter((i) => GRUPOS_DO_CORPO.includes(i.grupo));
   const rodape = itens.filter((i) => i.grupo === "conta");
+  const { favoritos, alternar: alternarFavorito } = useFavoritos(itens.map((i) => i.href));
+
+  // Estrela ao lado de cada aba (barra aberta): fixa a aba na barra de baixo do celular, no máximo MAXIMO_FAVORITOS.
+  function estrela(item: ItemNavegacao) {
+    const favorito = favoritos.includes(item.href);
+    return (
+      <button
+        type="button"
+        aria-pressed={favorito}
+        aria-label={favorito ? `Tirar ${item.rotulo} dos favoritos` : `Favoritar ${item.rotulo}`}
+        title={favorito ? "Tirar dos favoritos" : "Favoritar (fixa na barra de baixo do celular)"}
+        onClick={() => setAviso(alternarFavorito(item.href).limiteAtingido ? `Você pode favoritar até ${MAXIMO_FAVORITOS} abas. Tire uma estrela para escolher outra.` : null)}
+        className={cn(
+          "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-primary",
+          favorito ? "text-warning" : "text-muted",
+        )}
+      >
+        <IconeEstrela preenchida={favorito} className="h-4 w-4" />
+      </button>
+    );
+  }
 
   const classeItem = (ativo: boolean, destaque = false) =>
     cn(
@@ -68,6 +92,11 @@ export function Sidebar({ nomeUsuario, temGestao, admin }: { nomeUsuario: string
           cortando o tooltip que aparece à direita do ícone. Só em telas curtas (onde as abas não cabem) a lista passa a
           rolar, e nelas o tooltip pode ser cortado: é melhor que as abas se sobreporem ao rodapé. */}
       <nav className={cn("min-h-0 w-full flex-1 py-4", expandida ? "overflow-y-auto px-3" : "px-2 [@media(max-height:900px)]:overflow-y-auto [@media(max-height:900px)]:overflow-x-hidden [@media(max-height:900px)]:[scrollbar-width:none]")}>
+        {aviso && expandida && (
+          <p role="status" className="mb-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-xs text-warning">
+            {aviso}
+          </p>
+        )}
         <ul className="flex flex-col gap-1">
           {corpo.map((item, indice) => {
             const novoGrupo = indice === 0 || corpo[indice - 1]?.grupo !== item.grupo;
@@ -81,18 +110,19 @@ export function Sidebar({ nomeUsuario, temGestao, admin }: { nomeUsuario: string
                   ) : (
                     indice > 0 && <li role="separator" className="mx-2 my-2 border-t border-border" />
                   ))}
-                <li>
+                <li className={cn(expandida && "flex items-center gap-1")}>
                   <ComTooltip rotulo={bloqueado ? `${item.rotulo} (plano de gestão)` : item.rotulo} ativo={!expandida}>
                     <Link
                       href={item.href}
                       aria-label={item.rotulo}
                       aria-current={ativo ? "page" : undefined}
-                      className={cn(classeItem(ativo, item.destaque), bloqueado && "opacity-50")}
+                      className={cn(classeItem(ativo, item.destaque), bloqueado && "opacity-50", expandida && "min-w-0 flex-1")}
                     >
                       <item.Icone className="h-5 w-5 flex-shrink-0" />
                       {expandida && <span className="truncate text-sm font-medium">{item.rotulo}</span>}
                     </Link>
                   </ComTooltip>
+                  {expandida && estrela(item)}
                 </li>
               </Fragment>
             );
@@ -103,22 +133,16 @@ export function Sidebar({ nomeUsuario, temGestao, admin }: { nomeUsuario: string
       <div className={cn("flex w-full flex-col gap-1 border-t border-border py-3", expandida ? "px-3" : "items-center px-2")}>
         {expandida && <ResumoPlano className="mb-1" />}
         {rodape.map((item) => (
-          <ComTooltip key={item.href} rotulo={item.rotulo} ativo={!expandida}>
-            <Link href={item.href} aria-label={item.rotulo} aria-current={itemAtivo(item, pathname) ? "page" : undefined} className={classeItem(itemAtivo(item, pathname))}>
-              <item.Icone className="h-5 w-5 flex-shrink-0" />
-              {expandida && <span className="truncate text-sm font-medium">{item.rotulo}</span>}
-            </Link>
-          </ComTooltip>
+          <div key={item.href} className={cn(expandida && "flex items-center gap-1")}>
+            <ComTooltip rotulo={item.rotulo} ativo={!expandida}>
+              <Link href={item.href} aria-label={item.rotulo} aria-current={itemAtivo(item, pathname) ? "page" : undefined} className={cn(classeItem(itemAtivo(item, pathname)), expandida && "min-w-0 flex-1")}>
+                <item.Icone className="h-5 w-5 flex-shrink-0" />
+                {expandida && <span className="truncate text-sm font-medium">{item.rotulo}</span>}
+              </Link>
+            </ComTooltip>
+            {expandida && estrela(item)}
+          </div>
         ))}
-        {/* O nome só aparece com a barra aberta: recolhida, o avatar repetiria o link de Configurações e gastaria altura. */}
-        {expandida && (
-          <Link href="/configuracoes" aria-label={nomeUsuario} className={classeItem(false)}>
-            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
-              {nomeUsuario.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="truncate text-sm font-medium">{nomeUsuario}</span>
-          </Link>
-        )}
       </div>
     </aside>
   );

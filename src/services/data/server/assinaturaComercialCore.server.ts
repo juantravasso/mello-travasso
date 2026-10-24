@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enviarEmail } from "@/lib/email/enviar.server";
+import { fimDoPeriodoPago, somarMeses } from "@/lib/planos/periodo";
 import { urlDoSite } from "@/lib/rede/site";
 import { registrarEvento } from "./eventosCore.server";
 import { contarOcupacao } from "./planosComerciaisCore.server";
@@ -45,7 +46,11 @@ export async function reservarVaga(empresaId: string, chave: string, ciclo: "men
     const jaTem = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo, status: { in: ["reservada", "ativa"] } } });
     if (jaTem) throw new ErroDeNegocio("Você já tem uma contratação em andamento ou ativa para este plano.");
     const empresa = await tx.empresa.findUnique({ where: { id: empresaId }, select: { plano: true, planoComercialChave: true } });
-    if (empresa?.plano === "ativo" && empresa.planoComercialChave === chave) throw new ErroDeNegocio("Sua empresa já está neste plano.");
+    if (empresa?.plano === "ativo" && empresa.planoComercialChave === chave) {
+      // Quem cancelou e ainda está no período pago pode assinar de novo (a assinatura nova assume quando o período acabar).
+      const emCarencia = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo: "mensal", status: "cancelada", proximaCobrancaEm: { gt: agoraIso } } });
+      if (!emCarencia) throw new ErroDeNegocio("Sua empresa já está neste plano.");
+    }
 
     if (plano.vagasTotal !== null) {
       const ocupadas = await contarOcupacao(tx, chave, agoraIso, { empresaId });
@@ -100,13 +105,22 @@ export async function confirmarAssinaturaMensal(reservaId: string, preapprovalId
           return;
         }
       }
-      await tx.assinaturaComercial.update({ where: { id: reserva.id }, data: { status: "ativa", referenciaExterna: preapprovalId, atualizadoEm: agoraIso } });
+      // A primeira cobrança acontece na autorização, então o primeiro mês pago termina daqui a um mês.
+      const proximaCobrancaEm = reserva.proximaCobrancaEm ?? somarMeses(new Date(agoraIso), 1).toISOString();
+      await tx.assinaturaComercial.update({ where: { id: reserva.id }, data: { status: "ativa", referenciaExterna: preapprovalId, proximaCobrancaEm, atualizadoEm: agoraIso } });
       await tx.empresa.update({ where: { id: reserva.empresaId }, data: { plano: "ativo", planoComercialChave: reserva.planoChave, atualizadoEm: agoraIso } });
-    } else if (statusMp === "cancelled" || statusMp === "paused") {
+    } else if (statusMp === "cancelled") {
       const estavaAtiva = reserva.status === "ativa";
-      await tx.assinaturaComercial.update({ where: { id: reserva.id }, data: { status: statusMp === "cancelled" ? "cancelada" : "pausada", referenciaExterna: preapprovalId, atualizadoEm: agoraIso } });
-      // Só quem estava ativo por esta assinatura perde a escrita (plano "suspenso" = somente leitura, dados preservados).
-      // Um checkout abandonado que o Mercado Pago cancela não mexe numa empresa que ocupa o plano por outro caminho.
+      // Cancelar encerra as próximas cobranças, mas o período já pago continua valendo: a empresa segue ativa e o cron
+      // suspende quando `proximaCobrancaEm` passar. Notificação repetida não mexe na data (só a primeira, de quem estava ativa).
+      const data: Prisma.AssinaturaComercialUpdateInput = { status: "cancelada", referenciaExterna: preapprovalId, atualizadoEm: agoraIso };
+      if (estavaAtiva) data.proximaCobrancaEm = fimDoPeriodoPago(reserva.proximaCobrancaEm ?? agoraIso, new Date(agoraIso)).toISOString();
+      await tx.assinaturaComercial.update({ where: { id: reserva.id }, data });
+    } else if (statusMp === "paused") {
+      const estavaAtiva = reserva.status === "ativa";
+      await tx.assinaturaComercial.update({ where: { id: reserva.id }, data: { status: "pausada", referenciaExterna: preapprovalId, atualizadoEm: agoraIso } });
+      // Pausa (cobrança falhou ou foi pausada) suspende já: plano "suspenso" = somente leitura, dados preservados.
+      // Só quem estava ativo por esta assinatura; um checkout abandonado não mexe numa empresa que ocupa o plano por outro caminho.
       if (estavaAtiva) await suspender(tx, reserva.empresaId, reserva.planoChave, agoraIso);
     }
   });
@@ -156,6 +170,7 @@ export interface ResultadoAssinaturasComerciais {
   reservasExpiradas: number;
   avisosRenovacao: number;
   suspensasPorVencimento: number;
+  fimDoAcesso: number;
 }
 
 /**
@@ -164,7 +179,7 @@ export interface ResultadoAssinaturasComerciais {
  */
 export async function processarAssinaturasComerciais(agora: Date = new Date()): Promise<ResultadoAssinaturasComerciais> {
   const agoraIso = agora.toISOString();
-  const resultado: ResultadoAssinaturasComerciais = { reservasExpiradas: 0, avisosRenovacao: 0, suspensasPorVencimento: 0 };
+  const resultado: ResultadoAssinaturasComerciais = { reservasExpiradas: 0, avisosRenovacao: 0, suspensasPorVencimento: 0, fimDoAcesso: 0 };
 
   const expiradas = await prisma.assinaturaComercial.updateMany({
     where: { status: "reservada", reservaExpiraEm: { lt: agoraIso } },
@@ -206,6 +221,21 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
       return true;
     });
     if (processou) resultado.suspensasPorVencimento++;
+  }
+
+  // Mensal cancelada: o acesso valeu até o fim do período pago; passou da data, suspende (somente leitura).
+  const fimDoAcesso = await prisma.assinaturaComercial.findMany({ where: { ciclo: "mensal", status: "cancelada", proximaCobrancaEm: { lt: agoraIso } } });
+  for (const a of fimDoAcesso) {
+    const processou = await prisma.$transaction(async (tx) => {
+      const chave = `assinatura:fim-do-acesso:${a.id}:${a.proximaCobrancaEm}`;
+      const novo = await registrarEvento(tx, { tipo: "assinatura_fim_do_acesso", empresaId: a.empresaId, chave });
+      if (!novo) return false;
+      // Se a empresa assinou de novo o mesmo plano, a assinatura nova é quem a mantém ativa: não suspender.
+      const outraAtiva = await tx.assinaturaComercial.findFirst({ where: { empresaId: a.empresaId, planoChave: a.planoChave, status: "ativa", id: { not: a.id } } });
+      if (!outraAtiva) await suspender(tx, a.empresaId, a.planoChave, agoraIso);
+      return !outraAtiva;
+    });
+    if (processou) resultado.fimDoAcesso++;
   }
 
   return resultado;

@@ -36,8 +36,8 @@ export const MARCA = {
   /** Trecho do slogan que ganha cor em títulos grandes. */
   sloganDestaque: "novas possibilidades.",
   descricao: "Gerencie sua empresa, encontre profissionais confiáveis e descubra novas oportunidades em um só lugar.",
-  /** Contato de suporte e contestações. Troque por NEXT_PUBLIC_EMAIL_CONTATO ao ter o endereço do novo domínio. */
-  emailContato: process.env.NEXT_PUBLIC_EMAIL_CONTATO?.trim() || "contato@mellotravasso.com.br",
+  /** Contato de suporte, cancelamento, reembolso e privacidade. NEXT_PUBLIC_EMAIL_CONTATO troca o endereço sem mexer no código. */
+  emailContato: process.env.NEXT_PUBLIC_EMAIL_CONTATO?.trim() || "contato@eloprofissionais.com.br",
   produtos: {
     gestao: {
       nome: "Elo Gestão",

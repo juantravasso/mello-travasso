@@ -24,6 +24,7 @@ export const TIPOS_EVENTO = [
   "pagamento_anual_recusado",
   "assinatura_renovacao_avisada",
   "assinatura_suspensa_vencimento",
+  "assinatura_fim_do_acesso",
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];

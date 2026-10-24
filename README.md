@@ -349,6 +349,21 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Termos, privacidade, cancelamento e retenção
+
+**Textos definitivos** (versão 1.0): [termos](src/app/(publico)/termos/page.tsx) e [privacidade](src/app/(publico)/privacidade/page.tsx). Quem opera, o encarregado de dados, o foro e os prazos prometidos ficam em [operadora.ts](src/lib/operadora.ts)
+(`OPERADORA` e `POLITICA`); o e-mail de contato é `MARCA.emailContato` (`NEXT_PUBLIC_EMAIL_CONTATO` sobrescreve). Mudou o texto de forma relevante? Suba `VERSAO_TERMOS_ATUAL` em [termos.ts](src/lib/termos.ts).
+
+**Política:** cancelar a qualquer momento, sem multa; o acesso vale até o fim do período pago; reembolso integral em 7 dias (CDC art. 49); dados guardados até 12 meses depois do fim do período pago (e apagados antes, a pedido, em até 15 dias).
+
+**Como o código cumpre isso** ([assinaturaComercialCore.server.ts](src/services/data/server/assinaturaComercialCore.server.ts), regra de datas em [periodo.ts](src/lib/planos/periodo.ts)):
+- ao autorizar a assinatura mensal, `proximaCobrancaEm` = hoje + 1 mês (o primeiro mês pago);
+- `cancelled` no Mercado Pago marca a assinatura como `cancelada`, mas a empresa **continua ativa**; `proximaCobrancaEm` passa a ser o fim do período pago (notificação repetida não mexe nessa data);
+- o cron `/api/cron/assinaturas` suspende (somente leitura) quando essa data passa, uma vez só, e não suspende quem já assinou de novo o mesmo plano;
+- `paused` (cobrança falhou) continua suspendendo na hora; o anual não renova sozinho e é suspenso no vencimento.
+
+**Ainda é manual:** o reembolso de 7 dias (devolver no Mercado Pago e suspender a conta pelo painel admin) e o apagamento dos dados depois de 12 meses.
+
 ## Cadastro enxuto, CEP e senha
 
 **Poucos campos** ([CriarContaForm.tsx](src/app/(publico)/criar-conta/CriarContaForm.tsx)): o **autônomo** informa nome, CPF, e-mail e senha (o nome da conta e o da pessoa são o mesmo, então só se pergunta uma vez); a **empresa**

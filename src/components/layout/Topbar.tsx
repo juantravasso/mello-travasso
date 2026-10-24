@@ -15,7 +15,7 @@ function dataDeHoje(): string {
   });
 }
 
-export function Topbar() {
+export function Topbar({ nomeUsuario }: { nomeUsuario: string }) {
   // Evita mismatch de hidratação: a data só é calculada no cliente, após o mount.
   const [data, setData] = useState<string | null>(null);
   const { menuMovelAberto, abrirMenuMovel } = useBarraLateral();
@@ -49,6 +49,16 @@ export function Topbar() {
         <span className="hidden text-sm capitalize text-muted lg:inline">{data}</span>
         <SeletorTema />
         <SinoNotificacoes />
+        <Link
+          href="/configuracoes"
+          aria-label={`${nomeUsuario}: abrir configurações`}
+          className="flex h-10 min-w-0 items-center gap-2 rounded-lg px-1 transition-colors hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-primary sm:pr-3"
+        >
+          <span aria-hidden className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+            {nomeUsuario.slice(0, 1).toUpperCase()}
+          </span>
+          <span className="hidden max-w-[10rem] truncate text-sm font-medium text-foreground sm:inline">{nomeUsuario}</span>
+        </Link>
       </div>
     </header>
   );

@@ -19,7 +19,7 @@ const ORDEM_GRUPOS: readonly GrupoNavegacao[] = ["profissionais", "gestao", "con
  * Menu lateral do celular: abre pelo ícone de hambúrguer e reúne todas as abas. A estrela fixa uma aba na barra de
  * baixo (só os favoritos aparecem lá). No computador a barra lateral fixa faz esse papel.
  */
-export function MenuMovel({ temGestao, admin, nomeUsuario }: { temGestao: boolean; admin: boolean; nomeUsuario: string }) {
+export function MenuMovel({ temGestao, admin }: { temGestao: boolean; admin: boolean }) {
   const { menuMovelAberto, fecharMenuMovel } = useBarraLateral();
   const pathname = usePathname();
   const itens = useItensNavegacao(admin);
@@ -120,7 +120,6 @@ export function MenuMovel({ temGestao, admin, nomeUsuario }: { temGestao: boolea
 
         <div className="flex flex-shrink-0 flex-col gap-2 border-t border-border px-4 py-3">
           <ResumoPlano aoNavegar={fecharMenuMovel} />
-          <p className="truncate text-xs text-muted">{nomeUsuario}</p>
         </div>
       </nav>
     </div>

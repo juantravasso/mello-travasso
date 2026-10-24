@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { BENEFICIO_INSTALACAO, GUIAS, type Plataforma } from "@/lib/onboarding/instalacao";
-import { useAmbienteApp } from "@/hooks/useAmbienteApp";
+import { abrirCompartilhar, pedirInstalacao, useAmbienteApp } from "@/hooks/useAmbienteApp";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 const ORDEM: readonly Plataforma[] = ["ios", "android"];
@@ -55,6 +56,20 @@ export function InstalarNoCelular() {
         <p role="note" className="rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-sm text-warning">
           Você parece estar fora do Safari. Copie o endereço desta página e abra no Safari para seguir os passos.
         </p>
+      )}
+
+      {atual === "android" && ambiente.plataforma === "android" && ambiente.podeInstalar && !ambiente.instalado && (
+        <div className="flex flex-col gap-1">
+          <Button onClick={() => void pedirInstalacao()}>Instalar agora</Button>
+          <p className="text-xs text-muted">Abre a janela de instalação do seu navegador. Se preferir, os passos abaixo fazem o mesmo.</p>
+        </div>
+      )}
+
+      {atual === "ios" && ambiente.plataforma === "ios" && ambiente.podeCompartilhar &&!ambiente.iosForaDoSafari && !ambiente.instalado && (
+        <div className="flex flex-col gap-1">
+          <Button onClick={() => void abrirCompartilhar()}>Abrir o menu de compartilhar</Button>
+          <p className="text-xs text-muted">O iPhone não deixa o site instalar sozinho. O botão abre o menu; nele, role e toque em “Adicionar à Tela de Início”.</p>
+        </div>
       )}
 
       <ol className="flex flex-col gap-3" aria-label={`Passos para instalar no ${guia.rotulo}`}>

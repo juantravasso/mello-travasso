@@ -133,20 +133,48 @@ async function main(): Promise<void> {
     assert.equal((await empresa(e1)).plano, "ativo", "repetir a notificação é inofensivo");
   });
 
-  await teste("10. assinatura mensal autorizada ativa; cancelada depois deixa a empresa em somente leitura e libera a vaga", async () => {
+  await teste("10. mensal cancelada mantém o acesso até o fim do período pago; o cron então deixa em somente leitura e libera a vaga", async () => {
     const plano = await criarPlano("j", 1);
     const e1 = await criarEmpresa("j1");
     const e2 = await criarEmpresa("j2");
     const r1 = await reservarVaga(e1, plano, "mensal", null);
     await confirmarAssinaturaMensal(r1.id, "pre-1", "authorized");
     assert.equal((await empresa(e1)).plano, "ativo");
+    const aposAutorizar = await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } });
+    assert.ok(aposAutorizar.proximaCobrancaEm && new Date(aposAutorizar.proximaCobrancaEm).getTime() > Date.now(), "o primeiro mês pago termina no futuro");
     await falha(reservarVaga(e2, plano, "mensal", null), "não tem mais vagas");
 
     await confirmarAssinaturaMensal(r1.id, "pre-1", "cancelled");
+    const cancelada = await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } });
+    assert.equal(cancelada.status, "cancelada");
+    assert.equal(cancelada.proximaCobrancaEm, aposAutorizar.proximaCobrancaEm, "o fim do período pago não muda ao cancelar");
+    assert.equal((await empresa(e1)).plano, "ativo", "pagou o mês: continua com acesso completo");
+    await confirmarAssinaturaMensal(r1.id, "pre-1", "cancelled");
+    assert.equal((await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } })).proximaCobrancaEm, aposAutorizar.proximaCobrancaEm, "notificação repetida é inofensiva");
+    await processarAssinaturasComerciais();
+    assert.equal((await empresa(e1)).plano, "ativo", "o cron não suspende antes do fim do período");
+
+    await prisma.assinaturaComercial.update({ where: { id: r1.id }, data: { proximaCobrancaEm: iso(new Date(Date.now() - 3600_000)) } });
+    const rodada = await processarAssinaturasComerciais();
+    assert.ok(rodada.fimDoAcesso >= 1);
     const dep = await empresa(e1);
     assert.equal(dep.plano, "suspenso");
-    assert.equal(calcularStatusPlano({ plano: dep.plano, testeTerminaEm: dep.testeTerminaEm }).somenteLeitura, true, "cancelou: sem escrita, dados preservados");
+    assert.equal(calcularStatusPlano({ plano: dep.plano, testeTerminaEm: dep.testeTerminaEm }).somenteLeitura, true, "acabou o período: sem escrita, dados preservados");
+    assert.equal((await processarAssinaturasComerciais()).fimDoAcesso, 0, "rodar de novo não repete");
     await reservarVaga(e2, plano, "mensal", null);
+  });
+
+  await teste("10b. quem cancelou e assinou de novo o mesmo plano não é suspenso quando o período da assinatura antiga acaba", async () => {
+    const plano = await criarPlano("j2", null);
+    const e1 = await criarEmpresa("jb1");
+    const antiga = await reservarVaga(e1, plano, "mensal", null);
+    await confirmarAssinaturaMensal(antiga.id, "pre-5", "authorized");
+    await confirmarAssinaturaMensal(antiga.id, "pre-5", "cancelled");
+    const nova = await reservarVaga(e1, plano, "mensal", null);
+    await confirmarAssinaturaMensal(nova.id, "pre-6", "authorized");
+    await prisma.assinaturaComercial.update({ where: { id: antiga.id }, data: { proximaCobrancaEm: iso(new Date(Date.now() - 3600_000)) } });
+    await processarAssinaturasComerciais();
+    assert.equal((await empresa(e1)).plano, "ativo");
   });
 
   await teste("11. assinatura pausada suspende e voltar a autorizada reativa", async () => {

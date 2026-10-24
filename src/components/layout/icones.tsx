@@ -153,3 +153,39 @@ export const IconeCalendario = (p: SVGProps<SVGSVGElement>) => (
     <path d="M14 14h2" />
   </Base>
 );
+
+export const IconeBusca = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.2-4.2" />
+  </Base>
+);
+
+/** Estrela de favorito: contorno por padrão, cheia quando `preenchida`. */
+export const IconeEstrela = ({ preenchida, ...p }: SVGProps<SVGSVGElement> & { preenchida?: boolean }) => (
+  <Base {...p} fill={preenchida ? "currentColor" : "none"}>
+    <path d="m12 3.5 2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.8-5.3 2.8 1-5.8-4.2-4.1 5.9-.9L12 3.5Z" />
+  </Base>
+);
+
+export const IconeFechar = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M6 6l12 12" />
+    <path d="M18 6 6 18" />
+  </Base>
+);
+
+export const IconeAjuda = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.4a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2 1-1.2 1.9" />
+    <path d="M12 17h.01" />
+  </Base>
+);
+
+export const IconeEtiqueta = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M3 12.2V5a2 2 0 0 1 2-2h7.2a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 3 12.2Z" />
+    <circle cx="8" cy="8" r="1.3" />
+  </Base>
+);

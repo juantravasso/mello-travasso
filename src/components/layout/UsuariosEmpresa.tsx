@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
 import { SeletorModulos } from "./SeletorModulos";
 
 const SITUACAO: Record<SituacaoUsuarioEmpresa, { rotulo: string; tom: "success" | "warning" | "danger" | "neutral" }> = {
@@ -34,6 +35,7 @@ export function UsuariosEmpresa() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [modulosNovo, setModulosNovo] = useState<ModuloChave[]>([]);
+  const [modalAberto, setModalAberto] = useState(false);
 
   const carregar = useCallback(async () => {
     const resultado = await repo.listar();
@@ -75,6 +77,7 @@ export function UsuariosEmpresa() {
       setNome("");
       setEmail("");
       setModulosNovo([]);
+      setModalAberto(false);
     }
     // A senha do dono nunca fica no formulário depois de usada, deu certo ou não.
     setSenha("");
@@ -154,25 +157,52 @@ export function UsuariosEmpresa() {
         </ul>
       )}
 
-      <form onSubmit={criar} className="flex flex-col gap-3 border-t border-border pt-4" noValidate>
-        <p className="text-sm font-medium text-foreground">Adicionar usuário</p>
-        <Input label="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} autoComplete="off" required />
-        <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={180} autoComplete="off" required />
-        {lista && <SeletorModulos disponiveis={lista.modulosDisponiveis} selecionados={modulosNovo} aoMudar={setModulosNovo} />}
-        <Input
-          label="Sua senha (para confirmar)"
-          type="password"
-          value={senha}
-          onChange={(e) => setSenha(e.target.value)}
-          maxLength={200}
-          autoComplete="current-password"
-          required
-        />
-        <Button type="submit" disabled={ocupado || noLimite || !nome.trim() || !email.trim() || !senha || modulosNovo.length === 0}>
-          {ocupado ? "Criando…" : "Criar usuário"}
+      <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <Button
+          type="button"
+          className="w-fit"
+          disabled={noLimite}
+          onClick={() => {
+            setErro(null);
+            setModalAberto(true);
+          }}
+        >
+          Adicionar usuário
         </Button>
         {noLimite && lista && <p className="text-sm text-muted">Limite de {lista.limite} usuários por empresa atingido.</p>}
-      </form>
+      </div>
+
+      {modalAberto && (
+        <Modal
+          titulo="Adicionar usuário"
+          onFechar={() => {
+            if (!ocupado) setModalAberto(false);
+          }}
+        >
+          <form onSubmit={criar} className="flex flex-col gap-3" noValidate>
+            <Input label="Nome completo" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} autoComplete="off" required />
+            <Input label="E-mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={180} autoComplete="off" required />
+            {lista && <SeletorModulos disponiveis={lista.modulosDisponiveis} selecionados={modulosNovo} aoMudar={setModulosNovo} />}
+            <Input
+              label="Sua senha (para confirmar)"
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              maxLength={200}
+              autoComplete="current-password"
+              required
+            />
+            {erro && (
+              <p role="alert" className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
+                {erro}
+              </p>
+            )}
+            <Button type="submit" disabled={ocupado || noLimite || !nome.trim() || !email.trim() || !senha || modulosNovo.length === 0}>
+              {ocupado ? "Criando…" : "Criar usuário"}
+            </Button>
+          </form>
+        </Modal>
+      )}
     </Card>
   );
 }

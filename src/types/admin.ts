@@ -59,3 +59,38 @@ export interface MatrizPlanos {
   recursos: RecursoAdmin[];
   planos: PlanoAdmin[];
 }
+
+/** Números da página inicial da administração, todos lidos do banco. */
+export interface ResumoAdmin {
+  empresas: { total: number; emTeste: number; ativas: number; gratuitas: number; bloqueadas: number };
+  usuarios: number;
+  perfisPublicados: number;
+  avaliacoes: number;
+  recomendacoes: number;
+  trabalhos: number;
+  denunciasAbertas: number;
+  assinaturas: {
+    ativas: number;
+    /** Estimativa a partir das assinaturas cobradas pelo Mercado Pago (anual dividido por 12). Plano ativado à mão não entra. */
+    receitaMensalCentavos: number;
+  };
+}
+
+export interface RecomendacaoAdminItem {
+  id: string;
+  criadoEm: string;
+  perfilSlug: string;
+  perfilNome: string;
+  /** Nome público de quem recomendou (nunca o nome civil de autônomo). */
+  recomendadoPorNome: string;
+}
+
+export interface TrabalhoAdminItem {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  criadoEm: string;
+  fotos: number;
+  perfilSlug: string;
+  perfilNome: string;
+}

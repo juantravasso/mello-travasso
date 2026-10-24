@@ -8,9 +8,19 @@ const CHAVE = "barra-lateral-expandida";
 interface BarraLateralValor {
   expandida: boolean;
   alternar: () => void;
+  /** Menu lateral do celular (aberto pelo hambúrguer do topo). */
+  menuMovelAberto: boolean;
+  abrirMenuMovel: () => void;
+  fecharMenuMovel: () => void;
 }
 
-const Contexto = createContext<BarraLateralValor>({ expandida: false, alternar: () => {} });
+const Contexto = createContext<BarraLateralValor>({
+  expandida: false,
+  alternar: () => {},
+  menuMovelAberto: false,
+  abrirMenuMovel: () => {},
+  fecharMenuMovel: () => {},
+});
 
 export function useBarraLateral(): BarraLateralValor {
   return useContext(Contexto);
@@ -20,6 +30,7 @@ export function useBarraLateral(): BarraLateralValor {
 export function BarraLateralProvider({ children }: { children: ReactNode }) {
   // Começa recolhida no servidor e no primeiro render do cliente; a preferência salva entra logo depois.
   const [expandida, setExpandida] = useState(false);
+  const [menuMovelAberto, setMenuMovelAberto] = useState(false);
 
   useEffect(() => {
     try {
@@ -41,7 +52,13 @@ export function BarraLateralProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const valor = useMemo(() => ({ expandida, alternar }), [expandida, alternar]);
+  const abrirMenuMovel = useCallback(() => setMenuMovelAberto(true), []);
+  const fecharMenuMovel = useCallback(() => setMenuMovelAberto(false), []);
+
+  const valor = useMemo(
+    () => ({ expandida, alternar, menuMovelAberto, abrirMenuMovel, fecharMenuMovel }),
+    [expandida, alternar, menuMovelAberto, abrirMenuMovel, fecharMenuMovel],
+  );
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 

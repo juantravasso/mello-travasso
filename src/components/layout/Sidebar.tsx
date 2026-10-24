@@ -4,70 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { podeAcessarRota } from "@/lib/auth/modulos";
-import { MARCA } from "@/lib/marca";
-import { useAcesso } from "./AcessoContext";
 import { useBarraLateral } from "./BarraLateralContext";
+import { IconeMenu } from "./icones";
 import { Logo } from "./Logo";
-import {
-  IconeCaixa,
-  IconeCalendario,
-  IconeCamera,
-  IconeConfig,
-  IconeDashboard,
-  IconeEntrada,
-  IconeEscudo,
-  IconeFornecedor,
-  IconeMenu,
-  IconeObra,
-  IconePessoas,
-  IconeRede,
-  IconeSaida,
-} from "./icones";
+import { itemAtivo, TITULO_GRUPO, type GrupoNavegacao } from "./navegacao";
+import { ResumoPlano } from "./ResumoPlano";
+import { useItensNavegacao } from "./useItensNavegacao";
 
-const itensGestao = [
-  { href: "/dashboard", rotulo: "Dashboard", Icone: IconeDashboard },
-  { href: "/calendario", rotulo: "Calendário", Icone: IconeCalendario },
-  { href: "/capturar", rotulo: "Captura de documentos", Icone: IconeCamera },
-  { href: "/contas-a-pagar", rotulo: "Contas a pagar", Icone: IconeSaida },
-  {
-    href: "/contas-a-receber",
-    rotulo: "Contas a receber",
-    Icone: IconeEntrada,
-  },
-  { href: "/obras", rotulo: "Projetos", Icone: IconeObra },
-  { href: "/estoque", rotulo: "Estoque", Icone: IconeCaixa },
-  { href: "/funcionarios", rotulo: "Funcionários", Icone: IconePessoas },
-  { href: "/fornecedores", rotulo: "Fornecedores", Icone: IconeFornecedor },
-] as const;
-
-const itemRede = {
-  href: "/minha-rede",
-  rotulo: "Minha rede",
-  Icone: IconeRede,
-} as const;
-const itemAdmin = {
-  href: "/admin",
-  rotulo: "Administração",
-  Icone: IconeEscudo,
-} as const;
-
-const TITULO_GRUPO = {
-  profissionais: MARCA.produtos.profissionais.nome,
-  gestao: MARCA.produtos.gestao.nome,
-  admin: "Plataforma",
-} as const;
+// Grupos do corpo da barra; "conta" (planos, ajuda, configurações) fica no rodapé.
+const GRUPOS_DO_CORPO: readonly GrupoNavegacao[] = ["profissionais", "gestao", "admin"];
 
 // Com a barra recolhida o nome só aparece no tooltip; aberta, o próprio item mostra o nome.
-function ComTooltip({
-  rotulo,
-  ativo,
-  children,
-}: {
-  rotulo: string;
-  ativo: boolean;
-  children: ReactNode;
-}) {
+function ComTooltip({ rotulo, ativo, children }: { rotulo: string; ativo: boolean; children: ReactNode }) {
   if (!ativo) return <>{children}</>;
   return (
     <div className="group relative flex justify-center">
@@ -79,37 +27,21 @@ function ComTooltip({
   );
 }
 
-export function Sidebar({
-  nomeUsuario,
-  temGestao,
-  admin,
-}: {
-  nomeUsuario: string;
-  temGestao: boolean;
-  admin: boolean;
-}) {
+/** Barra lateral do computador. No celular o equivalente é o MenuMovel, aberto pelo hambúrguer do topo. */
+export function Sidebar({ nomeUsuario, temGestao, admin }: { nomeUsuario: string; temGestao: boolean; admin: boolean }) {
   const pathname = usePathname();
   const { expandida, alternar } = useBarraLateral();
-  const { pessoa } = useAcesso();
-  // Sem o plano de gestão, os módulos continuam visíveis (apagados) e levam à
-  // página de apresentação — o gratuito vê o que existe sem bloqueio agressivo.
-  const itens = [
-    { ...itemRede, grupo: "profissionais" as const },
-    ...itensGestao.map((item) => ({
-      ...item,
-      bloqueado: !temGestao,
-      grupo: "gestao" as const,
-    })),
-    ...(admin ? [{ ...itemAdmin, grupo: "admin" as const }] : []),
-  ].filter((item) => podeAcessarRota(pessoa, item.href)); // funcionário só vê os módulos que o dono liberou
+  // Sem o plano de gestão, os módulos continuam visíveis (apagados) e levam à página de apresentação: o gratuito vê o
+  // que existe sem bloqueio agressivo. Funcionário só vê os módulos que o dono liberou (useItensNavegacao).
+  const itens = useItensNavegacao(admin);
+  const corpo = itens.filter((i) => GRUPOS_DO_CORPO.includes(i.grupo));
+  const rodape = itens.filter((i) => i.grupo === "conta");
 
-  const classeItem = (ativo: boolean) =>
+  const classeItem = (ativo: boolean, destaque = false) =>
     cn(
       "flex h-11 items-center rounded-lg transition-colors",
       expandida ? "w-full gap-3 px-3" : "w-11 justify-center",
-      ativo
-        ? "bg-primary/15 text-primary"
-        : "text-muted hover:bg-surface-2 hover:text-foreground",
+      ativo ? "bg-primary/15 text-primary" : destaque ? "border border-primary/40 text-primary hover:bg-primary/10" : "text-muted hover:bg-surface-2 hover:text-foreground",
     );
 
   return (
@@ -119,23 +51,12 @@ export function Sidebar({
         expandida ? "w-60" : "w-[68px] items-center",
       )}
     >
-      <div
-        className={cn(
-          "flex w-full items-center border-b border-border py-4",
-          expandida ? "justify-between gap-2 px-3" : "flex-col gap-3",
-        )}
-      >
-        {expandida ? (
-          <Logo tamanho="sm" className="min-w-0" />
-        ) : (
-          <Logo tamanho="sm" comTexto={false} />
-        )}
+      <div className={cn("flex w-full items-center border-b border-border py-4", expandida ? "justify-between gap-2 px-3" : "flex-col gap-3")}>
+        {expandida ? <Logo tamanho="sm" className="min-w-0" /> : <Logo tamanho="sm" comTexto={false} />}
         <button
           type="button"
           onClick={alternar}
-          aria-label={
-            expandida ? "Recolher barra lateral" : "Expandir barra lateral"
-          }
+          aria-label={expandida ? "Recolher barra lateral" : "Expandir barra lateral"}
           aria-expanded={expandida}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
@@ -143,57 +64,33 @@ export function Sidebar({
         </button>
       </div>
 
-      {/* Recolhida: sem overflow-y-auto: definir só o eixo Y como auto faz o navegador
-          tratar o eixo X como auto também, cortando o tooltip que aparece à
-          direita do ícone. Com poucos itens, a lista não deve estourar a altura. */}
-      <nav
-        className={cn(
-          "min-h-0 w-full flex-1 py-4",
-          expandida ? "overflow-y-auto px-3" : "px-2",
-        )}
-      >
+      {/* Recolhida: sem overflow-y-auto: definir só o eixo Y como auto faz o navegador tratar o eixo X como auto também,
+          cortando o tooltip que aparece à direita do ícone. Só em telas curtas (onde as abas não cabem) a lista passa a
+          rolar, e nelas o tooltip pode ser cortado: é melhor que as abas se sobreporem ao rodapé. */}
+      <nav className={cn("min-h-0 w-full flex-1 py-4", expandida ? "overflow-y-auto px-3" : "px-2 [@media(max-height:900px)]:overflow-y-auto [@media(max-height:900px)]:overflow-x-hidden [@media(max-height:900px)]:[scrollbar-width:none]")}>
         <ul className="flex flex-col gap-1">
-          {itens.map((item, indice) => {
-            const { href, rotulo, Icone } = item;
-            const novoGrupo =
-              indice === 0 || itens[indice - 1]?.grupo !== item.grupo;
-            const bloqueado = "bloqueado" in item && item.bloqueado;
-            const ativo = pathname === href || pathname.startsWith(`${href}/`);
+          {corpo.map((item, indice) => {
+            const novoGrupo = indice === 0 || corpo[indice - 1]?.grupo !== item.grupo;
+            const bloqueado = item.gestao && !temGestao;
+            const ativo = itemAtivo(item, pathname);
             return (
-              <Fragment key={href}>
+              <Fragment key={item.href}>
                 {novoGrupo &&
                   (expandida ? (
-                    <li className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted first:pt-0">
-                      {TITULO_GRUPO[item.grupo]}
-                    </li>
+                    <li className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-muted first:pt-0">{TITULO_GRUPO[item.grupo]}</li>
                   ) : (
-                    indice > 0 && (
-                      <li
-                        role="separator"
-                        className="mx-2 my-2 border-t border-border"
-                      />
-                    )
+                    indice > 0 && <li role="separator" className="mx-2 my-2 border-t border-border" />
                   ))}
                 <li>
-                  <ComTooltip
-                    rotulo={bloqueado ? `${rotulo} (plano de gestão)` : rotulo}
-                    ativo={!expandida}
-                  >
+                  <ComTooltip rotulo={bloqueado ? `${item.rotulo} (plano de gestão)` : item.rotulo} ativo={!expandida}>
                     <Link
-                      href={href}
-                      aria-label={rotulo}
+                      href={item.href}
+                      aria-label={item.rotulo}
                       aria-current={ativo ? "page" : undefined}
-                      className={cn(
-                        classeItem(ativo),
-                        bloqueado && "opacity-50",
-                      )}
+                      className={cn(classeItem(ativo, item.destaque), bloqueado && "opacity-50")}
                     >
-                      <Icone className="h-5 w-5 flex-shrink-0" />
-                      {expandida && (
-                        <span className="truncate text-sm font-medium">
-                          {rotulo}
-                        </span>
-                      )}
+                      <item.Icone className="h-5 w-5 flex-shrink-0" />
+                      {expandida && <span className="truncate text-sm font-medium">{item.rotulo}</span>}
                     </Link>
                   </ComTooltip>
                 </li>
@@ -203,42 +100,25 @@ export function Sidebar({
         </ul>
       </nav>
 
-      <div
-        className={cn(
-          "flex w-full flex-col gap-1 border-t border-border py-3",
-          expandida ? "px-3" : "items-center px-2",
-        )}
-      >
-        <ComTooltip rotulo={nomeUsuario} ativo={!expandida}>
-          <Link
-            href="/configuracoes"
-            aria-label={nomeUsuario}
-            className={classeItem(false)}
-          >
+      <div className={cn("flex w-full flex-col gap-1 border-t border-border py-3", expandida ? "px-3" : "items-center px-2")}>
+        {expandida && <ResumoPlano className="mb-1" />}
+        {rodape.map((item) => (
+          <ComTooltip key={item.href} rotulo={item.rotulo} ativo={!expandida}>
+            <Link href={item.href} aria-label={item.rotulo} aria-current={itemAtivo(item, pathname) ? "page" : undefined} className={classeItem(itemAtivo(item, pathname))}>
+              <item.Icone className="h-5 w-5 flex-shrink-0" />
+              {expandida && <span className="truncate text-sm font-medium">{item.rotulo}</span>}
+            </Link>
+          </ComTooltip>
+        ))}
+        {/* O nome só aparece com a barra aberta: recolhida, o avatar repetiria o link de Configurações e gastaria altura. */}
+        {expandida && (
+          <Link href="/configuracoes" aria-label={nomeUsuario} className={classeItem(false)}>
             <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary">
               {nomeUsuario.slice(0, 1).toUpperCase()}
             </span>
-            {expandida && (
-              <span className="truncate text-sm font-medium">
-                {nomeUsuario}
-              </span>
-            )}
+            <span className="truncate text-sm font-medium">{nomeUsuario}</span>
           </Link>
-        </ComTooltip>
-        <ComTooltip rotulo="Configurações" ativo={!expandida}>
-          <Link
-            href="/configuracoes"
-            aria-label="Configurações"
-            className={classeItem(pathname.startsWith("/configuracoes"))}
-          >
-            <IconeConfig className="h-5 w-5 flex-shrink-0" />
-            {expandida && (
-              <span className="truncate text-sm font-medium">
-                Configurações
-              </span>
-            )}
-          </Link>
-        </ComTooltip>
+        )}
       </div>
     </aside>
   );

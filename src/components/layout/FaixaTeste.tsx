@@ -41,6 +41,9 @@ export function FaixaTeste() {
       <span>
         Seu teste termina em {status.diasRestantes} {status.diasRestantes === 1 ? "dia" : "dias"} ({status.dataFimFormatada}).
       </span>
+      <Link href="/planos" className="font-medium underline underline-offset-2">
+        Ver planos e valores
+      </Link>
     </div>
   );
 }

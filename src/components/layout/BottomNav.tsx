@@ -3,104 +3,39 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { podeAcessarRota } from "@/lib/auth/modulos";
-import { useAcesso } from "./AcessoContext";
-import {
-  IconeCadastro,
-  IconeCaixa,
-  IconeCalendario,
-  IconeCamera,
-  IconeConfig,
-  IconeDashboard,
-  IconeEntrada,
-  IconeEscudo,
-  IconeRede,
-  IconeSaida,
-} from "./icones";
+import { useFavoritos } from "@/hooks/useFavoritos";
+import { itemAtivo } from "./navegacao";
+import { useItensNavegacao } from "./useItensNavegacao";
 
-interface ItemNav {
-  href: string;
-  rotulo: string;
-  Icone: typeof IconeDashboard;
-  tambem?: readonly string[];
-  gestao?: boolean;
-}
-
-const itens: readonly ItemNav[] = [
-  { href: "/minha-rede", rotulo: "Rede", Icone: IconeRede },
-  { href: "/dashboard", rotulo: "Início", Icone: IconeDashboard, gestao: true },
-  {
-    href: "/calendario",
-    rotulo: "Agenda",
-    Icone: IconeCalendario,
-    gestao: true,
-  },
-  { href: "/capturar", rotulo: "Capturar", Icone: IconeCamera, gestao: true },
-  {
-    href: "/contas-a-pagar",
-    rotulo: "A Pagar",
-    Icone: IconeSaida,
-    gestao: true,
-  },
-  {
-    href: "/contas-a-receber",
-    rotulo: "A Receber",
-    Icone: IconeEntrada,
-    gestao: true,
-  },
-  { href: "/estoque", rotulo: "Estoque", Icone: IconeCaixa, gestao: true },
-  {
-    href: "/cadastro",
-    rotulo: "Cadastro",
-    Icone: IconeCadastro,
-    tambem: ["/obras", "/funcionarios", "/fornecedores"],
-    gestao: true,
-  },
-  { href: "/configuracoes", rotulo: "Ajustes", Icone: IconeConfig },
-];
-
-const itemAdmin: ItemNav = {
-  href: "/admin",
-  rotulo: "Admin",
-  Icone: IconeEscudo,
-};
-
-export function BottomNav({
-  temGestao,
-  admin,
-}: {
-  temGestao: boolean;
-  admin: boolean;
-}) {
+/**
+ * Barra de baixo do celular: só as abas favoritas (escolhidas com a estrela no menu lateral, pelo hambúrguer). As
+ * demais ficam no menu. Sem favoritos salvos, vale o padrão de FAVORITOS_PADRAO.
+ */
+export function BottomNav({ temGestao, admin }: { temGestao: boolean; admin: boolean }) {
   const pathname = usePathname();
-  const { pessoa } = useAcesso();
-  // Funcionário só vê os módulos que o dono liberou; Ajustes (configurações) é de todos.
-  const lista = (admin ? [...itens, itemAdmin] : itens).filter((item) => podeAcessarRota(pessoa, item.href));
+  const itens = useItensNavegacao(admin);
+  const { favoritos } = useFavoritos(itens.map((i) => i.href));
+  const lista = favoritos.flatMap((href) => itens.find((i) => i.href === href) ?? []);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/85 md:hidden">
-      <ul className="flex overflow-x-auto">
-        {lista.map(({ href, rotulo, Icone, tambem = [], gestao }) => {
-          const ativo =
-            pathname === href ||
-            pathname.startsWith(`${href}/`) ||
-            tambem.some(
-              (prefixo) =>
-                pathname === prefixo || pathname.startsWith(`${prefixo}/`),
-            );
-          const bloqueado = gestao && !temGestao;
+    <nav aria-label="Abas favoritas" className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar/95 backdrop-blur supports-[backdrop-filter]:bg-sidebar/85 md:hidden">
+      <ul className="flex">
+        {lista.map((item) => {
+          const ativo = itemAtivo(item, pathname);
+          const bloqueado = item.gestao && !temGestao;
           return (
-            <li key={href} className="flex-1">
+            <li key={item.href} className="min-w-0 flex-1">
               <Link
-                href={href}
+                href={item.href}
+                aria-current={ativo ? "page" : undefined}
                 className={cn(
-                  "flex min-w-[72px] flex-col items-center gap-1 px-2 py-3 text-[11px] font-medium transition-colors",
+                  "flex flex-col items-center gap-1 px-1 py-3 text-[11px] font-medium transition-colors",
                   ativo ? "text-primary" : "text-muted",
                   bloqueado && "opacity-50",
                 )}
               >
-                <Icone className="h-5 w-5" />
-                {rotulo}
+                <item.Icone className="h-5 w-5" />
+                <span className="max-w-full truncate">{item.rotuloCurto}</span>
               </Link>
             </li>
           );

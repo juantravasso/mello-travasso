@@ -4,6 +4,7 @@ import type { ModuloChave } from "@/lib/auth/modulos";
 import { AcessoProvider } from "./AcessoContext";
 import { BarraLateralProvider, ColunaPrincipal } from "./BarraLateralContext";
 import { BottomNav } from "./BottomNav";
+import { MenuMovel } from "./MenuMovel";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { AvisoEmail } from "./AvisoEmail";
@@ -45,6 +46,7 @@ export function ShellWrapper({
               temGestao={temGestao}
               admin={admin}
             />
+            <MenuMovel nomeUsuario={nomeUsuario} temGestao={temGestao} admin={admin} />
             {/* min-w-0: sem isso, um item flex não encolhe abaixo do min-content dos
             descendentes (ex.: um <select>/<input type="date">), o que forçava
             overflow horizontal da página inteira no mobile. FaixaTeste fica

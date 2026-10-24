@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { trocarSenha } from "@/services/data/server/authActions";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { TAMANHO_MINIMO_SENHA } from "@/lib/validacao/auth";
 import { Button } from "@/components/ui/Button";
 
 interface EstadoTrocarSenha {
@@ -73,7 +74,7 @@ export function TrocarSenhaForm({ bloqueante = false }: { bloqueante?: boolean }
             label="Nova senha"
             autoComplete="new-password"
             required
-            minLength={10}
+            minLength={TAMANHO_MINIMO_SENHA}
             erro={estado.campos?.senhaNova}
           />
           {estado.erroGeral && !estado.campos && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redefinirSenha } from "@/services/data/server/senhaActions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TAMANHO_MINIMO_SENHA } from "@/lib/validacao/auth";
 
 type Situacao = { tipo: "ocioso" } | { tipo: "enviando" } | { tipo: "pronto" } | { tipo: "erro"; mensagem: string };
 
@@ -44,7 +45,7 @@ export function RedefinirSenhaForm({ token }: { token: string }) {
     <form onSubmit={enviar} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-1">
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.01em] text-foreground">Escolha uma nova senha</h1>
-        <p className="text-sm text-muted">Use pelo menos 10 caracteres.</p>
+        <p className="text-sm text-muted">Use pelo menos {TAMANHO_MINIMO_SENHA} caracteres.</p>
       </div>
       <Input
         id="senhaNova"
@@ -84,7 +85,7 @@ export function RedefinirSenhaForm({ token }: { token: string }) {
       <Button
         type="submit"
         className="w-full shadow-none"
-        disabled={!token || situacao.tipo === "enviando" || senha.length < 10 || senha !== confirmacao}
+        disabled={!token || situacao.tipo === "enviando" || senha.length < TAMANHO_MINIMO_SENHA || senha !== confirmacao}
         aria-busy={situacao.tipo === "enviando"}
       >
         {situacao.tipo === "enviando" ? "Salvando…" : "Salvar nova senha"}

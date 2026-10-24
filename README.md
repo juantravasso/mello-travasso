@@ -349,6 +349,37 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Cadastro enxuto, CEP e senha
+
+**Poucos campos** ([CriarContaForm.tsx](src/app/(publico)/criar-conta/CriarContaForm.tsx)): o **autônomo** informa nome, CPF, e-mail e senha (o nome da conta e o da pessoa são o mesmo, então só se pergunta uma vez); a **empresa**
+informa CNPJ (a Receita preenche razão social, telefone e endereço), o nome do responsável, e-mail e senha. O endereço da empresa é opcional e fica recolhido. Telefone e endereço completo se preenchem depois, em Configurações.
+
+**CEP:** ao completar os 8 dígitos o endereço (rua, bairro, cidade e UF) é preenchido na hora ([useBuscaCep.ts](src/hooks/useBuscaCep.ts), ViaCEP), no cadastro, em Configurações e no fornecedor. Resposta atrasada de um CEP que já foi trocado é descartada;
+CEP inexistente e falha de rede têm mensagens diferentes, e o que a pessoa digitou nunca é apagado.
+
+**Senha:** mínimo de **8 caracteres** ([auth.ts](src/lib/validacao/auth.ts), `TAMANHO_MINIMO_SENHA`), o mesmo número no servidor, nos formulários e nos textos de ajuda.
+
+**Erros claros:** a tela confere tudo no navegador com o mesmo esquema do servidor ([cadastroMensagens.ts](src/lib/validacao/cadastroMensagens.ts)) e mostra **todos** os problemas de uma vez, cada um com o nome do campo e o que fazer,
+com link que leva ao campo. Os campos não somem depois de um erro. Conta duplicada diz "já existe uma conta com este e-mail ou este CPF/CNPJ" e oferece Entrar e Esqueci minha senha, **sem dizer qual dos dois** existe
+(dizer qual deixaria qualquer pessoa descobrir quem tem conta).
+
+## Navegação, favoritos e administração
+
+**Abas numa lista só** ([navegacao.ts](src/components/layout/navegacao.ts)): a barra lateral do computador, o menu lateral do celular e a barra de baixo leem a mesma lista; uma aba nova
+entra nos três. Quem pode ver cada aba continua sendo decidido pelos módulos que o dono liberou e pelo plano (o menu esconde, a barreira real está nas Server Actions).
+
+**Celular:** o hambúrguer do topo abre o menu lateral com todas as abas, agrupadas ([MenuMovel.tsx](src/components/layout/MenuMovel.tsx)). A estrela fixa uma aba na barra de baixo, que mostra
+**só os favoritos** (até 5, regras em [favoritos.ts](src/lib/layout/favoritos.ts), com testes). A escolha fica no navegador do aparelho (`elo:favoritos`), não na conta; sem escolha vale o padrão
+(Buscar profissionais, Início, Agenda, Capturar, A Pagar, as que a pessoa pode acessar). **Computador:** a barra lateral fixa, que recolhe e expande.
+
+**Encontrar profissionais** é o botão de destaque do topo (todas as telas) e o primeiro item do menu. **Planos e valores** fica em Minha conta, e um resumo do teste ("Teste grátis: N dias restantes",
+com o link para os planos) aparece no rodapé do menu; a faixa dos últimos 7 dias também leva aos planos.
+
+**Administração** (`/admin`): números reais no topo (empresas por plano, usuários, assinaturas e receita estimada, perfis, avaliações, recomendações, portfólio, denúncias) e as seções
+**Preços e planos** (valores, vagas e parcelamento em Planos comerciais), **Pessoas e empresas**, **Conteúdo da rede** e **Acompanhamento**. Recomendações e Portfólio têm moderação própria
+([conteudoAdminActions.ts](src/services/data/server/conteudoAdminActions.ts)): remover pede a senha do admin e um motivo, e entra no registro de ações; remover um trabalho também apaga as fotos e avisa a empresa (sem o motivo).
+Não existe "post" no produto: o conteúdo que as empresas publicam é perfil, portfólio, avaliações e recomendações.
+
 ## Painel de métricas (fase 3)
 
 **Admin > Métricas** (`/admin/metricas`, só administrador, só leitura). Período de 7, 30 ou 90 dias. A leitura é por **coorte**: as

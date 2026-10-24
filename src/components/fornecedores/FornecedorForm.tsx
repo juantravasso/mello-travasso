@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { formatarCpfCnpj } from "@/lib/documento";
-import { buscarEmpresaPorCnpj, buscarEnderecoPorCep } from "@/lib/lookupPublico";
+import { buscarEmpresaPorCnpj } from "@/lib/lookupPublico";
+import { useBuscaCep } from "@/hooks/useBuscaCep";
 
 interface FornecedorFormProps {
   fornecedor?: Fornecedor;
@@ -32,32 +33,19 @@ export function FornecedorForm({ fornecedor, onSalvar, onCancelar }: FornecedorF
   const [cidade, setCidade] = useState(fornecedor?.cidade ?? "");
   const [estado, setEstado] = useState(fornecedor?.estado ?? "");
   const [observacao, setObservacao] = useState(fornecedor?.observacao ?? "");
-  const [buscandoCep, setBuscandoCep] = useState(false);
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [avisoBusca, setAvisoBusca] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
   const valido = nome.trim() !== "";
 
-  async function aoSairDoCep() {
-    const digitos = cep.replace(/\D/g, "");
-    if (digitos.length !== 8) return;
-    setBuscandoCep(true);
-    setAvisoBusca(null);
-    try {
-      const endereco = await buscarEnderecoPorCep(cep);
-      if (!endereco) {
-        setAvisoBusca("CEP não encontrado — preencha o endereço manualmente.");
-        return;
-      }
-      setLogradouro((atual) => preencherSeVazio(atual, endereco.logradouro));
-      setBairro((atual) => preencherSeVazio(atual, endereco.bairro));
-      setCidade((atual) => preencherSeVazio(atual, endereco.cidade));
-      setEstado((atual) => preencherSeVazio(atual, endereco.estado));
-    } finally {
-      setBuscandoCep(false);
-    }
-  }
+  // CEP completo → preenche rua, bairro, cidade e UF assim que o último dígito é digitado.
+  const cepBusca = useBuscaCep((endereco) => {
+    setLogradouro((atual) => endereco.logradouro || atual);
+    setBairro((atual) => endereco.bairro || atual);
+    setCidade((atual) => endereco.cidade || atual);
+    setEstado((atual) => endereco.estado || atual);
+  });
 
   async function aoSairDoDocumento() {
     const digitos = documento.replace(/\D/g, "");
@@ -128,13 +116,14 @@ export function FornecedorForm({ fornecedor, onSalvar, onCancelar }: FornecedorF
         <Input
           label="CEP"
           value={cep}
-          onChange={(e) => setCep(e.target.value)}
-          onBlur={aoSairDoCep}
+          onChange={(e) => setCep(cepBusca.aoDigitar(e.target.value))}
+          inputMode="numeric"
           placeholder="Preenche a rua"
         />
         <Input label="Número" value={numero} onChange={(e) => setNumero(e.target.value)} />
       </div>
-      {buscandoCep && <p className="text-xs text-muted">Buscando endereço do CEP…</p>}
+      {cepBusca.buscando && <p className="text-xs text-muted">Buscando endereço do CEP…</p>}
+      {cepBusca.aviso && <p className="text-xs text-info">{cepBusca.aviso}</p>}
       {avisoBusca && <p className="text-xs text-info">{avisoBusca}</p>}
       <Input label="Rua/Logradouro" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">

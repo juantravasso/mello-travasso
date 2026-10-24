@@ -21,7 +21,9 @@ import { resolverEmpresaConvidante } from "./conviteCore.server";
 import { obterConfigCiclo } from "./cicloDeVidaCore.server";
 import { registrarEvento, registrarEventoSeguro } from "./eventosCore.server";
 
-const MENSAGEM_CADASTRO_DUPLICADO = "Não foi possível criar a conta com esses dados. Se você já tem conta, entre.";
+// Não diz qual dos dois já existe (e-mail ou CPF/CNPJ): revelar isso deixaria qualquer pessoa descobrir quem tem conta.
+// Diz o que fazer: entrar ou recuperar a senha.
+const MENSAGEM_CADASTRO_DUPLICADO = "Já existe uma conta com este e-mail ou com este CPF/CNPJ. Se for a sua, entre na conta ou recupere a senha.";
 const LIMITE_CADASTROS_POR_HORA = 5;
 
 const MENSAGEM_LOGIN_INVALIDO = "E-mail ou senha incorretos.";
@@ -194,15 +196,15 @@ export async function criarConta(
 
   const parsed = criarContaSchema.safeParse(input);
   if (!parsed.success) {
-    const documentoInvalido = parsed.error.issues.some((i) => i.path[0] === "documento");
-    const dados = input as Record<string, unknown>;
-    const mensagemDocumento =
-      typeof dados?.tipoPessoa === "string" && dados.tipoPessoa === "pf"
-        ? "CPF inválido — confira os 11 dígitos"
-        : "CNPJ inválido — confira os 14 dígitos";
+    // As mensagens de cada campo já vêm do esquema (dizem o que está errado e o que fazer), inclusive a do documento.
     const campos = formatarErrosZod(parsed);
-    if (documentoInvalido) campos.documento = mensagemDocumento;
-    return { ok: false, erro: "VALIDACAO", mensagem: "Confira os campos destacados.", campos };
+    const quantidade = Object.keys(campos).length;
+    return {
+      ok: false,
+      erro: "VALIDACAO",
+      mensagem: quantidade === 1 ? "Há 1 campo para corrigir antes de criar a conta." : `Há ${quantidade} campos para corrigir antes de criar a conta.`,
+      campos,
+    };
   }
   // O limite vem depois da validação de formato: erro de digitação (CNPJ, CEP, campo vazio) não gasta
   // tentativa. Continua antes de qualquer consulta ao banco, que é o que revelaria se um documento

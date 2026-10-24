@@ -35,6 +35,37 @@ export async function buscarEnderecoPorCep(cep: string): Promise<EnderecoPorCep 
   }
 }
 
+/** Resultado da consulta de CEP, com a diferença entre "não existe" e "não consegui consultar" para a mensagem certa. */
+export type ResultadoCep = { estado: "ok"; endereco: EnderecoPorCep } | { estado: "nao_encontrado" } | { estado: "falha" };
+
+/** Como buscarEnderecoPorCep, mas com timeout de 5 s e dizendo por que não veio endereço. */
+export async function consultarCep(cep: string): Promise<ResultadoCep> {
+  const digitos = cep.replace(/\D/g, "");
+  if (digitos.length !== 8) return { estado: "nao_encontrado" };
+  const controlador = new AbortController();
+  const timeout = setTimeout(() => controlador.abort(), 5000);
+  try {
+    const resposta = await fetch(`https://viacep.com.br/ws/${digitos}/json/`, { signal: controlador.signal });
+    if (!resposta.ok) return { estado: resposta.status === 400 ? "nao_encontrado" : "falha" };
+    const dados = (await resposta.json()) as Record<string, unknown>;
+    if (dados.erro) return { estado: "nao_encontrado" };
+    return {
+      estado: "ok",
+      endereco: {
+        cep: digitos,
+        logradouro: typeof dados.logradouro === "string" ? dados.logradouro : "",
+        bairro: typeof dados.bairro === "string" ? dados.bairro : "",
+        cidade: typeof dados.localidade === "string" ? dados.localidade : "",
+        estado: typeof dados.uf === "string" ? dados.uf : "",
+      },
+    };
+  } catch {
+    return { estado: "falha" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export interface EmpresaPorCnpj {
   nome: string;
   /** Razão social e nome fantasia separados — usados no cadastro de conta (/criar-conta). */

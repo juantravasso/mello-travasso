@@ -19,7 +19,7 @@ export interface DefinicaoModulo {
 }
 
 export const MODULOS = [
-  { chave: "dashboard", rotulo: "Dashboard", descricao: "Resumo financeiro e indicadores.", recurso: "gestao", rota: "/dashboard", prefixos: ["/dashboard"] },
+  { chave: "dashboard", rotulo: "Painel principal", descricao: "Resumo financeiro e indicadores.", recurso: "gestao", rota: "/dashboard", prefixos: ["/dashboard"] },
   { chave: "calendario", rotulo: "Calendário", descricao: "Compromissos e lembretes.", recurso: "gestao", rota: "/calendario", prefixos: ["/calendario"] },
   { chave: "captura", rotulo: "Captura de documentos", descricao: "Ler comprovantes e notas por foto.", recurso: "gestao", rota: "/capturar", prefixos: ["/capturar"] },
   { chave: "contas_pagar", rotulo: "Contas a pagar", descricao: "Lançar, editar e dar baixa em despesas.", recurso: "gestao", rota: "/contas-a-pagar", prefixos: ["/contas-a-pagar"] },

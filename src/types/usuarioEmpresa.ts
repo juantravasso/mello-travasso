@@ -36,9 +36,24 @@ export interface ListaUsuariosEmpresa {
 
 /** Retorno de criar/redefinir: a senha temporária aparece só aqui, para o dono repassar. */
 export interface AcessoTemporario {
+  /** Id do usuário criado (para ligar à ficha do funcionário). */
+  usuarioId?: string;
   nome: string;
   email: string;
   senhaTemporaria: string;
   validadeDias: number;
   modulos: ModuloChave[];
+}
+
+/** Cargo ou função da empresa: define os módulos que vêm marcados ao dar acesso a quem tem esse cargo. */
+export interface CargoItem {
+  id: string;
+  nome: string;
+  modulos: ModuloChave[];
+}
+
+export interface ListaCargos {
+  cargos: CargoItem[];
+  /** Módulos que o plano da empresa permite liberar. */
+  modulosDisponiveis: ModuloChave[];
 }

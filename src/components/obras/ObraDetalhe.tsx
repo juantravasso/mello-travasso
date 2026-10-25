@@ -76,7 +76,7 @@ export function ObraDetalhe({ obraId }: { obraId: string }) {
       <Card className="grid grid-cols-2 gap-3 text-sm md:grid-cols-3 lg:grid-cols-6">
         <Resumo rotulo="Total pago" valor={resumo.totalPago} />
         <Resumo rotulo="Em aberto (a pagar)" valor={resumo.totalEmAberto} />
-        {temMateriais && <Resumo rotulo="Materiais do depósito" valor={resumo.totalMateriaisDoDeposito} />}
+        {temMateriais && <Resumo rotulo="Materiais do estoque" valor={resumo.totalMateriaisDoDeposito} />}
         <Resumo rotulo="Total recebido" valor={resumo.totalRecebido} />
         <Resumo rotulo="A receber" valor={resumo.totalAReceber} />
         {resumo.orcamentoPrevisto !== undefined && (

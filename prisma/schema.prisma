@@ -188,6 +188,9 @@ model Funcionario {
   obra         Obra?               @relation(fields: [obraId], references: [id])
   salario      Float?
   status       StatusFuncionarioDb @default(ativo)
+  /// Acesso ao sistema criado junto com o cadastro. Nulo = funcionário sem login.
+  usuarioId    String?             @unique
+  usuario      Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
   criadoEm     String
   atualizadoEm String
 
@@ -301,6 +304,8 @@ model Empresa {
   funcionarios                  Funcionario[]
   categoriasPersonalizadas      CategoriaPersonalizada[]
   formasPagamentoPersonalizadas FormaPagamentoPersonalizada[]
+  configuracoesFormaPagamento   ConfiguracaoFormaPagamento[]
+  cargos                        Cargo[]
   eventos                       EventoConta[]
   produtos                      Produto[]
   saldosEstoque                 SaldoEstoque[]
@@ -436,6 +441,10 @@ model Usuario {
   /// Preferências dos lembretes do calendário (Configurações). Ligadas por padrão.
   lembretesPorEmail        Boolean            @default(true)
   lembretesNoApp           Boolean            @default(true)
+  /// Aparelhos em que a pessoa ligou as notificações push. Sem inscrição, sem push.
+  inscricoesPush           InscricaoPush[]
+  /// Ficha de funcionário a que este acesso pertence (quando o dono criou o acesso pelo cadastro do funcionário).
+  funcionario              Funcionario?
   /// Dicas e novidades por e-mail (campanhas educativas e promocionais). Os e-mails sobre a conta (confirmação, fim do teste) não dependem disto.
   emailsPromocionais       Boolean            @default(true)
   /// Vai no link de descadastro dos e-mails; só serve para desligar `emailsPromocionais`, nada mais.
@@ -1195,6 +1204,7 @@ model LembreteCompromisso {
 enum CanalLembreteDb {
   email
   app
+  push
 }
 
 enum StatusEntregaDb {
@@ -1311,4 +1321,48 @@ model AssinaturaComercial {
 
   @@index([empresaId])
   @@index([planoChave, status])
+}
+
+/// Um aparelho/navegador que aceitou receber notificações push (Web Push). O endpoint identifica o aparelho; as chaves
+/// só servem para cifrar a mensagem para ele. Apagada quando a pessoa desliga ou o navegador informa que expirou.
+model InscricaoPush {
+  id        String  @id @default(uuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  endpoint  String  @unique
+  p256dh    String
+  auth      String
+  criadoEm  String
+
+  @@index([usuarioId])
+}
+
+/// Como cada forma de pagamento da empresa se comporta nas contas: baixa automática (dinheiro, PIX) e dia fixo de
+/// vencimento (cartão de crédito). `chave` é a chave de uma forma padrão ("pix") ou o id de uma personalizada. Sem linha,
+/// valem os padrões de src/lib/formaPagamento.ts.
+model ConfiguracaoFormaPagamento {
+  id              String  @id @default(uuid())
+  empresaId       String
+  empresa         Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  chave           String
+  baixaAutomatica Boolean
+  /// Dia do mês (1 a 31) em que a conta vence, ex.: o vencimento da fatura do cartão. Nulo = vence na data do lançamento.
+  diaVencimento   Int?
+  atualizadoEm    String
+
+  @@unique([empresaId, chave])
+}
+
+/// Cargo ou função da empresa. Define quais módulos vêm marcados quando se dá acesso ao sistema a um funcionário com
+/// esse cargo; depois o dono ajusta os módulos de cada pessoa individualmente.
+model Cargo {
+  id           String   @id @default(uuid())
+  empresaId    String
+  empresa      Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome         String
+  modulos      String[] @default([])
+  criadoEm     String
+  atualizadoEm String
+
+  @@unique([empresaId, nome])
 }

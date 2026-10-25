@@ -36,5 +36,14 @@ export function useFornecedores(filtros?: FiltrosFornecedor) {
     [recarregar],
   );
 
-  return { fornecedores, carregando, recarregar, criarFornecedor, resolverFornecedor };
+  const atualizarFornecedor = useCallback(
+    async (id: string, input: Partial<NovoFornecedorInput>) => {
+      const atualizado = await fornecedoresRepositorio.atualizar(id, input);
+      await recarregar();
+      return atualizado;
+    },
+    [recarregar],
+  );
+
+  return { fornecedores, carregando, recarregar, criarFornecedor, resolverFornecedor, atualizarFornecedor };
 }

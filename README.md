@@ -349,6 +349,39 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Funcionários com acesso, cargos, calendário de contas e movimentação de estoque
+
+- **Acesso pelo cadastro do funcionário** ([novo/page.tsx](src/app/(app)/(gestao)/funcionarios/novo/page.tsx)): o dono marca "Dar acesso ao sistema", escolhe os módulos e confirma a própria senha. O login é o e-mail do funcionário, a senha inicial é
+  `mudar1234` (a tela avisa), a troca é **obrigatória** no primeiro acesso e a senha inicial vence em 7 dias ([senhaTemporaria.server.ts](src/lib/auth/senhaTemporaria.server.ts)). A ficha guarda o vínculo (`Funcionario.usuarioId`).
+  Em Configurações o dono só gerencia quem já existe (editar módulos, redefinir, desativar); não há mais "Adicionar usuário" lá.
+- **Cargos** ([SeletorCargo.tsx](src/components/funcionarios/SeletorCargo.tsx), tabela `Cargo`): o dono cria e edita cargos; cada um guarda os módulos que vêm marcados ao dar acesso. Mudar um cargo não altera o acesso de quem já foi cadastrado; o dono ajusta pessoa a pessoa.
+- **Contas no calendário** ([contasActions.ts](src/services/data/server/contasActions.ts), `listarContasNoCalendario`): contas a pagar e a receber **em aberto** aparecem no dia do vencimento (só os tipos que a pessoa pode ver) e levam à conta.
+- **Movimentação de estoque:** entrada e saída usam o preço da última compra do produto (custo médio se nunca foi comprado), calculado no servidor. Entrada lançada à mão no projeto conta como gasto dele ("Materiais do estoque").
+- **Editar sem sair da tela:** categoria e forma de pagamento (renomear as criadas pela empresa), projeto e fornecedor têm botão "Editar" ao lado do campo; categoria, projeto e fornecedor também criam na hora.
+
+## Formas de pagamento: baixa automática e dia de vencimento
+
+Em Configurações (só o dono), cada forma de pagamento tem **baixa automática** e **dia do vencimento** ([FormasPagamentoConfig.tsx](src/components/layout/FormasPagamentoConfig.tsx), tabela `ConfiguracaoFormaPagamento`).
+Padrões ([formaPagamento.ts](src/lib/formaPagamento.ts)): dinheiro, PIX, débito e transferência baixam sozinhos; cartão de crédito, boleto e cheque ficam em aberto até o vencimento.
+
+- **Baixa automática:** a conta nasce `baixada` quando o cadastro está completo (categoria e forma escolhidas) e não é parcelada, na captura, no lançamento manual e ao completar o cadastro. A data da baixa é a do vencimento, nunca no futuro; o histórico registra "Baixa automática".
+- **Dia do vencimento:** conta sem baixa automática entra para pagar na próxima ocorrência desse dia (mês curto usa o último dia). No lançamento manual só vale se a data de vencimento ficou no padrão (o dia do lançamento); data escolhida à mão vale.
+- Teste de integração: `yarn testar:forma-pagamento` (rodar contra a branch demo, não contra o banco real).
+
+## Lembretes por e-mail e notificação push
+
+No topo do Calendário ([AvisosDoCalendario.tsx](src/components/calendario/AvisosDoCalendario.tsx)) e em Configurações há dois interruptores: **e-mail** (preferência da conta) e **push neste aparelho**
+([InterruptorPush.tsx](src/components/notificacoes/InterruptorPush.tsx), [usePush.ts](src/hooks/usePush.ts)). O push é **por aparelho**: cada navegador pede a permissão e cria a própria inscrição (`InscricaoPush`).
+
+**Como funciona:** o service worker [public/sw.js](public/sw.js) só mostra a notificação e abre o app ao tocar (sem cache e sem modo offline). O servidor envia com `web-push` ([enviar.server.ts](src/lib/push/enviar.server.ts)),
+no mesmo processador dos lembretes ([lembretesWorker.server.ts](src/services/data/server/lembretesWorker.server.ts)): o push é um terceiro canal (`push`), com a mesma garantia de não duplicar e de tentar de novo.
+Aparelho que o navegador informa como expirado (404/410) é apagado; falha temporária reagenda.
+
+**Para ligar em produção:** gere o par de chaves **uma vez** com `npx web-push generate-vapid-keys` e coloque `NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` na Vercel (e faça redeploy). Sem as duas, o interruptor de push nem aparece.
+Trocar o par depois derruba todas as inscrições. A migração `20261024120000_push_lembretes` precisa ser aplicada no banco.
+
+**Limites:** no iPhone o push só funciona com o app **instalado na tela de início** (iOS 16.4+); a tela avisa e leva ao guia de instalação. Se a pessoa bloquear as notificações no navegador, só ela libera lá.
+
 ## Termos, privacidade, cancelamento e retenção
 
 **Textos definitivos** (versão 1.0): [termos](src/app/(publico)/termos/page.tsx) e [privacidade](src/app/(publico)/privacidade/page.tsx). Quem opera, o encarregado de dados, o foro e os prazos prometidos ficam em [operadora.ts](src/lib/operadora.ts)

@@ -11,6 +11,7 @@
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "testar:calendario": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-calendario.ts",
     "testar:ciclo": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-ciclo-de-vida.ts",
+    "testar:forma-pagamento": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-forma-pagamento.ts",
     "testar:convite": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-convite.ts",
     "testar:metricas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-metricas.ts",
     "testar:planos": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-planos-comerciais.ts",
@@ -41,6 +42,7 @@
     "react-dom": "19.2.8",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
+    "web-push": "3.6.7",
     "zod": "^4.1.13"
   },
   "devDependencies": {
@@ -48,6 +50,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "prisma": "6",

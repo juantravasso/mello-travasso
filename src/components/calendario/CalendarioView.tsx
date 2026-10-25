@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CompromissoItem } from "@/types";
 import { calendarioRepositorio as repo } from "@/services/data";
+import { listarContasNoCalendario } from "@/services/data/server/contasActions";
 import { deslocarCursor, intervaloDaVisao, rotuloDoPeriodo, type Visao } from "@/lib/calendario/grade";
 import { cn } from "@/lib/cn";
 import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 import { Button } from "@/components/ui/Button";
+import { AvisosDoCalendario } from "./AvisosDoCalendario";
 import { CompromissoModal } from "./CompromissoModal";
 import { DetalheCompromisso } from "./DetalheCompromisso";
 import { ProximosCompromissos } from "./ProximosCompromissos";
@@ -45,13 +47,15 @@ export function CalendarioView({ hojeInicial, eventoInicial }: { hojeInicial: st
     setErro(null);
     try {
       const { de, ate } = intervaloDaVisao(visao, cursor);
-      const r = await repo.listar(de, ate);
+      // As contas em aberto do período entram junto, no dia do vencimento. Se não der para lê-las (sem acesso, falha de
+      // rede), o calendário segue só com os compromissos.
+      const [r, contas] = await Promise.all([repo.listar(de, ate), listarContasNoCalendario(de, ate).catch(() => [])]);
       if (numero !== requisicao.current) return; // chegou uma resposta mais nova
       if (!r.ok) {
         setErro(r.mensagem);
         return;
       }
-      setItens(r.dados.itens);
+      setItens(ordenar([...r.dados.itens, ...contas]));
       setHoje(r.dados.hoje);
     } catch (e) {
       if (numero === requisicao.current) setErro(mensagemDeErro(e));
@@ -124,6 +128,11 @@ export function CalendarioView({ hojeInicial, eventoInicial }: { hojeInicial: st
   }
 
   function abrirDetalhe(c: CompromissoItem) {
+    // Conta a pagar/receber: abre a própria conta (o calendário só lembra do vencimento).
+    if (c.conta) {
+      router.push(c.conta.href);
+      return;
+    }
     setAberto({ tipo: "detalhe", c });
   }
 
@@ -139,6 +148,8 @@ export function CalendarioView({ hojeInicial, eventoInicial }: { hojeInicial: st
           + Novo compromisso
         </Button>
       </div>
+
+      <AvisosDoCalendario />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">

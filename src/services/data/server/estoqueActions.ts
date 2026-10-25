@@ -11,6 +11,7 @@ import {
   SaldoDivergenteError,
   SaldoInsuficienteError,
 } from "./estoqueCore.server";
+import { valorDeReferencia } from "./depositoCore.server";
 import type { MovimentoEstoque, NovoMovimentoInput, NovoProdutoInput, Produto, ProdutoComSaldo, ProdutoDetalhado } from "@/types";
 
 /** Confere que produto e obra referenciados pertencem à empresa da sessão antes de gravar. */
@@ -79,6 +80,14 @@ export async function registrarMovimento(input: NovoMovimentoInput): Promise<Mov
 
   await validarReferenciasEstoque(sessao.empresaId, produtoId, obraId);
 
+  // Entrada e saída valem pelo preço da última compra do produto (o que faz o material entrar como gasto do projeto);
+  // o valor que veio da tela só vale quando o produto nunca foi comprado nem tem custo médio.
+  let valorDoMovimento = valorUnitario;
+  if (tipo !== "ajuste") {
+    const referencia = await valorDeReferencia(sessao.empresaId, produtoId);
+    valorDoMovimento = referencia && referencia.origem !== "sem_valor" ? referencia.valor : valorUnitario;
+  }
+
   try {
     return await registrarMovimentoInterno(sessao.empresaId, {
       produtoId,
@@ -86,7 +95,7 @@ export async function registrarMovimento(input: NovoMovimentoInput): Promise<Mov
       tipo,
       quantidadeInformada: quantidade,
       saldoEsperado,
-      valorUnitario,
+      valorUnitario: valorDoMovimento,
       origem: "manual",
       lancadoPor: sessao.nome,
       observacao,

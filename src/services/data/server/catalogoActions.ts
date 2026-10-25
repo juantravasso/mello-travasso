@@ -60,3 +60,21 @@ export async function criarFormaPagamentoPersonalizada(
   });
   return paraOpcao(registro);
 }
+
+// Renomear só vale para as opções que a empresa criou (as padrão são fixas). O id não muda, então as contas que já usam
+// a opção continuam apontando para ela com o nome novo.
+export async function renomearCategoriaPersonalizada(id: string, input: NovaOpcaoPersonalizadaInput): Promise<void> {
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.catalogoEscrever);
+  const parsed = novaOpcaoPersonalizadaSchema.safeParse(input);
+  if (!parsed.success || typeof id !== "string") throw new Error("Dados inválidos.");
+  const r = await prisma.categoriaPersonalizada.updateMany({ where: { id, empresaId: sessao.empresaId }, data: { rotulo: parsed.data.rotulo } });
+  if (r.count === 0) throw new Error("Categoria não encontrada.");
+}
+
+export async function renomearFormaPagamentoPersonalizada(id: string, input: NovaOpcaoPersonalizadaInput): Promise<void> {
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.catalogoEscrever);
+  const parsed = novaOpcaoPersonalizadaSchema.safeParse(input);
+  if (!parsed.success || typeof id !== "string") throw new Error("Dados inválidos.");
+  const r = await prisma.formaPagamentoPersonalizada.updateMany({ where: { id, empresaId: sessao.empresaId }, data: { rotulo: parsed.data.rotulo } });
+  if (r.count === 0) throw new Error("Forma de pagamento não encontrada.");
+}

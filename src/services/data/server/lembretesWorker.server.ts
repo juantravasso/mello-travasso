@@ -2,6 +2,8 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { enviarEmail, type MensagemEmail } from "@/lib/email/enviar.server";
+import { enviarPush as enviarPushReal, pushConfigurado, type Inscricao, type ResultadoPush } from "@/lib/push/enviar.server";
+import { montarPayloadPush, type PayloadPush } from "@/lib/push/payload";
 import { ESPERA_ENTRE_TENTATIVAS_MIN, MAX_TENTATIVAS } from "@/lib/calendario/config";
 import { montarEmailLembrete, textoNotificacao, type DadosLembrete } from "@/lib/calendario/emailLembrete";
 import { aindaFazSentidoAvisar } from "@/lib/calendario/lembretes";
@@ -23,11 +25,14 @@ const RESERVA_MS = 5 * 60 * 1000;
 const MS_MINUTO = 60_000;
 
 export type EnviadorEmail = (mensagem: MensagemEmail) => Promise<boolean>;
+export type EnviadorPush = (inscricao: Inscricao, payload: PayloadPush) => Promise<ResultadoPush>;
 
 export interface OpcoesProcessamento {
   agora?: Date;
   /** Substituível em teste; em produção é o envio real (Resend). */
   enviar?: EnviadorEmail;
+  /** Substituível em teste; em produção é o envio real (Web Push). */
+  enviarPush?: EnviadorPush;
   limiteLembretes?: number;
   limiteEntregas?: number;
   /** Restringe a estas empresas. Só os testes usam (relógio simulado não pode tocar em dados reais). */
@@ -53,6 +58,7 @@ const selecaoUsuario = {
   bloqueadoPlataformaEm: true,
   papel: true,
   modulos: true,
+  inscricoesPush: { select: { id: true, endpoint: true, p256dh: true, auth: true } },
 } satisfies Prisma.UsuarioSelect;
 
 const incluirParaEntrega = {
@@ -128,6 +134,8 @@ async function materializarLembretes(agora: Date, limite: number, r: ResultadoPr
     for (const u of destinos) {
       if (u.lembretesNoApp) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "app", criadoEm: iso, atualizadoEm: iso });
       if (u.lembretesPorEmail) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "email", criadoEm: iso, atualizadoEm: iso });
+      // Push vale por aparelho: quem ligou em algum aparelho tem inscrição; sem inscrição, sem entrega.
+      if (u.inscricoesPush.length > 0 && pushConfigurado()) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "push", criadoEm: iso, atualizadoEm: iso });
     }
     // skipDuplicates + unicidade: repetir esta etapa não cria nada de novo.
     if (entregas.length > 0) await prisma.entregaLembrete.createMany({ data: entregas, skipDuplicates: true });
@@ -165,7 +173,7 @@ async function registrarFalha(entrega: { id: string; tentativas: number }, agora
   r.entregasReagendadas++;
 }
 
-async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail, r: ResultadoProcessamento, empresas?: string[]): Promise<void> {
+async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail, enviarPush: EnviadorPush, r: ResultadoProcessamento, empresas?: string[]): Promise<void> {
   const iso = agora.toISOString();
   const candidatas = await prisma.entregaLembrete.findMany({
     where: {
@@ -188,7 +196,7 @@ async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail
     try {
       const c = await prisma.compromisso.findUnique({ where: { id: entrega.lembrete.compromissoId }, include: incluirParaEntrega });
       const destino = c ? [c.criadoPor, ...c.participantes.map((p) => p.usuario)].find((u) => u.id === entrega.usuarioId) : undefined;
-      const preferencia = destino ? (entrega.canal === "email" ? destino.lembretesPorEmail : destino.lembretesNoApp) : false;
+      const preferencia = destino ? (entrega.canal === "email" ? destino.lembretesPorEmail : entrega.canal === "push" ? destino.inscricoesPush.length > 0 : destino.lembretesNoApp) : false;
       // Versão antiga (compromisso remarcado), cancelado, concluído, encerrado, ou destinatário que saiu/desligou o canal.
       if (!c || !destino || !ativo(destino) || !preferencia || c.empresa.bloqueadaEm || entrega.versao !== entrega.lembrete.versao || !aindaFazSentidoAvisar(c, agora)) {
         await ignorarEntrega(entrega.id, iso, r);
@@ -224,6 +232,34 @@ async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail
         continue;
       }
 
+      if (entrega.canal === "push") {
+        const texto = textoNotificacao(dados);
+        const payload = montarPayloadPush({ titulo: texto.titulo, texto: texto.texto, href: `/calendario?evento=${c.id}` });
+        let entregues = 0;
+        let falhou = false;
+        for (const inscricao of destino.inscricoesPush) {
+          const resultado = await enviarPush(inscricao, payload);
+          if (resultado === "ok") entregues++;
+          else if (resultado === "falha") falhou = true;
+          // Aparelho que não existe mais: some da lista, para não tentar de novo a cada lembrete.
+          else await prisma.inscricaoPush.deleteMany({ where: { id: inscricao.id } });
+        }
+        if (entregues === 0 && falhou) {
+          await registrarFalha(entrega, agora, "serviço de push recusou ou está indisponível", r);
+          continue;
+        }
+        if (entregues === 0) {
+          await ignorarEntrega(entrega.id, iso, r);
+          continue;
+        }
+        const marcada = await prisma.entregaLembrete.updateMany({
+          where: { id: entrega.id, status: "pendente" },
+          data: { status: "enviada", enviadoEm: iso, travadoAte: null, proximaTentativaEm: null, ultimoErro: null, atualizadoEm: iso },
+        });
+        if (marcada.count === 1) r.entregasEnviadas++;
+        continue;
+      }
+
       const mensagem = montarEmailLembrete({ ...dados, link });
       // A chave de idempotência (a entrega) faz o provedor descartar um reenvio causado por queda entre o envio e o registro.
       const aceito = await enviar({ para: destino.email, ...mensagem, chaveIdempotencia: `lembrete-${entrega.id}` });
@@ -255,6 +291,6 @@ export async function processarLembretes(opcoes: OpcoesProcessamento = {}): Prom
     entregasIgnoradas: 0,
   };
   await materializarLembretes(agora, opcoes.limiteLembretes ?? 100, r, opcoes.apenasEmpresas);
-  await enviarEntregas(agora, opcoes.limiteEntregas ?? 40, opcoes.enviar ?? enviarEmail, r, opcoes.apenasEmpresas);
+  await enviarEntregas(agora, opcoes.limiteEntregas ?? 40, opcoes.enviar ?? enviarEmail, opcoes.enviarPush ?? enviarPushReal, r, opcoes.apenasEmpresas);
   return r;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Fornecedor } from "@/types";
+import type { Fornecedor, NovoFornecedorInput } from "@/types";
+import { mensagemDeErro } from "@/lib/mensagemErroAcao";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -15,6 +16,8 @@ interface SelectFornecedorProps {
   fornecedorId: string;
   onSelecionar: (fornecedor: Fornecedor) => void;
   onCriar: (nome: string) => Promise<Fornecedor>;
+  /** Edita o cadastro do fornecedor escolhido. Sem isto o botão de editar não aparece. */
+  onAtualizar?: (id: string, input: Partial<NovoFornecedorInput>) => Promise<Fornecedor>;
   /** Nome sugerido (ex.: extraído pela IA) para pré-preencher o cadastro rápido quando nenhum fornecedor bate. */
   nomeSugerido?: string;
 }
@@ -31,8 +34,47 @@ export function SelectFornecedor({
   fornecedorId,
   onSelecionar,
   onCriar,
+  onAtualizar,
   nomeSugerido,
 }: SelectFornecedorProps) {
+  const [editando, setEditando] = useState(false);
+  const [edNome, setEdNome] = useState("");
+  const [edDocumento, setEdDocumento] = useState("");
+  const [edTelefone, setEdTelefone] = useState("");
+  const [edEmail, setEdEmail] = useState("");
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [erroEdicao, setErroEdicao] = useState<string | null>(null);
+  const escolhido = fornecedores.find((f) => f.id === fornecedorId);
+
+  function abrirEdicao() {
+    if (!escolhido) return;
+    setEdNome(escolhido.nome);
+    setEdDocumento(escolhido.documento ?? "");
+    setEdTelefone(escolhido.telefone ?? "");
+    setEdEmail(escolhido.email ?? "");
+    setErroEdicao(null);
+    setEditando(true);
+  }
+
+  async function salvarEdicao() {
+    if (!escolhido || !onAtualizar || edNome.trim() === "") return;
+    setSalvandoEdicao(true);
+    setErroEdicao(null);
+    try {
+      const atualizado = await onAtualizar(escolhido.id, {
+        nome: edNome.trim(),
+        documento: edDocumento.replace(/\D/g, "") || undefined,
+        telefone: edTelefone.trim() || undefined,
+        email: edEmail.trim() || undefined,
+      });
+      onSelecionar(atualizado);
+      setEditando(false);
+    } catch (e) {
+      setErroEdicao(mensagemDeErro(e));
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  }
   const [modalAberto, setModalAberto] = useState(false);
   const [novoNome, setNovoNome] = useState("");
   const [criando, setCriando] = useState(false);
@@ -72,6 +114,32 @@ export function SelectFornecedor({
         ))}
         <option value={VALOR_CRIAR_NOVO}>+ Cadastrar novo fornecedor…</option>
       </Select>
+
+      {onAtualizar && escolhido && (
+        <button type="button" onClick={abrirEdicao} className="-mt-1 w-fit text-xs font-medium text-primary underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-primary">
+          Editar este fornecedor
+        </button>
+      )}
+
+      {editando && (
+        <Modal titulo="Editar fornecedor" onFechar={() => !salvandoEdicao && setEditando(false)}>
+          <div className="flex flex-col gap-3">
+            <Input label="Nome" value={edNome} onChange={(e) => setEdNome(e.target.value)} autoFocus />
+            <Input label="CNPJ ou CPF (opcional)" inputMode="numeric" value={edDocumento} onChange={(e) => setEdDocumento(e.target.value)} />
+            <Input label="Telefone (opcional)" value={edTelefone} onChange={(e) => setEdTelefone(e.target.value)} />
+            <Input label="E-mail (opcional)" type="email" value={edEmail} onChange={(e) => setEdEmail(e.target.value)} />
+            <p className="text-xs text-muted">Endereço e outros dados ficam em Cadastro → Fornecedores.</p>
+            {erroEdicao && (
+              <p role="alert" className="text-sm text-danger">
+                {erroEdicao}
+              </p>
+            )}
+            <Button onClick={() => void salvarEdicao()} disabled={edNome.trim() === "" || salvandoEdicao}>
+              {salvandoEdicao ? "Salvando…" : "Salvar alterações"}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {modalAberto && (
         <Modal titulo="Novo fornecedor" onFechar={() => setModalAberto(false)}>

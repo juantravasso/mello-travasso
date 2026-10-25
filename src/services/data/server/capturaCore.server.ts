@@ -8,12 +8,14 @@ import {
   ratearConta,
   type Rateio,
 } from "@/lib/estoque/rateio";
+import { dataDaBaixaAutomatica, deveBaixarSozinha, proximoVencimento } from "@/lib/formaPagamento";
 import { capturaSchema } from "@/lib/validacao/captura";
 import type { EntradaCaptura, ResultadoCaptura } from "@/types";
 import {
   registrarMovimentoComTx,
   resolverProdutoComTx,
 } from "./estoqueCore.server";
+import { configuracaoDaForma } from "./formaPagamentoCore.server";
 import { ErroDeNegocio } from "./resultado.server";
 
 // Grava uma captura (comprovante ou nota fiscal) inteira numa transação: a conta (ou as parcelas), o rateio entre
@@ -88,8 +90,19 @@ export async function registrarCaptura(
   const agora = new Date().toISOString();
   const hoje = agora.slice(0, 10);
   const parcelamentoId = parcelas ? randomUUID() : undefined;
+  // O que a empresa configurou para esta forma de pagamento: baixa automática (dinheiro, PIX…) e dia fixo de vencimento
+  // (cartão de crédito). Parcelas escolhidas à mão nunca baixam sozinhas nem mudam de data.
+  const configuracao = await configuracaoDaForma(prisma, ctx.empresaId, dados.formaPagamento);
+  const baixaSozinha = deveBaixarSozinha(
+    { categoria: dados.categoria, formaPagamento: dados.formaPagamento, parcelada: Boolean(parcelas) },
+    configuracao,
+  );
+  const vencimentoDaCompra =
+    !baixaSozinha && !parcelas && configuracao.diaVencimento
+      ? proximoVencimento(dados.data, configuracao.diaVencimento)
+      : dados.data;
   const partes = parcelas ?? [
-    { valor: dados.valor, dataVencimento: dados.data },
+    { valor: dados.valor, dataVencimento: vencimentoDaCompra },
   ];
 
   return prisma.$transaction(
@@ -104,7 +117,8 @@ export async function registrarCaptura(
             valor: parte.valor,
             dataLancamento: hoje,
             dataVencimento: parte.dataVencimento,
-            status: "em_aberto",
+            status: baixaSozinha ? "baixada" : "em_aberto",
+            dataBaixa: baixaSozinha ? dataDaBaixaAutomatica(parte.dataVencimento, hoje) : undefined,
             favorecidoOuCliente: dados.favorecido,
             fornecedorId: dados.fornecedorId,
             descricao: parcelas
@@ -115,8 +129,9 @@ export async function registrarCaptura(
             observacao: dados.observacao,
             comprovanteUrl: dados.comprovanteUrl,
             origemNotaFiscal: ehNota,
-            // Vindo da câmera, alguém revisa e completa o cadastro depois.
-            precisaCompletarCadastro: true,
+            // Vindo da câmera, alguém revisa e completa o cadastro depois — a menos que já esteja completo e a forma
+            // de pagamento dê baixa sozinha (aí já nasce paga).
+            precisaCompletarCadastro: !baixaSozinha,
             parcelamentoId,
             parcelaNumero: parcelas ? indice + 1 : undefined,
             parcelaTotal: parcelas ? parcelas.length : undefined,
@@ -127,6 +142,9 @@ export async function registrarCaptura(
                 usuario: ctx.nome,
                 data: agora,
               },
+              ...(baixaSozinha
+                ? [{ id: randomUUID(), tipo: "baixa", usuario: ctx.nome, data: agora, detalhes: "Baixa automática pela forma de pagamento" }]
+                : []),
             ] as unknown as Prisma.InputJsonValue,
             criadoEm: agora,
             atualizadoEm: agora,

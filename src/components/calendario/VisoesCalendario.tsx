@@ -117,13 +117,20 @@ export function VisaoDia({ cursor, itens, aoAbrir, aoCriar }: Omit<PropsBase, "a
           {itens.map((c) => (
             <li key={c.id}>
               <button type="button" onClick={() => aoAbrir(c)} className="flex w-full items-start gap-3 py-3 text-left hover:bg-surface-2/50">
-                <span className="w-24 flex-shrink-0 text-sm tabular-nums text-muted">{c.diaInteiro ? "Dia inteiro" : `${c.horaInicio}${c.horaFim ? ` – ${c.horaFim}` : ""}`}</span>
+                <span className="w-24 flex-shrink-0 text-sm tabular-nums text-muted">{c.conta ? "Vencimento" : c.diaInteiro ? "Dia inteiro" : `${c.horaInicio}${c.horaFim ? ` – ${c.horaFim}` : ""}`}</span>
                 <span className="min-w-0 flex-1">
                   <span className={cn("block truncate font-medium text-foreground", c.status !== "agendado" && "line-through opacity-70")}>{c.titulo}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-2">
-                    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", COR_CATEGORIA[c.categoria].chip)}>{ROTULO_CATEGORIA[c.categoria]}</span>
+                    {c.conta ? (
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", c.conta.tipo === "pagar" ? "bg-danger-bg text-danger" : "bg-success-bg text-success")}>
+                        {c.conta.tipo === "pagar" ? "Conta a pagar" : "Conta a receber"}
+                        {c.conta.atrasada ? " · vencida" : ""}
+                      </span>
+                    ) : (
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", COR_CATEGORIA[c.categoria].chip)}>{ROTULO_CATEGORIA[c.categoria]}</span>
+                    )}
                     {c.status !== "agendado" && <span className="text-xs text-muted">{ROTULO_STATUS[c.status]}</span>}
-                    {!c.souCriador && <span className="text-xs text-muted">de {c.criadoPor.nome}</span>}
+                    {!c.souCriador && !c.conta && <span className="text-xs text-muted">de {c.criadoPor.nome}</span>}
                   </span>
                 </span>
               </button>

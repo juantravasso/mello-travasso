@@ -1,6 +1,7 @@
 "use client";
 
 import type { FiltrosContaFinanceira, Obra, StatusConta, TipoConta } from "@/types";
+import { useCatalogoCategorias } from "@/hooks/useCatalogo";
 import { useFornecedores } from "@/hooks/useFornecedores";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -21,6 +22,7 @@ const rotulosStatus: Record<StatusConta, string> = {
 
 export function FiltrosContas({ tipo, filtros, onChange, obras }: FiltrosContasProps) {
   const { fornecedores } = useFornecedores();
+  const categorias = useCatalogoCategorias(tipo);
 
   return (
     <Card className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -56,6 +58,18 @@ export function FiltrosContas({ tipo, filtros, onChange, obras }: FiltrosContasP
           ))}
         </Select>
       )}
+      <Select
+        label="Categoria"
+        value={filtros.categoria ?? ""}
+        onChange={(e) => onChange({ ...filtros, categoria: e.target.value || undefined })}
+      >
+        <option value="">Todas</option>
+        {categorias.opcoes.map((categoria) => (
+          <option key={categoria.valor} value={categoria.valor}>
+            {categoria.rotulo}
+          </option>
+        ))}
+      </Select>
       <Select
         label="Status"
         value={filtros.status ?? ""}

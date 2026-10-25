@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { entrar } from "@/services/data/server/authActions";
@@ -17,7 +17,6 @@ const ESTADO_INICIAL: EstadoLogin = {};
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   async function acao(_estadoAnterior: EstadoLogin, formData: FormData): Promise<EstadoLogin> {
     const resultado = await entrar({
@@ -55,33 +54,7 @@ export function LoginForm() {
       />
 
       <div className="flex flex-col gap-1">
-        <label className="flex min-w-0 flex-col gap-1 text-sm" htmlFor="senha">
-          <span className="font-medium text-foreground">Senha</span>
-          <div className="relative">
-            <input
-              id="senha"
-              name="senha"
-              type={mostrarSenha ? "text" : "password"}
-              autoComplete="current-password"
-              required
-              aria-describedby={estado.campos?.senha ? "senha-erro" : undefined}
-              className="h-11 w-full min-w-0 rounded-lg border border-border bg-surface px-3 pr-16 text-base text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary"
-            />
-            <button
-              type="button"
-              aria-pressed={mostrarSenha}
-              onClick={() => setMostrarSenha((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-muted hover:text-foreground"
-            >
-              {mostrarSenha ? "Ocultar" : "Mostrar"}
-            </button>
-          </div>
-        </label>
-        {estado.campos?.senha && (
-          <span id="senha-erro" className="text-xs text-danger">
-            {estado.campos.senha}
-          </span>
-        )}
+        <Input id="senha" name="senha" type="password" label="Senha" autoComplete="current-password" required erro={estado.campos?.senha} />
         <Link href="/esqueci-senha" className="w-fit py-1 text-xs font-medium text-muted underline underline-offset-4 hover:text-foreground">
           Esqueci minha senha
         </Link>

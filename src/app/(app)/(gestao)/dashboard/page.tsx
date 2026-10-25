@@ -67,7 +67,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5 animar-entrada">
-      <PageHeader titulo="Dashboard" />
+      <PageHeader titulo="Painel principal" />
 
       <ChecklistAtivacao modo="painel" />
 

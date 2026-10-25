@@ -5,6 +5,7 @@ import type { PreferenciasCalendario } from "@/types";
 import { calendarioRepositorio as repo } from "@/services/data";
 import { FUSOS_DA_EMPRESA } from "@/lib/calendario/config";
 import { mensagemDeErro } from "@/lib/mensagemErroAcao";
+import { InterruptorPush } from "@/components/notificacoes/InterruptorPush";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
 
@@ -83,6 +84,7 @@ export function PreferenciasLembretes() {
             <input type="checkbox" checked={prefs.lembretesNoApp} disabled={salvando} onChange={() => alternar("lembretesNoApp")} className="h-4 w-4 accent-[var(--color-primary)]" />
             Receber notificações no sistema (sino)
           </label>
+          <InterruptorPush />
           {prefs.podeAlterarFuso ? (
             <Select id="fuso-empresa" label="Fuso horário da empresa" value={prefs.fusoHorario} disabled={salvando} onChange={(e) => mudarFuso(e.target.value)}>
               {FUSOS_DA_EMPRESA.map((f) => (

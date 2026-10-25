@@ -189,3 +189,18 @@ export const IconeEtiqueta = (p: SVGProps<SVGSVGElement>) => (
     <circle cx="8" cy="8" r="1.3" />
   </Base>
 );
+
+export const IconeOlho = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Base>
+);
+
+export const IconeOlhoRiscado = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M10.6 5.7A10 10 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.2 4M6.5 6.8C3.8 8.6 2 12 2 12s3.6 6.5 10 6.5c1.7 0 3.2-.5 4.5-1.2" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="M3 3l18 18" />
+  </Base>
+);

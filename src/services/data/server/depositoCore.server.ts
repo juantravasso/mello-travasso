@@ -113,6 +113,20 @@ function valorUnitarioDe(
   return { valor: 0, origem: "sem_valor" };
 }
 
+/**
+ * Valor de um produto para lançar movimentações: o preço da última compra (item de conta não cancelada) ou, na falta
+ * de compra, o custo médio. É o que faz o material entrar como gasto no projeto sem depender de quem digita.
+ */
+export async function valorDeReferencia(
+  empresaId: string,
+  produtoId: string,
+): Promise<{ valor: number; origem: Origem } | null> {
+  const produto = await prisma.produto.findFirst({ where: { id: produtoId, empresaId }, select: { custoMedio: true } });
+  if (!produto) return null;
+  const compra = (await ultimasCompras(prisma, empresaId, [produtoId])).get(produtoId);
+  return valorUnitarioDe(compra, produto.custoMedio);
+}
+
 export async function visaoDoDeposito(
   empresaId: string,
 ): Promise<VisaoDeposito> {
@@ -327,7 +341,7 @@ export async function historicoDeTransferencias(
   });
 }
 
-/** Gasto de cada projeto com material vindo do Depósito: o que entrou menos o que voltou. */
+/** Gasto de cada projeto com material do estoque: o que veio do Depósito (menos o que voltou) e as entradas lançadas à mão. */
 export async function custosTransferidosPorProjeto(
   empresaId: string,
 ): Promise<Record<string, number>> {
@@ -339,6 +353,14 @@ export async function custosTransferidosPorProjeto(
     );
     centavos[m.obraId] =
       (centavos[m.obraId] ?? 0) + (m.tipo === "entrada" ? custo : -custo);
+  }
+  // Entrada lançada à mão no estoque do projeto (sem conta por trás) também é gasto dele, ao valor da última compra.
+  const manuais = await prisma.movimentoEstoque.findMany({
+    where: { empresaId, origem: "manual", tipo: "entrada", obra: { ehDeposito: false }, valorUnitario: { not: null } },
+    select: { obraId: true, quantidade: true, valorUnitario: true },
+  });
+  for (const m of manuais) {
+    centavos[m.obraId] = (centavos[m.obraId] ?? 0) + Math.round(custoDaTransferencia(m.quantidade, m.valorUnitario ?? 0) * 100);
   }
   return Object.fromEntries(
     Object.entries(centavos).map(([obraId, c]) => [obraId, c / 100]),

@@ -8,12 +8,12 @@ const TONS: Record<MovimentoEstoque["tipo"], string> = {
   ajuste: "bg-info",
 };
 
-function rotulo(movimento: MovimentoEstoque, unidade?: string): string {
+function rotulo(movimento: MovimentoEstoque, unidade: string | undefined, onde: string): string {
   const quantidade = movimento.quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
   const comUnidade = unidade ? `${quantidade} ${unidade}` : quantidade;
-  if (movimento.tipo === "entrada") return `Entrada de ${comUnidade}`;
-  if (movimento.tipo === "saida") return `Saída de ${comUnidade}`;
-  return `Ajuste para ${comUnidade}`;
+  if (movimento.tipo === "entrada") return `Entrada de ${comUnidade} ${onde}`;
+  if (movimento.tipo === "saida") return `Saída de ${comUnidade} ${onde}`;
+  return `Ajuste para ${comUnidade} ${onde}`;
 }
 
 export function HistoricoMovimentos({
@@ -25,6 +25,13 @@ export function HistoricoMovimentos({
   obraPorId: Map<string, Obra>;
   unidade?: string;
 }) {
+  const localDe = (m: MovimentoEstoque) => {
+    const obra = obraPorId.get(m.obraId);
+    if (!obra) return "";
+    const lugar = obra.ehDeposito ? "Depósito" : obra.nome;
+    return m.tipo === "saida" ? `de ${lugar}` : m.tipo === "entrada" ? `em ${lugar}` : `em ${lugar}`;
+  };
+
   return (
     <Card className="flex flex-col gap-3">
       <h2 className="font-medium">Histórico de movimentações</h2>
@@ -34,7 +41,7 @@ export function HistoricoMovimentos({
           <li key={movimento.id} className="flex items-start gap-3 text-sm">
             <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${TONS[movimento.tipo]}`} />
             <div className="min-w-0 flex-1">
-              <p className="text-foreground">{rotulo(movimento, unidade)}</p>
+              <p className="text-foreground">{rotulo(movimento, unidade, localDe(movimento))}</p>
               <p className="text-xs text-muted">
                 {obraPorId.get(movimento.obraId)?.nome ?? "Projeto não encontrado"}
                 {movimento.origem === "item_produto" && " · item de nota fiscal"}

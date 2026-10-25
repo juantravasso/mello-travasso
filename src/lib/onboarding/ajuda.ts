@@ -19,13 +19,13 @@ export interface ConteudoAjuda {
 export const AJUDAS: Record<ModuloChave, ConteudoAjuda> = {
   dashboard: {
     chave: "dashboard",
-    titulo: "Dashboard",
+    titulo: "Painel principal",
     oQueE: "Uma tela de resumo: quanto está em aberto, quanto foi pago e recebido no mês, o andamento do orçamento de cada projeto e os gastos por categoria.",
     problema: "Saber onde está o dinheiro costuma exigir abrir várias planilhas ou telas e somar à mão.",
     beneficios: ["Os números saem dos lançamentos que você já fez, sem digitar de novo.", "Mostra de relance o que vence, o que já foi pago e quais projetos estão perto do orçamento."],
-    passos: ["Cadastre seus projetos e lance as contas a pagar e a receber.", "Volte ao Dashboard: os totais e o progresso de cada projeto aparecem sozinhos.", "Use o resumo para decidir o que olhar primeiro."],
-    exemplo: "Você lançou as compras de material de uma obra. No Dashboard, o projeto mostra quanto do orçamento já foi gasto e o total em aberto sobe com as contas que ainda vencem.",
-    acao: { rotulo: "Abrir o Dashboard", href: "/dashboard" },
+    passos: ["Cadastre seus projetos e lance as contas a pagar e a receber.", "Volte ao Painel principal: os totais e o progresso de cada projeto aparecem sozinhos.", "Use o resumo para decidir o que olhar primeiro."],
+    exemplo: "Você lançou as compras de material de uma obra. No Painel principal, o projeto mostra quanto do orçamento já foi gasto e o total em aberto sobe com as contas que ainda vencem.",
+    acao: { rotulo: "Abrir o Painel principal", href: "/dashboard" },
   },
   calendario: {
     chave: "calendario",

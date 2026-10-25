@@ -48,7 +48,7 @@ export const TITULO_GRUPO: Record<GrupoNavegacao, string> = {
 export const ITENS_NAVEGACAO: readonly ItemNavegacao[] = [
   { href: "/rede", rotulo: "Encontrar profissionais", rotuloCurto: "Buscar", Icone: IconeBusca, grupo: "profissionais", destaque: true },
   { href: "/minha-rede", rotulo: "Minha rede", rotuloCurto: "Minha rede", Icone: IconeRede, grupo: "profissionais" },
-  { href: "/dashboard", rotulo: "Dashboard", rotuloCurto: "Início", Icone: IconeDashboard, grupo: "gestao", gestao: true },
+  { href: "/dashboard", rotulo: "Painel principal", rotuloCurto: "Início", Icone: IconeDashboard, grupo: "gestao", gestao: true },
   { href: "/calendario", rotulo: "Calendário", rotuloCurto: "Agenda", Icone: IconeCalendario, grupo: "gestao", gestao: true },
   { href: "/capturar", rotulo: "Captura de documentos", rotuloCurto: "Capturar", Icone: IconeCamera, grupo: "gestao", gestao: true },
   { href: "/contas-a-pagar", rotulo: "Contas a pagar", rotuloCurto: "A Pagar", Icone: IconeSaida, grupo: "gestao", gestao: true },

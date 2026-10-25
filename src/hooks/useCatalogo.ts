@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { OpcaoPersonalizada, TipoConta } from "@/types";
 import { catalogoRepositorio } from "@/services/data";
+import { renomearCategoriaPersonalizada, renomearFormaPagamentoPersonalizada } from "@/services/data/server/catalogoActions";
 import {
   categoriasPagar,
   categoriasReceber,
@@ -13,6 +14,8 @@ import {
 export interface OpcaoCatalogo {
   valor: string;
   rotulo: string;
+  /** Criada pela empresa (pode ser renomeada). As opções padrão são fixas. */
+  personalizada?: boolean;
 }
 
 function useCatalogoBase(
@@ -20,6 +23,7 @@ function useCatalogoBase(
   rotulosPadrao: Record<string, string>,
   listar: () => Promise<OpcaoPersonalizada[]>,
   criarOpcao: (rotulo: string) => Promise<OpcaoPersonalizada>,
+  renomearOpcao: (id: string, rotulo: string) => Promise<void>,
 ) {
   const [personalizadas, setPersonalizadas] = useState<OpcaoPersonalizada[]>([]);
 
@@ -34,7 +38,7 @@ function useCatalogoBase(
 
   const opcoes: OpcaoCatalogo[] = [
     ...padrao.map((valor) => ({ valor, rotulo: rotulosPadrao[valor] ?? valor })),
-    ...personalizadas.map((p) => ({ valor: p.id, rotulo: p.rotulo })),
+    ...personalizadas.map((p) => ({ valor: p.id, rotulo: p.rotulo, personalizada: true })),
   ];
 
   function rotuloDe(valor?: string): string {
@@ -48,7 +52,12 @@ function useCatalogoBase(
     return nova.id;
   }
 
-  return { opcoes, rotuloDe, criar };
+  async function renomear(id: string, rotulo: string): Promise<void> {
+    await renomearOpcao(id, rotulo);
+    await recarregar();
+  }
+
+  return { opcoes, rotuloDe, criar, renomear };
 }
 
 export function useCatalogoCategorias(tipo: TipoConta) {
@@ -59,6 +68,7 @@ export function useCatalogoCategorias(tipo: TipoConta) {
     rotulosPadrao,
     () => catalogoRepositorio.listarCategorias(tipo),
     (rotulo) => catalogoRepositorio.criarCategoria(tipo, { rotulo }),
+    (id, rotulo) => renomearCategoriaPersonalizada(id, { rotulo }),
   );
 }
 
@@ -68,5 +78,6 @@ export function useCatalogoFormasPagamento() {
     rotulosFormaPagamento,
     () => catalogoRepositorio.listarFormasPagamento(),
     (rotulo) => catalogoRepositorio.criarFormaPagamento({ rotulo }),
+    (id, rotulo) => renomearFormaPagamentoPersonalizada(id, { rotulo }),
   );
 }

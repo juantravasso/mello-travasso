@@ -13,6 +13,7 @@ import {
 import type {
   BaixarContaInput,
   CancelarContaInput,
+  CompromissoItem,
   ContaFinanceira,
   EventoHistorico,
   FiltrosContaFinanceira,
@@ -20,7 +21,9 @@ import type {
   ResultadoCancelamentoConta,
   TipoConta,
 } from "@/types";
+import { dataDaBaixaAutomatica, deveBaixarSozinha, proximoVencimento } from "@/lib/formaPagamento";
 import { reverterEstoqueDaConta } from "./estoqueCore.server";
+import { configuracaoDaForma } from "./formaPagamentoCore.server";
 
 // Toda leitura traz o rateio: notas divididas entre projetos e Depósito precisam dele para os custos fecharem.
 const comRateios = { rateios: true } satisfies Prisma.ContaFinanceiraInclude;
@@ -134,6 +137,42 @@ export async function listarContas(
   return registros.map(paraConta);
 }
 
+/**
+ * Contas em aberto que vencem no período, no formato do calendário. Só as dos tipos que a pessoa pode ver (pagar e/ou
+ * receber) e nunca as baixadas ou canceladas: o calendário lembra o que ainda precisa ser pago ou recebido.
+ */
+export async function listarContasNoCalendario(de: string, ate: string): Promise<CompromissoItem[]> {
+  const sessao = await exigirGestaoAction(...ACESSO.contasPagarLer, ...ACESSO.contasReceberLer);
+  const formato = /^d{4}-d{2}-d{2}$/;
+  if (!formato.test(de) || !formato.test(ate)) return [];
+  const tipos = tiposLiberados(sessao);
+  if (tipos.length === 0) return [];
+  const registros = await prisma.contaFinanceira.findMany({
+    where: { empresaId: sessao.empresaId, status: "em_aberto", tipo: { in: tipos }, dataVencimento: { gte: de, lte: ate } },
+    orderBy: [{ dataVencimento: "asc" }, { criadoEm: "asc" }],
+    take: 500,
+  });
+  // "Vencida" pelo dia de hoje no Brasil (o servidor roda em UTC e viraria o dia à noite).
+  const hoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const moeda = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return registros.map((c) => {
+    const pagar = c.tipo === "pagar";
+    return {
+      id: `conta-${c.id}`,
+      titulo: `${pagar ? "A pagar" : "A receber"}: ${c.favorecidoOuCliente} · ${moeda(c.valor)}`,
+      descricao: c.descricao,
+      categoria: "financeiro" as const,
+      status: "agendado" as const,
+      data: c.dataVencimento,
+      diaInteiro: true,
+      criadoPor: { id: "", nome: "" },
+      participantes: [],
+      souCriador: true,
+      conta: { tipo: c.tipo as "pagar" | "receber", href: `/contas-a-${pagar ? "pagar" : "receber"}/${c.id}`, valor: c.valor, atrasada: c.dataVencimento < hoje },
+    };
+  });
+}
+
 export async function obterContaPorId(id: string): Promise<ContaFinanceira | null> {
   const sessao = await exigirGestaoAction(...ACESSO.contasPagarLer, ...ACESSO.contasReceberLer);
   const registro = await prisma.contaFinanceira.findFirst({
@@ -152,14 +191,24 @@ export async function criarConta(input: NovaContaFinanceiraInput): Promise<Conta
 
   const agora = new Date().toISOString();
   const { parcela, ...resto } = parsed.data;
+  // Forma de pagamento configurada pela empresa: baixa automática (dinheiro, PIX…) ou dia fixo de vencimento (cartão).
+  const configuracao = await configuracaoDaForma(prisma, sessao.empresaId, resto.formaPagamento);
+  const baixaSozinha = !resto.precisaCompletarCadastro && deveBaixarSozinha({ categoria: resto.categoria, formaPagamento: resto.formaPagamento, parcelada: Boolean(parcela) }, configuracao);
+  // Vencimento deixado no padrão (o próprio dia do lançamento) ganha o dia fixo da forma; data escolhida à mão vale.
+  const dataVencimento =
+    !baixaSozinha && !parcela && configuracao.diaVencimento && resto.dataVencimento === resto.dataLancamento
+      ? proximoVencimento(resto.dataLancamento, configuracao.diaVencimento)
+      : resto.dataVencimento;
   const registro = await prisma.contaFinanceira.create({
     data: {
       ...resto,
+      dataVencimento,
       empresaId: sessao.empresaId,
       parcelaNumero: parcela?.numero,
       parcelaTotal: parcela?.totalParcelas,
-      status: "em_aberto",
-      historico: [evento("criacao", sessao.nome)] as unknown as Prisma.InputJsonValue,
+      status: baixaSozinha ? "baixada" : "em_aberto",
+      dataBaixa: baixaSozinha ? dataDaBaixaAutomatica(dataVencimento, agora.slice(0, 10)) : undefined,
+      historico: [evento("criacao", sessao.nome), ...(baixaSozinha ? [evento("baixa", sessao.nome, "Baixa automática pela forma de pagamento")] : [])] as unknown as Prisma.InputJsonValue,
       criadoEm: agora,
       atualizadoEm: agora,
     },
@@ -201,13 +250,20 @@ export async function atualizarConta(
 
   const { parcela, ...resto } = parsed.data;
   const historicoAtual = (existente.historico as unknown as EventoHistorico[]) ?? [];
+  // Ao completar o cadastro de uma conta em aberto com forma de baixa automática (dinheiro, PIX…), ela já é dada como paga.
+  const categoriaFinal = resto.categoria ?? existente.categoria;
+  const formaFinal = resto.formaPagamento ?? existente.formaPagamento;
+  const configuracao = await configuracaoDaForma(prisma, sessao.empresaId, formaFinal);
+  const baixaSozinha = deveBaixarSozinha({ categoria: categoriaFinal, formaPagamento: formaFinal, parcelada: existente.parcelaNumero !== null || Boolean(parcela) }, configuracao);
+  const agoraIso = new Date().toISOString();
   const resultado = await prisma.contaFinanceira.updateMany({
     where: { id, empresaId: sessao.empresaId },
     data: {
       ...resto,
       ...(parcela ? { parcelaNumero: parcela.numero, parcelaTotal: parcela.totalParcelas } : {}),
-      historico: [...historicoAtual, evento("edicao", sessao.nome)] as unknown as Prisma.InputJsonValue,
-      atualizadoEm: new Date().toISOString(),
+      ...(baixaSozinha ? { status: "baixada", dataBaixa: dataDaBaixaAutomatica(resto.dataVencimento ?? existente.dataVencimento, agoraIso.slice(0, 10)) } : {}),
+      historico: [...historicoAtual, evento("edicao", sessao.nome), ...(baixaSozinha ? [evento("baixa", sessao.nome, "Baixa automática pela forma de pagamento")] : [])] as unknown as Prisma.InputJsonValue,
+      atualizadoEm: agoraIso,
     },
   });
   if (resultado.count === 0) throw new Error("Conta não encontrada.");

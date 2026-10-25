@@ -12,7 +12,6 @@ type Situacao = { tipo: "ocioso" } | { tipo: "enviando" } | { tipo: "pronto" } |
 export function RedefinirSenhaForm({ token }: { token: string }) {
   const [senha, setSenha] = useState("");
   const [confirmacao, setConfirmacao] = useState("");
-  const [mostrar, setMostrar] = useState(false);
   const [situacao, setSituacao] = useState<Situacao>({ tipo: "ocioso" });
 
   const diferente = confirmacao.length > 0 && senha !== confirmacao;
@@ -50,7 +49,7 @@ export function RedefinirSenhaForm({ token }: { token: string }) {
       <Input
         id="senhaNova"
         name="senhaNova"
-        type={mostrar ? "text" : "password"}
+        type="password"
         label="Nova senha"
         autoComplete="new-password"
         required
@@ -61,7 +60,7 @@ export function RedefinirSenhaForm({ token }: { token: string }) {
       <Input
         id="confirmacao"
         name="confirmacao"
-        type={mostrar ? "text" : "password"}
+        type="password"
         label="Repita a nova senha"
         autoComplete="new-password"
         required
@@ -70,10 +69,6 @@ export function RedefinirSenhaForm({ token }: { token: string }) {
         maxLength={128}
         erro={diferente ? "As senhas não são iguais." : undefined}
       />
-      <label className="flex min-h-9 items-center gap-2 text-sm text-muted">
-        <input type="checkbox" className="size-4" checked={mostrar} onChange={(e) => setMostrar(e.target.checked)} />
-        Mostrar senhas
-      </label>
       {situacao.tipo === "erro" && (
         <p role="alert" className="rounded-lg border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
           {situacao.mensagem}{" "}

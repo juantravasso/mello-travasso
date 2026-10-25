@@ -7,7 +7,9 @@ import { CameraCapture } from "@/components/camera/CameraCapture";
 import { ConfirmacaoExtracao, type DadosConfirmados } from "@/components/camera/ConfirmacaoExtracao";
 import { PassosCaptura } from "@/components/camera/PassosCaptura";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { extrairDadosDoComprovante } from "@/services/ai/reciboReader";
 import { capturaRepositorio } from "@/services/data";
@@ -25,6 +27,7 @@ export default function PaginaCaptura() {
   const [dadosExtraidos, setDadosExtraidos] = useState<DadosExtraidosComprovante | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erroAoSalvar, setErroAoSalvar] = useState<string | null>(null);
+  const [manualAberto, setManualAberto] = useState(false);
 
   async function aoConfirmarFoto(foto: Blob) {
     const dataUrl = await blobParaDataUrl(foto);
@@ -51,7 +54,7 @@ export default function PaginaCaptura() {
     setErroAoSalvar(null);
   }
 
-  async function salvarConta(dados: DadosConfirmados) {
+  async function salvarConta(dados: DadosConfirmados, comprovanteUrl: string) {
     setEnviando(true);
     setErroAoSalvar(null);
     try {
@@ -69,7 +72,7 @@ export default function PaginaCaptura() {
         categoria: dados.categoria,
         formaPagamento: dados.formaPagamento,
         observacao: dados.observacao,
-        comprovanteUrl: previewUrl,
+        comprovanteUrl,
         itens: dados.itens.map((item) => ({
           descricao: item.descricao.trim(),
           quantidade: item.quantidade,
@@ -109,18 +112,47 @@ export default function PaginaCaptura() {
       <PageHeader titulo="Captura de documentos" />
       <PassosCaptura passoAtual={etapa === "captura" ? 1 : 2} />
       {etapa === "captura" ? (
-        <CameraCapture onFotoConfirmada={aoConfirmarFoto} />
+        <>
+          <CameraCapture onFotoConfirmada={aoConfirmarFoto} />
+          <div className="mt-4 flex flex-col items-center gap-1 border-t border-border pt-4 text-center">
+            <p className="text-sm text-muted">Sem o documento em mãos?</p>
+            <Button
+              variante="outline"
+              onClick={() => {
+                setErroAoSalvar(null);
+                setManualAberto(true);
+              }}
+            >
+              Lançar manualmente, sem foto
+            </Button>
+          </div>
+        </>
       ) : (
         <ConfirmacaoExtracao
           previewUrl={previewUrl}
           carregandoIA={carregandoIA}
           erroIA={erroIA}
           dadosExtraidos={dadosExtraidos}
-          onConfirmar={salvarConta}
+          onConfirmar={(dados) => salvarConta(dados, previewUrl)}
           onCancelar={cancelarRevisao}
           enviando={enviando}
           erroAoSalvar={erroAoSalvar}
         />
+      )}
+      {manualAberto && (
+        <Modal titulo="Lançamento manual" tamanho="lg" onFechar={() => setManualAberto(false)}>
+          <p className="mb-4 text-sm text-muted">Mesmo lançamento da foto, preenchido por você. Fica sem comprovante anexado.</p>
+          <ConfirmacaoExtracao
+            previewUrl=""
+            carregandoIA={false}
+            erroIA={null}
+            dadosExtraidos={null}
+            onConfirmar={(dados) => salvarConta(dados, "")}
+            onCancelar={() => setManualAberto(false)}
+            enviando={enviando}
+            erroAoSalvar={erroAoSalvar}
+          />
+        </Modal>
       )}
     </div>
   );

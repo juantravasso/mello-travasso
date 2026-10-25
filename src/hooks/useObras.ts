@@ -33,5 +33,14 @@ export function useObras() {
     [recarregar],
   );
 
-  return { obras, locais, deposito, carregando, recarregar, criarObra };
+  const atualizarObra = useCallback(
+    async (id: string, input: Partial<NovaObraInput>) => {
+      const atualizada = await obrasRepositorio.atualizar(id, input);
+      await recarregar();
+      return atualizada;
+    },
+    [recarregar],
+  );
+
+  return { obras, locais, deposito, carregando, recarregar, criarObra, atualizarObra };
 }

@@ -36,8 +36,8 @@ function situacaoDe(u: {
   return "ativo";
 }
 
-function acesso(nome: string, email: string, modulos: ModuloChave[]): AcessoTemporario {
-  return { nome, email, senhaTemporaria: SENHA_TEMPORARIA, validadeDias: VALIDADE_SENHA_TEMPORARIA_DIAS, modulos };
+function acesso(nome: string, email: string, modulos: ModuloChave[], usuarioId?: string): AcessoTemporario {
+  return { usuarioId, nome, email, senhaTemporaria: SENHA_TEMPORARIA, validadeDias: VALIDADE_SENHA_TEMPORARIA_DIAS, modulos };
 }
 
 /** Módulos que o plano da empresa permite liberar (o gratuito não tem os de gestão). */
@@ -117,8 +117,10 @@ export async function criar(ctx: Contexto, input: unknown, senhaDoDono: string):
 
   const agora = new Date();
   const iso = agora.toISOString();
+  let criadoId: string;
   try {
-    await prisma.usuario.create({
+    const criado = await prisma.usuario.create({
+      select: { id: true },
       data: {
         empresaId: ctx.empresaId,
         nome: parsed.data.nome,
@@ -132,13 +134,19 @@ export async function criar(ctx: Contexto, input: unknown, senhaDoDono: string):
         atualizadoEm: iso,
       },
     });
+    criadoId = criado.id;
   } catch (erro) {
     // E-mail já usado (aqui ou em outra empresa): a mesma resposta nos dois casos, para a lista de
     // e-mails cadastrados na plataforma não vazar para quem cria usuários.
     if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") throw new ErroDeNegocio(MENSAGEM_NAO_FOI_POSSIVEL);
     throw erro;
   }
-  return acesso(parsed.data.nome, parsed.data.email, modulos);
+  return acesso(parsed.data.nome, parsed.data.email, modulos, criadoId);
+}
+
+/** Desfaz um usuário que acabou de ser criado (a ficha do funcionário não pôde ser gravada em seguida). */
+export async function desfazerCriacao(ctx: Contexto, usuarioId: string): Promise<void> {
+  await prisma.usuario.deleteMany({ where: { id: usuarioId, empresaId: ctx.empresaId, papel: "membro" } });
 }
 
 /** Alvo precisa ser um membro desta empresa, que não seja o próprio dono da sessão. */

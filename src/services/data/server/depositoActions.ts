@@ -32,3 +32,11 @@ export async function listarTransferencias(filtro?: { obraId?: string; produtoId
 export async function obterCustosTransferidos(): Promise<ResultadoAction<Record<string, number>>> {
   return executar(async () => core.custosTransferidosPorProjeto((await exigirGestaoAction(...ACESSO.transferenciasLer)).empresaId));
 }
+
+/** Valor unitário que uma movimentação usa para o produto: preço da última compra (ou custo médio). */
+export async function obterValorDeReferencia(produtoId: string): Promise<ResultadoAction<{ valor: number; origem: "ultima_compra" | "custo_medio" | "sem_valor" } | null>> {
+  return executar(async () => {
+    const sessao = await exigirGestaoAction(...ACESSO.estoque);
+    return core.valorDeReferencia(sessao.empresaId, produtoId);
+  });
+}

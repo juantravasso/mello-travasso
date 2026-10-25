@@ -5,7 +5,7 @@ import { dataLocal } from "../src/lib/calendario/tempo";
 import type { MensagemEmail } from "../src/lib/email/enviar.server";
 import * as core from "../src/services/data/server/calendarioCore.server";
 import * as notificacoes from "../src/services/data/server/notificacaoCore.server";
-import { processarLembretes, type EnviadorEmail } from "../src/services/data/server/lembretesWorker.server";
+import { processarLembretes, type EnviadorEmail, type EnviadorPush } from "../src/services/data/server/lembretesWorker.server";
 import { MAX_TENTATIVAS } from "../src/lib/calendario/config";
 
 // Teste de integração do calendário e dos lembretes contra o banco REAL. Cria duas empresas descartáveis (o nome
@@ -434,6 +434,62 @@ async function main(): Promise<void> {
     await rejeita(core.criar(a1, base({ titulo: "  " }), T0), /Informe o título/);
     await rejeita(core.criar(a1, { ...base(), empresaId: empB }, T0), /./);
     await rejeita(core.criar(a1, { ...base(), criadoPorId: a2.usuarioId }, T0), /./);
+  });
+
+  // Push -------------------------------------------------------------------------------------------------
+  await teste("push: só quem tem aparelho inscrito recebe; aparelho expirado é apagado; falha temporária reagenda", async () => {
+    const antes = { pub: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, priv: process.env.VAPID_PRIVATE_KEY };
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = "chave-publica-de-teste";
+    process.env.VAPID_PRIVATE_KEY = "chave-privada-de-teste";
+    try {
+      const iso = new Date().toISOString();
+      await prisma.inscricaoPush.createMany({
+        data: [
+          { usuarioId: a1.usuarioId, endpoint: `https://push.example.test/${marca}/ana`, p256dh: "p", auth: "a", criadoEm: iso },
+          { usuarioId: a2.usuarioId, endpoint: `https://push.example.test/${marca}/bruno`, p256dh: "p", auth: "a", criadoEm: iso },
+        ],
+      });
+      const c = await core.criar(a1, base({ titulo: "Evento com push", data: dataEm(6), participantesIds: [a2.usuarioId] }), T0);
+      const agora = await agoraDe(c, "vespera")();
+      const enviados: string[] = [];
+      const push: EnviadorPush = async (inscricao, payload) => {
+        // O processador também pega entregas de outros compromissos do teste: só o deste interessa.
+        if (payload.href !== `/calendario?evento=${c.id}`) return "ok";
+        enviados.push(inscricao.endpoint);
+        return inscricao.endpoint.endsWith("/bruno") ? "expirada" : "ok";
+      };
+      await processarLembretes({ agora, enviar: enviadorOk([]), enviarPush: push, apenasEmpresas: escopo });
+      assert.deepEqual(enviados.sort(), [`https://push.example.test/${marca}/ana`, `https://push.example.test/${marca}/bruno`].sort());
+      assert.equal(await prisma.inscricaoPush.count({ where: { usuarioId: a2.usuarioId } }), 0, "aparelho expirado não foi apagado");
+      assert.equal(await prisma.inscricaoPush.count({ where: { usuarioId: a1.usuarioId } }), 1);
+      const entregas = await prisma.entregaLembrete.findMany({ where: { canal: "push", lembrete: { compromissoId: c.id } } });
+      assert.deepEqual(entregas.map((e) => e.status).sort(), ["enviada", "ignorada"]);
+
+      // Reprocessar não envia de novo.
+      enviados.length = 0;
+      await processarLembretes({ agora, enviar: enviadorOk([]), enviarPush: push, apenasEmpresas: escopo });
+      assert.equal(enviados.length, 0);
+
+      // Falha temporária: a entrega fica pendente para uma nova tentativa.
+      const c2 = await core.criar(a1, base({ titulo: "Push que falha", data: dataEm(7) }), T0);
+      const falha: EnviadorPush = async () => "falha";
+      await processarLembretes({ agora: await agoraDe(c2, "vespera")(), enviar: enviadorOk([]), enviarPush: falha, apenasEmpresas: escopo });
+      const pendente = await prisma.entregaLembrete.findFirst({ where: { canal: "push", lembrete: { compromissoId: c2.id } } });
+      assert.equal(pendente?.status, "pendente");
+      assert.equal(pendente?.tentativas, 1);
+      assert.ok(await prisma.inscricaoPush.findFirst({ where: { usuarioId: a1.usuarioId } }), "falha temporária não pode apagar o aparelho");
+
+      // Com o recurso desligado no servidor, nenhuma entrega de push nasce.
+      delete process.env.VAPID_PRIVATE_KEY;
+      const c3 = await core.criar(a1, base({ titulo: "Sem push", data: dataEm(8) }), T0);
+      await processarLembretes({ agora: await agoraDe(c3, "vespera")(), enviar: enviadorOk([]), enviarPush: push, apenasEmpresas: escopo });
+      assert.equal(await prisma.entregaLembrete.count({ where: { canal: "push", lembrete: { compromissoId: c3.id } } }), 0);
+    } finally {
+      if (antes.pub === undefined) delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      else process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = antes.pub;
+      if (antes.priv === undefined) delete process.env.VAPID_PRIVATE_KEY;
+      else process.env.VAPID_PRIVATE_KEY = antes.priv;
+    }
   });
 }
 

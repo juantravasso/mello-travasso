@@ -4,13 +4,14 @@ import { useState } from "react";
 import type { NovaContaFinanceiraInput, Obra, TipoConta } from "@/types";
 import { useCatalogoCategorias, useCatalogoFormasPagamento } from "@/hooks/useCatalogo";
 import { useFornecedores } from "@/hooks/useFornecedores";
+import { useObras } from "@/hooks/useObras";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { ModalParcelamento, type ParcelaEditavel } from "./ModalParcelamento";
 import { SelectComCriacao } from "./SelectComCriacao";
 import { SelectFornecedor } from "./SelectFornecedor";
+import { SelectProjeto } from "./SelectProjeto";
 import { FORMAS_PAGAMENTO_PARCELAVEIS } from "@/lib/categorias";
 import { hojeISO } from "@/lib/formatadores";
 import { blobParaDataUrl } from "@/lib/imagem";
@@ -25,7 +26,10 @@ interface ContaFormProps {
 export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps) {
   const categoriasCatalogo = useCatalogoCategorias(tipo);
   const formasCatalogo = useCatalogoFormasPagamento();
-  const { fornecedores, criarFornecedor } = useFornecedores();
+  const { fornecedores, criarFornecedor, atualizarFornecedor } = useFornecedores();
+  // A lista de projetos vem de quem abriu o formulário; o hook traz criar e editar, e a lista já com o que mudou aqui.
+  const { obras: obrasAtuais, criarObra, atualizarObra } = useObras();
+  const opcoesDeProjeto = obrasAtuais.length > 0 ? obrasAtuais : obras;
 
   const [obraId, setObraId] = useState(obras[0]?.id ?? "");
   const [valor, setValor] = useState("");
@@ -104,16 +108,15 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
   return (
     <div className="flex flex-col gap-3">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)}>
-          <option value="" disabled>
-            Selecione o projeto
-          </option>
-          {obras.map((obra) => (
-            <option key={obra.id} value={obra.id}>
-              {obra.nome}
-            </option>
-          ))}
-        </Select>
+        <SelectProjeto
+          label="Projeto"
+          value={obraId}
+          onChange={setObraId}
+          opcoes={opcoesDeProjeto}
+          criarObra={criarObra}
+          atualizarObra={atualizarObra}
+          rotuloVazio="Selecione o projeto"
+        />
         {tipo === "pagar" ? (
           <SelectFornecedor
             label="Fornecedor/Favorecido"
@@ -124,6 +127,7 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
               setFavorecidoOuCliente(f.nome);
             }}
             onCriar={(nome) => criarFornecedor({ nome })}
+            onAtualizar={atualizarFornecedor}
           />
         ) : (
           <Input
@@ -147,6 +151,7 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
           onChange={setCategoria}
           opcoes={categoriasCatalogo.opcoes}
           onCriar={categoriasCatalogo.criar}
+          onRenomear={categoriasCatalogo.renomear}
           tituloModal="Nova categoria"
         />
         <SelectComCriacao
@@ -156,6 +161,7 @@ export function ContaForm({ tipo, obras, onSalvar, onCancelar }: ContaFormProps)
           onChange={aoMudarFormaPagamento}
           opcoes={formasCatalogo.opcoes}
           onCriar={formasCatalogo.criar}
+          onRenomear={formasCatalogo.renomear}
           tituloModal="Nova forma de pagamento"
         />
         {podeParcelar && (

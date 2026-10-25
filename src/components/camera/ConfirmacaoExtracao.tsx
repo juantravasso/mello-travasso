@@ -8,11 +8,11 @@ import { useObras } from "@/hooks/useObras";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { ModalParcelamento, type ParcelaEditavel } from "@/components/contas/ModalParcelamento";
 import { SelectComCriacao } from "@/components/contas/SelectComCriacao";
 import { SelectFornecedor } from "@/components/contas/SelectFornecedor";
+import { SelectProjeto } from "@/components/contas/SelectProjeto";
 import { FORMAS_PAGAMENTO_PARCELAVEIS, categoriasPagar } from "@/lib/categorias";
 import { formatarMoeda, hojeISO } from "@/lib/formatadores";
 import { ratearConta } from "@/lib/estoque/rateio";
@@ -44,6 +44,7 @@ export interface DadosConfirmados {
 }
 
 interface ConfirmacaoExtracaoProps {
+  /** Vazio no lançamento manual (sem foto): a tela não mostra a imagem nem a leitura por IA. */
   previewUrl: string;
   carregandoIA: boolean;
   erroIA: string | null;
@@ -69,10 +70,10 @@ export function ConfirmacaoExtracao({
   enviando,
   erroAoSalvar,
 }: ConfirmacaoExtracaoProps) {
-  const { obras, locais, deposito } = useObras();
+  const { obras, locais, deposito, criarObra, atualizarObra } = useObras();
   const categoriasCatalogo = useCatalogoCategorias("pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
-  const { fornecedores, criarFornecedor, resolverFornecedor } = useFornecedores();
+  const { fornecedores, criarFornecedor, resolverFornecedor, atualizarFornecedor } = useFornecedores();
   const dadosJaResolvidosRef = useRef<DadosExtraidosComprovante | null>(null);
 
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCapturado>("comprovante");
@@ -210,24 +211,26 @@ export function ConfirmacaoExtracao({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={previewUrl}
-          alt="Comprovante fotografado"
-          className="h-24 w-20 flex-shrink-0 rounded-lg border border-border object-cover"
-        />
-        <div className="flex flex-1 flex-col justify-center">
-          {carregandoIA && <p className="text-sm text-muted">Lendo documento com IA…</p>}
-          {erroIA && <p className="text-sm text-danger">{erroIA} Preencha manualmente abaixo.</p>}
-          {!carregandoIA && !erroIA && dadosExtraidos && (
-            <p className="text-sm text-muted">
-              Confiança da leitura: {Math.round(dadosExtraidos.confiancaExtracao * 100)}%. Revise os
-              campos destacados.
-            </p>
-          )}
+      {previewUrl && (
+        <div className="flex gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={previewUrl}
+            alt="Comprovante fotografado"
+            className="h-24 w-20 flex-shrink-0 rounded-lg border border-border object-cover"
+          />
+          <div className="flex flex-1 flex-col justify-center">
+            {carregandoIA && <p className="text-sm text-muted">Lendo documento com IA…</p>}
+            {erroIA && <p className="text-sm text-danger">{erroIA} Preencha manualmente abaixo.</p>}
+            {!carregandoIA && !erroIA && dadosExtraidos && (
+              <p className="text-sm text-muted">
+                Confiança da leitura: {Math.round(dadosExtraidos.confiancaExtracao * 100)}%. Revise os
+                campos destacados.
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="inline-flex rounded-lg border border-border bg-surface p-1">
         {(["comprovante", "nota_fiscal"] as const).map((opcao) => (
@@ -271,6 +274,7 @@ export function ConfirmacaoExtracao({
             setFavorecido(f.nome);
           }}
           onCriar={(nome) => criarFornecedor({ nome })}
+          onAtualizar={atualizarFornecedor}
         />
         {resolvendoFornecedor && <p className="text-xs text-muted">Identificando fornecedor…</p>}
         {!resolvendoFornecedor && fornecedorId && (
@@ -285,20 +289,15 @@ export function ConfirmacaoExtracao({
           destaque={camposDestacados.includes("descricao")}
           placeholder="Descrição do gasto"
         />
-        <Select
+        <SelectProjeto
           label={ehNota ? "Destino de todos os itens" : "Projeto"}
           value={obraId}
-          onChange={(e) => aoMudarDestinoGeral(e.target.value)}
-        >
-          <option value="" disabled>
-            Selecione o projeto
-          </option>
-          {opcoesDeDestino.map((obra) => (
-            <option key={obra.id} value={obra.id}>
-              {obra.ehDeposito ? "Depósito (estoque da empresa)" : obra.nome}
-            </option>
-          ))}
-        </Select>
+          onChange={aoMudarDestinoGeral}
+          opcoes={opcoesDeDestino}
+          criarObra={criarObra}
+          atualizarObra={atualizarObra}
+          rotuloVazio="Selecione o projeto"
+        />
         {ehNota && (
           <p className="text-xs text-muted">
             Escolha um destino para a nota inteira ou, nos itens abaixo, mande cada produto para um projeto ou para o Depósito.
@@ -319,6 +318,7 @@ export function ConfirmacaoExtracao({
           onChange={(v) => setCategoria(v)}
           opcoes={categoriasCatalogo.opcoes}
           onCriar={categoriasCatalogo.criar}
+          onRenomear={categoriasCatalogo.renomear}
           tituloModal="Nova categoria"
         />
         <SelectComCriacao
@@ -329,6 +329,7 @@ export function ConfirmacaoExtracao({
           onChange={aoMudarFormaPagamento}
           opcoes={formasCatalogo.opcoes}
           onCriar={formasCatalogo.criar}
+          onRenomear={formasCatalogo.renomear}
           tituloModal="Nova forma de pagamento"
         />
         {FORMAS_PAGAMENTO_PARCELAVEIS.includes(formaPagamento) && (
@@ -386,19 +387,17 @@ export function ConfirmacaoExtracao({
                 value={String(item.valorTotal)}
                 onChange={(e) => atualizarItem(indice, "valorTotal", e.target.value)}
               />
-              <Select
+              <SelectProjeto
                 label="Vai para"
                 className="col-span-2"
                 value={item.obraId}
-                onChange={(e) => setItens((atual) => atual.map((it, i) => (i === indice ? { ...it, obraId: e.target.value } : it)))}
-              >
-                <option value="">Igual ao geral ({obraId ? (obraId === deposito?.id ? "Depósito" : nomeDoLocal(obraId)) : "—"})</option>
-                {opcoesDeDestino.map((obra) => (
-                  <option key={obra.id} value={obra.id}>
-                    {obra.ehDeposito ? "Depósito (estoque da empresa)" : obra.nome}
-                  </option>
-                ))}
-              </Select>
+                onChange={(novo) => setItens((atual) => atual.map((it, i) => (i === indice ? { ...it, obraId: novo } : it)))}
+                opcoes={opcoesDeDestino}
+                criarObra={criarObra}
+                atualizarObra={atualizarObra}
+                vazioEscolhivel
+                rotuloVazio={`Igual ao geral (${obraId ? (obraId === deposito?.id ? "Depósito" : nomeDoLocal(obraId)) : "—"})`}
+              />
               <div className="col-span-2 flex justify-end">
                 <Button variante="ghost" tamanho="sm" onClick={() => removerItem(indice)}>
                   Remover item

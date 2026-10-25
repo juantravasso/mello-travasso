@@ -10,7 +10,6 @@ import { useStatusPlano } from "@/components/layout/StatusPlanoContext";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { StatusContaBadge } from "@/components/ui/StatusContaBadge";
 import { HistoricoConta } from "./HistoricoConta";
@@ -18,13 +17,14 @@ import { ModalCancelarConta } from "./ModalCancelarConta";
 import { ModalConfirmarBaixa } from "./ModalConfirmarBaixa";
 import { SelectComCriacao } from "./SelectComCriacao";
 import { SelectFornecedor } from "./SelectFornecedor";
+import { SelectProjeto } from "./SelectProjeto";
 import { lancadoPor } from "@/lib/autoria";
 import { formatarData, formatarMoeda, hojeISO } from "@/lib/formatadores";
 
 export function ContaDetalhe({ contaId }: { contaId: string }) {
   const { conta, carregando, darBaixa, cancelar, atualizar } = useConta(contaId);
-  const { obras, locais } = useObras();
-  const { fornecedores, criarFornecedor } = useFornecedores();
+  const { obras, locais, criarObra, atualizarObra } = useObras();
+  const { fornecedores, criarFornecedor, atualizarFornecedor } = useFornecedores();
   const { somenteLeitura } = useStatusPlano();
   const categoriasCatalogo = useCatalogoCategorias(conta?.tipo ?? "pagar");
   const formasCatalogo = useCatalogoFormasPagamento();
@@ -92,7 +92,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
     const estavaIncompleta = conta?.precisaCompletarCadastro ?? false;
     setSalvandoEdicao(true);
     try {
-      await atualizar(
+      const atualizada = await atualizar(
         {
           valor: Number(valor) || 0,
           descricao: descricao.trim(),
@@ -110,7 +110,8 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
       // marcada como incompleta (veio da câmera) e continua em aberto —
       // uma edição comum num lançamento já completo não deve interromper
       // com essa pergunta.
-      if (estavaIncompleta) setModalConfirmarBaixaAberto(true);
+      // Se a forma de pagamento dá baixa sozinha (dinheiro, PIX…), a conta já saiu paga: não há o que perguntar.
+      if (estavaIncompleta && atualizada.status === "em_aberto") setModalConfirmarBaixaAberto(true);
     } finally {
       setSalvandoEdicao(false);
     }
@@ -205,16 +206,16 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             </p>
           )}
           <Input label="Valor (R$)" inputMode="decimal" value={valor} onChange={(e) => setValor(e.target.value)} disabled={dividida} />
-          <Select label="Projeto" value={obraId} onChange={(e) => setObraId(e.target.value)} disabled={dividida}>
-            <option value="" disabled>
-              Selecione o projeto
-            </option>
-            {opcoesDeDestino.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.nome}
-              </option>
-            ))}
-          </Select>
+          <SelectProjeto
+            label="Projeto"
+            value={obraId}
+            onChange={setObraId}
+            opcoes={opcoesDeDestino}
+            criarObra={criarObra}
+            atualizarObra={atualizarObra}
+            disabled={dividida}
+            rotuloVazio="Selecione o projeto"
+          />
           {conta.tipo === "pagar" ? (
             <SelectFornecedor
               label="Favorecido/Fornecedor"
@@ -226,6 +227,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
                 setFavorecido(f.nome);
               }}
               onCriar={(nome) => criarFornecedor({ nome })}
+              onAtualizar={atualizarFornecedor}
             />
           ) : (
             <Input label="Cliente" value={favorecido} onChange={(e) => setFavorecido(e.target.value)} />
@@ -244,6 +246,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             onChange={setCategoria}
             opcoes={categoriasCatalogo.opcoes}
             onCriar={categoriasCatalogo.criar}
+            onRenomear={categoriasCatalogo.renomear}
             tituloModal="Nova categoria"
           />
           <SelectComCriacao
@@ -253,6 +256,7 @@ export function ContaDetalhe({ contaId }: { contaId: string }) {
             onChange={setFormaPagamento}
             opcoes={formasCatalogo.opcoes}
             onCriar={formasCatalogo.criar}
+            onRenomear={formasCatalogo.renomear}
             tituloModal="Nova forma de pagamento"
           />
           <Textarea label="Observação" value={observacao} onChange={(e) => setObservacao(e.target.value)} />

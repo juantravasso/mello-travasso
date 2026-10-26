@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { empresaAtivada, formatarTaxa, periodoValido, taxa, testeAmadurecido, testeConvertido } from "./formulas";
+import { datasDoHistorico, empresaAtivada, formatarTaxa, periodoValido, retencaoSemanal, semanaDoCadastro, taxa, testeAmadurecido, testeConvertido } from "./formulas";
 
 const agora = new Date("2026-10-20T15:00:00Z");
 
@@ -62,5 +62,56 @@ describe("conversão do teste", () => {
     assert.equal(testeConvertido({ plano: "ativo", testeTerminaEm: null }), true);
     assert.equal(testeConvertido({ plano: "cortesia", testeTerminaEm: null }), false);
     assert.equal(testeConvertido({ plano: "teste", testeTerminaEm: null }), false);
+  });
+});
+
+describe("retenção semanal", () => {
+  const cadastro = "2026-09-01T12:00:00.000Z";
+
+  it("semana 1 são os 7 primeiros dias; antes do cadastro ou data inválida não tem semana", () => {
+    assert.equal(semanaDoCadastro(cadastro, cadastro), 1);
+    assert.equal(semanaDoCadastro(cadastro, "2026-09-08T11:59:59.000Z"), 1);
+    assert.equal(semanaDoCadastro(cadastro, "2026-09-08T12:00:00.000Z"), 2);
+    assert.equal(semanaDoCadastro(cadastro, "2026-09-01T11:00:00.000Z"), null);
+    assert.equal(semanaDoCadastro(cadastro, "não é data"), null);
+  });
+
+  it("lê só as datas válidas do histórico da conta", () => {
+    assert.deepEqual(datasDoHistorico([{ tipo: "baixa", data: "2026-09-10T10:00:00.000Z" }, { tipo: "edicao" }, null, 3]), ["2026-09-10T10:00:00.000Z"]);
+    assert.deepEqual(datasDoHistorico(null), []);
+    assert.deepEqual(datasDoHistorico({ data: "2026-09-10T10:00:00.000Z" }), []);
+  });
+
+  it("só entra na base da semana quem já a completou", () => {
+    const empresas = [
+      { id: "antiga", criadoEm: "2026-09-01T12:00:00.000Z" },
+      { id: "nova", criadoEm: "2026-10-10T12:00:00.000Z" },
+    ];
+    const semanas = retencaoSemanal(empresas, [], agora);
+    assert.deepEqual(
+      semanas.map((s) => s.base),
+      [2, 1, 1, 1],
+    );
+  });
+
+  it("conta a empresa uma vez por semana, na semana em que agiu", () => {
+    const empresas = [
+      { id: "a", criadoEm: cadastro },
+      { id: "b", criadoEm: cadastro },
+    ];
+    const atividades = [
+      { empresaId: "a", em: "2026-09-02T10:00:00.000Z" },
+      { empresaId: "a", em: "2026-09-03T10:00:00.000Z" },
+      { empresaId: "a", em: "2026-09-25T10:00:00.000Z" },
+      { empresaId: "b", em: "2026-09-02T10:00:00.000Z" },
+      { empresaId: "fora-da-coorte", em: "2026-09-02T10:00:00.000Z" },
+      { empresaId: "b", em: "2026-08-30T10:00:00.000Z" },
+    ];
+    assert.deepEqual(retencaoSemanal(empresas, atividades, agora), [
+      { semana: 1, base: 2, retidas: 2 },
+      { semana: 2, base: 2, retidas: 0 },
+      { semana: 3, base: 2, retidas: 0 },
+      { semana: 4, base: 2, retidas: 1 },
+    ]);
   });
 });

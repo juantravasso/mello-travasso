@@ -2,6 +2,9 @@
 // que o painel mostra ao administrador. Nada é estimado: onde não há dado (ofertas, abertura de e-mail, receita) o
 // painel diz que não mede, em vez de mostrar zero.
 
+import { DIA_MS } from "@/lib/cicloDeVida/datas";
+import type { RetencaoSemana } from "@/types";
+
 export const PERIODOS_METRICAS = [7, 30, 90] as const;
 export type PeriodoMetricas = (typeof PERIODOS_METRICAS)[number];
 
@@ -53,6 +56,51 @@ export function testeConvertido(e: SituacaoDoTeste): boolean {
   return e.plano === "ativo";
 }
 
+/** Semanas acompanhadas na retenção: da 1ª (os 7 primeiros dias) à 4ª (dias 22 a 28). */
+export const SEMANAS_RETENCAO = 4;
+const SEMANA_MS = 7 * DIA_MS;
+
+/** Semana depois do cadastro em que caiu o instante (1 = os 7 primeiros dias); null se for antes do cadastro ou data inválida. */
+export function semanaDoCadastro(cadastro: string, instante: string): number | null {
+  const decorrido = Date.parse(instante) - Date.parse(cadastro);
+  if (!Number.isFinite(decorrido) || decorrido < 0) return null;
+  return Math.floor(decorrido / SEMANA_MS) + 1;
+}
+
+/** Datas das ações gravadas no histórico de uma conta (criação, edição, baixa, cancelamento). Ignora o que não for data. */
+export function datasDoHistorico(historico: unknown): string[] {
+  if (!Array.isArray(historico)) return [];
+  return historico.flatMap((ev: unknown) => {
+    const data = ev && typeof ev === "object" ? (ev as { data?: unknown }).data : undefined;
+    return typeof data === "string" ? [data] : [];
+  });
+}
+
+/**
+ * Retenção por coorte. Na semana N entram só as empresas cujo cadastro já completou N semanas (a base), e delas as que
+ * registraram alguma ação naquela semana. Assim, empresa recém-criada não puxa a taxa para baixo por falta de tempo.
+ */
+export function retencaoSemanal(
+  empresas: readonly { id: string; criadoEm: string }[],
+  atividades: readonly { empresaId: string; em: string }[],
+  agora: Date,
+  semanas: number = SEMANAS_RETENCAO,
+): RetencaoSemana[] {
+  const cadastroPorId = new Map(empresas.map((e) => [e.id, e.criadoEm]));
+  const ativasNaSemana = new Set<string>();
+  for (const a of atividades) {
+    const cadastro = cadastroPorId.get(a.empresaId);
+    if (cadastro === undefined) continue;
+    const semana = semanaDoCadastro(cadastro, a.em);
+    if (semana !== null && semana <= semanas) ativasNaSemana.add(`${a.empresaId}:${semana}`);
+  }
+  return Array.from({ length: semanas }, (_, i) => {
+    const semana = i + 1;
+    const maduras = empresas.filter((e) => agora.getTime() - Date.parse(e.criadoEm) >= semana * SEMANA_MS);
+    return { semana, base: maduras.length, retidas: maduras.filter((e) => ativasNaSemana.has(`${e.id}:${semana}`)).length };
+  });
+}
+
 export interface FormulaMetrica {
   id: string;
   nome: string;
@@ -79,6 +127,13 @@ export const FORMULAS: readonly FormulaMetrica[] = [
     formula:
       "Cadastros do período que já têm ao menos um projeto, conta, produto, compromisso ou perfil publicado ÷ cadastros do período. Conta o que existe nos dados hoje, não um clique.",
     fonte: "Obra, ContaFinanceira, Produto, Compromisso, PerfilPublico",
+  },
+  {
+    id: "retencao",
+    nome: "Retenção semanal",
+    formula:
+      "Para cada semana N depois do cadastro (semana 1 = os 7 primeiros dias): entre as empresas do período cujo cadastro já completou N semanas, as que registraram alguma ação no Elo Gestão naquela semana ÷ essas empresas. Conta como ação criar projeto, conta, produto, compromisso ou movimento de estoque, e qualquer criação, edição, baixa ou cancelamento no histórico das contas. Só abrir o sistema não conta, e o uso apenas do Elo Profissionais ainda não entra.",
+    fonte: "Obra, ContaFinanceira (criadoEm e historico), Produto, Compromisso, MovimentoEstoque",
   },
   {
     id: "tour",

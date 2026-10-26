@@ -20,6 +20,21 @@ export interface MetricasTeste {
   diasEstendidos: number;
 }
 
+export interface RetencaoSemana {
+  /** 1 = os 7 primeiros dias depois do cadastro. */
+  semana: number;
+  /** Empresas do período cujo cadastro já completou esta semana inteira. */
+  base: number;
+  /** Delas, as que registraram alguma ação nesta semana. */
+  retidas: number;
+}
+
+export interface MetricasRetencao {
+  semanas: RetencaoSemana[];
+  /** true quando havia mais registros de atividade do que o limite de leitura (a retenção sai subestimada). */
+  truncado: boolean;
+}
+
 export interface MetricasCampanha {
   campanha: string;
   enviados: number;
@@ -42,6 +57,7 @@ export interface MetricasPlataforma {
   eventosDesde: string | null;
   coorte: MetricasCoorte;
   teste: MetricasTeste;
+  retencao: MetricasRetencao;
   ofertas: { porContexto: MetricasOferta[] };
   emails: { campanhas: MetricasCampanha[]; descadastros: number };
 }

@@ -179,6 +179,27 @@ export function MetricasAdmin() {
             </Secao>
           </div>
 
+          <Secao
+            titulo="Retenção semanal"
+            descricao="Empresas do período que registraram alguma ação no Elo Gestão em cada semana depois do cadastro. Só entram na semana as que já a completaram; use 30 ou 90 dias para ver a 4ª semana."
+          >
+            {dados.retencao.truncado && (
+              <p className="mb-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-xs text-warning">
+                Há mais registros de atividade do que o painel lê de uma vez: a retenção abaixo está subestimada. Use um período menor.
+              </p>
+            )}
+            <AvisoAmostra total={dados.retencao.semanas[0]?.base ?? 0} />
+            {dados.retencao.semanas.map((s) => (
+              <Linha
+                key={s.semana}
+                rotulo={`Semana ${s.semana}`}
+                valor={s.retidas}
+                base={s.base}
+                nota={`Dias ${s.semana * 7 - 6} a ${s.semana * 7} · ${s.base} ${s.base === 1 ? "empresa já completou" : "empresas já completaram"} esta semana`}
+              />
+            ))}
+          </Secao>
+
           <Secao titulo="Ofertas e página de planos" descricao="Uma vez por pessoa, plano e dia. Só aparecem se houver plano publicado.">
             {dados.ofertas.porContexto.length === 0 ? (
               <p className="text-sm text-muted">Nenhuma oferta vista neste período.</p>

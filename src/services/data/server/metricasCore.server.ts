@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { DIA_MS } from "@/lib/cicloDeVida/datas";
-import { empresaAtivada, testeAmadurecido, testeConvertido } from "@/lib/metricas/formulas";
+import { datasDoHistorico, empresaAtivada, retencaoSemanal, testeAmadurecido, testeConvertido } from "@/lib/metricas/formulas";
 import type { MetricasCampanha, MetricasOferta, MetricasPlataforma } from "@/types";
 
 // Métricas da plataforma para a administração. Tudo é lido do que existe (tabelas e eventos registrados pelo
@@ -10,6 +10,8 @@ import type { MetricasCampanha, MetricasOferta, MetricasPlataforma } from "@/typ
 /** Teto de leitura por consulta; acima disso os números cobrem só os mais recentes e o painel avisa. */
 const LIMITE_COORTE = 5000;
 const LIMITE_EVENTOS_OFERTA = 50_000;
+/** Teto por tabela na leitura de atividade da retenção. */
+const LIMITE_ATIVIDADE = 50_000;
 
 function contagem(linhas: { empresaId: string | null }[]): Set<string> {
   return new Set(linhas.map((l) => l.empresaId).filter((id): id is string => id !== null));
@@ -21,7 +23,7 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
 
   const empresas = await prisma.empresa.findMany({
     where: { criadoEm: { gte: desde, lte: ate } },
-    select: { id: true, convidadaPorId: true },
+    select: { id: true, convidadaPorId: true, criadoEm: true },
     orderBy: { criadoEm: "desc" },
     take: LIMITE_COORTE + 1,
   });
@@ -111,6 +113,26 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
     }
   }
 
+  // Retenção: o que a coorte registrou desde o início do período. Conta com atualizadoEm >= desde porque toda ação
+  // no histórico da conta mexe em atualizadoEm; o que ficou antes do período não cai em nenhuma semana da coorte.
+  const [obrasAtiv, contasAtiv, produtosAtiv, compromissosAtiv, movimentosAtiv] = await Promise.all([
+    prisma.obra.findMany({ where: { empresaId: { in: ids }, ehDeposito: false, criadoEm: { gte: desde } }, select: { empresaId: true, criadoEm: true }, take: LIMITE_ATIVIDADE + 1 }),
+    prisma.contaFinanceira.findMany({
+      where: { empresaId: { in: ids }, atualizadoEm: { gte: desde } },
+      select: { empresaId: true, criadoEm: true, historico: true },
+      take: LIMITE_ATIVIDADE + 1,
+    }),
+    prisma.produto.findMany({ where: { empresaId: { in: ids }, criadoEm: { gte: desde } }, select: { empresaId: true, criadoEm: true }, take: LIMITE_ATIVIDADE + 1 }),
+    prisma.compromisso.findMany({ where: { empresaId: { in: ids }, criadoEm: { gte: desde } }, select: { empresaId: true, criadoEm: true }, take: LIMITE_ATIVIDADE + 1 }),
+    prisma.movimentoEstoque.findMany({ where: { empresaId: { in: ids }, criadoEm: { gte: desde } }, select: { empresaId: true, criadoEm: true }, take: LIMITE_ATIVIDADE + 1 }),
+  ]);
+  const criacoes = [obrasAtiv, produtosAtiv, compromissosAtiv, movimentosAtiv].flat().map((r) => ({ empresaId: r.empresaId, em: r.criadoEm }));
+  const acoesEmContas = contasAtiv.flatMap((c) => [c.criadoEm, ...datasDoHistorico(c.historico)].map((em) => ({ empresaId: c.empresaId, em })));
+  const retencao = {
+    semanas: retencaoSemanal(coorte, [...criacoes, ...acoesEmContas], agora),
+    truncado: [obrasAtiv, contasAtiv, produtosAtiv, compromissosAtiv, movimentosAtiv].some((l) => l.length > LIMITE_ATIVIDADE),
+  };
+
   const porCampanha = new Map<string, MetricasCampanha>();
   for (const l of filaPorStatus) {
     const c = porCampanha.get(l.campanha) ?? { campanha: l.campanha, enviados: 0, falhas: 0, cancelados: 0, naFila: 0 };
@@ -147,6 +169,7 @@ export async function calcularMetricas(periodoDias: number, agora: Date = new Da
       tour,
     },
     teste,
+    retencao,
     ofertas: { porContexto: [...porContexto.values()].sort((a, b) => a.contexto.localeCompare(b.contexto)) },
     emails: { campanhas: [...porCampanha.values()].sort((a, b) => a.campanha.localeCompare(b.campanha)), descadastros },
   };

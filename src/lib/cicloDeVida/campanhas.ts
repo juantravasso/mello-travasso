@@ -1,3 +1,4 @@
+import { DURACAO_CHAMADA_MIN } from "@/lib/chamadaConfiguracao";
 import { escaparHtml } from "@/lib/email/escapar";
 import { CORES_MARCA, MARCA } from "@/lib/marca";
 
@@ -74,6 +75,8 @@ export interface ContextoEmail {
   diasExtensao?: number;
   /** Link para parar de receber as comunicações promocionais (só nas promocionais). */
   linkDescadastro?: string;
+  /** Convite para a chamada de configuração está ligado e esta empresa ainda não respondeu (só na boas-vindas). */
+  oferecerChamada?: boolean;
 }
 
 export interface EmailMontado {
@@ -91,6 +94,8 @@ interface Conteudo {
   cta: { rotulo: string; caminho: string };
   /** Linha de fechamento sobre o que acontece depois (ex.: o que continua no fim do teste). */
   fechamento?: string;
+  /** Segundo link, mais discreto, abaixo do botão principal. */
+  secundario?: { rotulo: string; caminho: string; chamada: string };
 }
 
 const GESTAO = MARCA.produtos.gestao.nome;
@@ -236,6 +241,9 @@ function montarHtml(titulo: string, conteudo: Conteudo, c: ContextoEmail, link: 
     ? `<ol style="margin:0 0 14px;padding-left:20px;font-size:15px;line-height:1.55;color:#3a4252;">${conteudo.passos.map((p) => `<li style="margin-bottom:4px;">${escaparHtml(p)}</li>`).join("")}</ol>`
     : "";
   const fechamento = conteudo.fechamento ? `<p style="margin:14px 0 0;font-size:14px;line-height:1.5;color:#667085;">${escaparHtml(conteudo.fechamento)}</p>` : "";
+  const secundario = conteudo.secundario
+    ? `<p style="margin:16px 0 0;font-size:14px;line-height:1.5;color:#3a4252;">${escaparHtml(conteudo.secundario.chamada)} <a href="${escaparHtml(`${c.urlSite.replace(/\/+$/, "")}${conteudo.secundario.caminho}`)}" style="color:${CORES_MARCA.navy};font-weight:bold;">${escaparHtml(conteudo.secundario.rotulo)}</a></p>`
+    : "";
   const rodape = c.linkDescadastro
     ? `Você recebe estas dicas porque criou uma conta no ${escaparHtml(MARCA.nome)}. <a href="${escaparHtml(c.linkDescadastro)}" style="color:#667085;">Parar de receber dicas por e-mail</a>.`
     : `Este é um aviso sobre a sua conta no ${escaparHtml(MARCA.nome)}.`;
@@ -246,7 +254,7 @@ function montarHtml(titulo: string, conteudo: Conteudo, c: ContextoEmail, link: 
     `<tr><td style="background:${CORES_MARCA.navy};padding:18px 24px;color:#ffffff;font-size:18px;font-weight:bold;">Elo <span style="font-weight:normal;">Negócios</span></td></tr>` +
     `<tr><td style="padding:24px 24px 8px;"><h1 style="margin:0 0 14px;font-size:20px;line-height:1.3;color:#171b24;">${escaparHtml(titulo)}</h1>` +
     `<p style="margin:0 0 12px;font-size:15px;color:#3a4252;">Olá, ${escaparHtml(primeiroNome(c.nome))}.</p>${paragrafos}${passos}</td></tr>` +
-    `<tr><td style="padding:8px 24px 24px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:${CORES_MARCA.navy};color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">${escaparHtml(conteudo.cta.rotulo)}</a>${fechamento}</td></tr>` +
+    `<tr><td style="padding:8px 24px 24px;"><a href="${escaparHtml(link)}" style="display:inline-block;padding:12px 20px;background:${CORES_MARCA.navy};color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;">${escaparHtml(conteudo.cta.rotulo)}</a>${fechamento}${secundario}</td></tr>` +
     `<tr><td style="padding:14px 24px;border-top:1px solid #e1e4ea;font-size:12px;line-height:1.5;color:#667085;">${rodape}</td></tr>` +
     "</table></td></tr></table></body>"
   );
@@ -255,11 +263,15 @@ function montarHtml(titulo: string, conteudo: Conteudo, c: ContextoEmail, link: 
 /** Monta assunto, texto e HTML da campanha. O link principal sempre leva direto à tela da ação ensinada. */
 export function montarEmail(campanha: CampanhaId, c: ContextoEmail): EmailMontado {
   const conteudo = conteudoDe(campanha, c);
+  if (campanha === "boas_vindas" && c.oferecerChamada) {
+    conteudo.secundario = { rotulo: `Marcar ${DURACAO_CHAMADA_MIN} minutos`, caminho: "/agendar-configuracao", chamada: `Quer ajuda para configurar tudo? Converse com o fundador por ${DURACAO_CHAMADA_MIN} minutos, sem custo.` };
+  }
   const link = `${c.urlSite.replace(/\/+$/, "")}${conteudo.cta.caminho}`;
   const partes = [`Olá, ${primeiroNome(c.nome)}.`, "", ...conteudo.paragrafos.flatMap((p) => [p, ""])];
   if (conteudo.passos) partes.push(...conteudo.passos.map((p, i) => `${i + 1}. ${p}`), "");
   partes.push(`${conteudo.cta.rotulo}: ${link}`);
   if (conteudo.fechamento) partes.push("", conteudo.fechamento);
+  if (conteudo.secundario) partes.push("", `${conteudo.secundario.chamada} ${conteudo.secundario.rotulo}: ${c.urlSite.replace(/\/+$/, "")}${conteudo.secundario.caminho}`);
   partes.push("", "--", c.linkDescadastro ? `Para parar de receber dicas por e-mail: ${c.linkDescadastro}` : `Este é um aviso sobre a sua conta no ${MARCA.nome}.`);
   return { assunto: conteudo.assunto, texto: partes.join("\n"), html: montarHtml(conteudo.assunto, conteudo, c, link) };
 }

@@ -216,6 +216,14 @@ describe("modelos de e-mail", () => {
     }
   });
 
+  it("convida para a chamada de configuração só na boas-vindas e só quando ligado", () => {
+    const com = montarEmail("boas_vindas", ctx({}, { oferecerChamada: true }));
+    assert.match(com.texto, /\/agendar-configuracao/);
+    assert.match(com.html, /\/agendar-configuracao/);
+    assert.doesNotMatch(montarEmail("boas_vindas", ctx({}, {})).texto, /agendar-configuracao/);
+    assert.doesNotMatch(montarEmail("fim_do_teste", ctx({}, { oferecerChamada: true, diasRestantes: 3 })).texto, /agendar-configuracao/);
+  });
+
   it("escapa o nome no HTML (sem injeção)", () => {
     const e = montarEmail("boas_vindas", ctx({}, { nome: '<script>alert(1)</script> "x"' }));
     assert.doesNotMatch(e.html, /<script>/);

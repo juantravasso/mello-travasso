@@ -21,6 +21,7 @@ import {
   formatarDataCompleta,
   TOLERANCIA_CAMPANHA_MS,
 } from "@/lib/cicloDeVida/datas";
+import { ofertaDaEmpresa } from "./chamadaConfiguracaoCore.server";
 import { registrarEvento } from "./eventosCore.server";
 
 // Ciclo de vida do cliente: avisos de fim do teste, campanhas de e-mail e encerramento. Quem dispara (GitHub Actions,
@@ -385,7 +386,11 @@ async function tratarEmail(e: Candidato, agora: Date, config: ConfigCicloDeVida,
   const fimIso = fimDaExtensao ?? (campanha === "fim_do_teste" ? e.referencia : e.empresa.testeTerminaEm);
   const fim = fimIso ? new Date(fimIso) : null;
 
+  // Convite para a chamada de configuração: só na boas-vindas, com a função ligada e a empresa ainda sem resposta.
+  const oferecerChamada = campanha === "boas_vindas" && (await ofertaDaEmpresa(e.empresaId)) !== null;
+
   const montado = montarEmail(campanha, {
+    oferecerChamada,
     nome: u.nome,
     urlSite: urlBase,
     sinais,

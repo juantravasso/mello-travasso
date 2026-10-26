@@ -6,6 +6,7 @@ import { BarraLateralProvider, ColunaPrincipal } from "./BarraLateralContext";
 import { BottomNav } from "./BottomNav";
 import { MenuMovel } from "./MenuMovel";
 import { Sidebar } from "./Sidebar";
+import { FaixaChamadaConfiguracao } from "@/components/chamada/ChamadaConfiguracao";
 import { Topbar } from "./Topbar";
 import { AvisoEmail } from "./AvisoEmail";
 import { FaixaTeste } from "./FaixaTeste";
@@ -51,6 +52,7 @@ export function ShellWrapper({
             <ColunaPrincipal>
               {!emailConfirmado && <AvisoEmail email={emailUsuario} />}
               <FaixaTeste />
+              <FaixaChamadaConfiguracao />
               <TourInicial />
               <Topbar nomeUsuario={nomeUsuario} />
               <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-10 md:pt-6">

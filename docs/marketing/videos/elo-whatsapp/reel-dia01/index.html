@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Reel Dia 1 — vídeo para WhatsApp</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Geist"; src: url("assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0f2a4a; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Geist", sans-serif; color: #f8fafc; }
+      .fundo { position: absolute; inset: 0; background: radial-gradient(1100px 900px at 85% 0%, rgba(45, 212, 191, 0.22), transparent 60%), radial-gradient(900px 800px at 0% 100%, rgba(232, 176, 75, 0.14), transparent 60%), linear-gradient(180deg, #0f2a4a 0%, #0b1f38 100%); }
+      .hl { color: #2dd4bf; }
+      .head { position: absolute; left: 70px; right: 70px; top: 110px; height: 250px; display: flex; align-items: center; }
+      .head h1 { font-size: 74px; line-height: 1.12; font-weight: 700; letter-spacing: -0.02em; }
+      #phone { position: absolute; left: 160px; top: 400px; width: 760px; height: 1645px; border-radius: 72px; overflow: hidden; background: #f5f6f8; box-shadow: 0 0 0 14px #08182b, 0 40px 120px rgba(0, 0, 0, 0.55); }
+      .tela { position: absolute; left: 0; top: 0; width: 760px; height: 1646px; object-fit: cover; }
+      .chip-wrap { position: absolute; left: 0; right: 0; top: 400px; height: 0; display: flex; justify-content: center; }
+      .chip { margin-top: -46px; height: 92px; padding: 0 44px; border-radius: 46px; background: #e8b04b; color: #0f2a4a; font-size: 50px; font-weight: 700; display: flex; align-items: center; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+      .center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 80px; }
+      .center .inner { width: 100%; }
+      .big { font-size: 96px; line-height: 1.08; font-weight: 750; letter-spacing: -0.03em; }
+      .dores { list-style: none; margin-top: 70px; display: flex; flex-direction: column; gap: 26px; }
+      .dores li { font-size: 50px; font-weight: 500; color: #e2e8f0; display: flex; align-items: center; gap: 22px; }
+      .dores.x li::before { content: "✕"; width: 64px; height: 64px; flex: none; border-radius: 50%; background: rgba(248, 113, 113, 0.18); color: #f87171; font-size: 34px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+      .fim .inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
+      .logo { width: 260px; height: 140px; display: block; }
+      .produto { margin-top: 40px; font-size: 104px; font-weight: 750; letter-spacing: -0.03em; }
+      .frase { margin-top: 26px; font-size: 52px; line-height: 1.25; color: #cbd5e1; max-width: 900px; }
+      .botao { margin-top: 80px; padding: 34px 80px; border-radius: 999px; background: #2dd4bf; color: #0f2a4a; font-size: 58px; font-weight: 750; }
+      /* Reels: a coluna de botões do Instagram cobre a borda direita; o texto fica fora dela. */
+      .ig .center { padding: 0 170px 0 80px; }
+      .ig .head { right: 170px; }
+      .site { margin-top: 48px; font-size: 54px; font-weight: 600; color: #e8b04b; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="ig" data-composition-id="reel-dia01" data-start="0" data-width="1080" data-height="1920" data-duration="30.43">
+      <div id="bg" class="clip fundo" data-start="0" data-duration="30.43" data-track-index="0"></div>
+      <div id="phone" data-layout-allow-overflow>
+        <video id="v0" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_baixa1.mp4" muted playsinline data-start="14.5" data-duration="3.13-->" data-track-index="1"></video>
+        <video id="v1" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_agenda.mp4" muted playsinline data-start="17.63" data-duration="1.73-->" data-track-index="1"></video>
+        <video id="v2" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_painel.mp4" muted playsinline data-start="19.36" data-duration="6.07-->" data-track-index="1"></video>
+      </div>
+      <div id="s0" class="clip center" data-start="0" data-duration="3.2" data-track-index="2"><div class="inner"><h1 class="big">Quantas contas você já pagou com atraso <span class="hl">só porque esqueceu?</span></h1></div></div>
+      <div id="s1" class="clip center" data-start="3.2" data-duration="6.5" data-track-index="2"><div class="inner"><h1 class="big">Quem tem empresa pequena <span class="hl">conhece isso:</span></h1><ul class="dores x"><li id="d1_0">Boleto no WhatsApp</li><li id="d1_1">Nota fiscal na gaveta</li><li id="d1_2">Vencimento na cabeça</li></ul></div></div>
+      <div id="s2" class="clip center" data-start="9.7" data-duration="4.8" data-track-index="2"><div class="inner"><h1 class="big">Empresa pequena não perde dinheiro por falta de venda. <span class="hl">Perde por falta de controle.</span></h1></div></div>
+      <div id="h3" class="clip head" data-start="14.5" data-duration="10.93" data-track-index="2"><h1 class="inner">Contas, vencimentos e o mês <span class="hl">num lugar só.</span></h1></div>
+      <div id="c3_0" class="clip chip-wrap" data-start="14.5" data-duration="3.13" data-track-index="3"><div class="chip">Contas</div></div>
+      <div id="c3_1" class="clip chip-wrap" data-start="17.63" data-duration="1.73" data-track-index="3"><div class="chip">Vencimentos</div></div>
+      <div id="c3_2" class="clip chip-wrap" data-start="19.36" data-duration="6.07" data-track-index="3"><div class="chip">O mês inteiro</div></div>
+      <div id="s4" class="clip center fim" data-start="25.43" data-duration="5" data-track-index="2"><div class="inner">
+        <svg class="logo" viewBox="0 0 120 64" aria-hidden="true"><rect x="6" y="10" width="62" height="44" rx="22" fill="none" stroke="#2dd4bf" stroke-width="10"/><rect x="52" y="10" width="62" height="44" rx="22" fill="none" stroke="#e8b04b" stroke-width="10"/></svg>
+        <p class="produto">Comenta “ELO”</p>
+        <p class="frase">que eu te mando o link para começar.</p>
+        <p class="botao">Comece grátis</p>
+        <p class="site">eloprofissionais.com.br</p>
+      </div></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      gsap.set("#phone", { opacity: 0, y: 160 });
+      tl.fromTo("#phone", { y: 160, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 14.35);
+      tl.to("#phone", { y: 160, opacity: 0, duration: 0.35, ease: "power2.in" }, 25.13);
+      tl.fromTo("#s0 .big", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.to("#s0 .inner", { opacity: 0, y: -30, duration: 0.3, ease: "power2.in" }, 2.9);
+      tl.fromTo("#s1 .big", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 3.3);
+      tl.fromTo("#d1_0", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 4.1);
+      tl.fromTo("#d1_1", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 4.65);
+      tl.fromTo("#d1_2", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 5.2);
+      tl.to("#s1 .inner", { opacity: 0, y: -30, duration: 0.3, ease: "power2.in" }, 9.4);
+      tl.fromTo("#s2 .big", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 9.8);
+      tl.to("#s2 .inner", { opacity: 0, y: -30, duration: 0.3, ease: "power2.in" }, 14.2);
+      tl.fromTo("#h3 .inner", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 14.55);
+      tl.fromTo("#c3_0 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 14.52);
+      tl.fromTo("#c3_1 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 17.65);
+      tl.fromTo("#c3_2 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 19.38);
+      tl.fromTo("#s4 .logo", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 25.53);
+      tl.fromTo("#s4 .produto", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 25.71);
+      tl.fromTo("#s4 .frase", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 25.89);
+      tl.fromTo("#s4 .botao", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 26.07);
+      tl.fromTo("#s4 .site", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 26.25);
+      tl.fromTo("#s4 .botao", { scale: 1 }, { scale: 1.06, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 3 }, 26.73);
+      window.__timelines["reel-dia01"] = tl;
+    </script>
+  </body>
+</html>

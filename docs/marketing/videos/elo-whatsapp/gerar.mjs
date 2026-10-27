@@ -41,6 +41,18 @@ const VIDEOS = {
       { tipo: "fim", dur: 6.0, produto: "Elo Negócios", frase: "Gestão e profissionais num só lugar. Para empresas e autônomos.", acao: "Comece grátis" },
     ],
   },
+  // Reel do Dia 1 do plano de Instagram (docs/marketing/conteudo/semana-01), versão B do roteiro, sem rosto.
+  "reel-dia01": {
+    titulo: "Reel Dia 1",
+    instagram: true,
+    cenas: [
+      { tipo: "gancho", dur: 3.2, titulo: "Quantas contas você já pagou com atraso *só porque esqueceu?*" },
+      { tipo: "gancho", dur: 6.5, titulo: "Quem tem empresa pequena *conhece isso:*", dores: ["Boleto no WhatsApp", "Nota fiscal na gaveta", "Vencimento na cabeça"] },
+      { tipo: "ponte", dur: 4.8, titulo: "Empresa pequena não perde dinheiro por falta de venda. *Perde por falta de controle.*" },
+      { tipo: "app", titulo: "Contas, vencimentos e o mês *num lugar só.*", clipes: [["g_baixa1", 3.13, "Contas"], ["g_agenda", 1.73, "Vencimentos"], ["g_painel", 6.07, "O mês inteiro"]] },
+      { tipo: "fim", dur: 5.0, produto: "Comenta “ELO”", frase: "que eu te mando o link para começar.", acao: "Comece grátis" },
+    ],
+  },
 };
 
 const destacar = (t) => t.replace(/\*(.+?)\*/g, '<span class="hl">$1</span>');
@@ -142,11 +154,14 @@ function gerar(id, v) {
       .produto { margin-top: 40px; font-size: 104px; font-weight: 750; letter-spacing: -0.03em; }
       .frase { margin-top: 26px; font-size: 52px; line-height: 1.25; color: #cbd5e1; max-width: 900px; }
       .botao { margin-top: 80px; padding: 34px 80px; border-radius: 999px; background: #2dd4bf; color: #0f2a4a; font-size: 58px; font-weight: 750; }
+      /* Reels: a coluna de botões do Instagram cobre a borda direita; o texto fica fora dela. */
+      .ig .center { padding: 0 170px 0 80px; }
+      .ig .head { right: 170px; }
       .site { margin-top: 48px; font-size: 54px; font-weight: 600; color: #e8b04b; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="${id}" data-start="0" data-width="1080" data-height="1920" data-duration="${total}">
+    <div id="root" class="${v.instagram ? "ig" : ""}" data-composition-id="${id}" data-start="0" data-width="1080" data-height="1920" data-duration="${total}">
       <div id="bg" class="clip fundo" data-start="0" data-duration="${total}" data-track-index="0"></div>
       <div id="phone" data-layout-allow-overflow>
         ${videos}

@@ -1,4 +1,5 @@
 import "server-only";
+import { MARCA } from "@/lib/marca";
 
 // Envio de e-mail transacional pela API HTTP do Resend (sem dependência nova).
 // Sem RESEND_API_KEY: em desenvolvimento a mensagem sai no console do servidor
@@ -46,6 +47,8 @@ export async function enviarEmail(mensagem: MensagemEmail): Promise<boolean> {
       },
       body: JSON.stringify({
         from: remetente,
+        // Quem responde a um e-mail do sistema fala com o suporte, não com o endereço de envio (que ninguém lê).
+        reply_to: MARCA.emailContato,
         to: [mensagem.para],
         subject: mensagem.assunto,
         text: mensagem.texto,

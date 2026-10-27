@@ -37,7 +37,7 @@ export const MARCA = {
   sloganDestaque: "novas possibilidades.",
   descricao: "Gerencie sua empresa, encontre profissionais confiáveis e descubra novas oportunidades em um só lugar.",
   /** Contato de suporte, cancelamento, reembolso e privacidade. NEXT_PUBLIC_EMAIL_CONTATO troca o endereço sem mexer no código. */
-  emailContato: process.env.NEXT_PUBLIC_EMAIL_CONTATO?.trim() || "contato@eloprofissionais.com.br",
+  emailContato: process.env.NEXT_PUBLIC_EMAIL_CONTATO?.trim() || "reussitetecnologia@gmail.com",
   produtos: {
     gestao: {
       nome: "Elo Gestão",

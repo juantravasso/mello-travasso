@@ -14,9 +14,10 @@ export function KpiCard({ rotulo, valor, variacao, legendaVariacao, subtitulo }:
   const positiva = temVariacao && (variacao as number) >= 0;
 
   return (
-    <Card className="flex flex-col gap-1.5">
+    <Card className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm text-muted">{rotulo}</span>
-      <span className="text-2xl font-semibold text-foreground">{valor}</span>
+      {/* Em duas colunas no celular, "R$ 305.373,00" em text-2xl passa da borda; valores maiores quebram em vez de vazar. */}
+      <span className="text-lg font-semibold tabular-nums text-foreground [overflow-wrap:anywhere] sm:text-2xl">{valor}</span>
       {temVariacao && (
         <span className={cn("flex items-center gap-1 text-xs font-medium", positiva ? "text-success" : "text-danger")}>
           {positiva ? "↑" : "↓"} {Math.abs(variacao as number).toFixed(0)}% {legendaVariacao ?? "vs. mês anterior"}

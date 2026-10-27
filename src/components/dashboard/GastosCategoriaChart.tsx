@@ -40,7 +40,8 @@ export function GastosCategoriaChart({ dados }: { dados: FatiaCategoria[] }) {
         </div>
       </div>
 
-      <ul className="flex min-w-0 flex-1 flex-col gap-2 text-sm">
+      {/* w-full: na coluna centralizada do celular a lista não esticava e saía do card pelos dois lados. */}
+      <ul className="flex w-full min-w-0 flex-1 flex-col gap-2 text-sm">
         {dados.map((fatia, indice) => (
           <li key={fatia.categoria} className="flex items-center justify-between gap-3">
             <span className="flex min-w-0 items-center gap-2 truncate text-muted">

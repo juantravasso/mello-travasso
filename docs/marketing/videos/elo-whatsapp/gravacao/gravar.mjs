@@ -58,7 +58,8 @@ async function gravar(nome, logado, roteiro) {
           const passo = (t) => {
             const k = Math.min(1, (t - ini) / ms), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
             scrollTo(0, y0 + dy * e);
-            k < 1 ? requestAnimationFrame(passo) : ok();
+            if (k < 1) requestAnimationFrame(passo);
+            else ok();
           };
           requestAnimationFrame(passo);
         }),
@@ -103,7 +104,7 @@ const CLIPES = {
   }],
 
   // Foto da nota → IA preenche → confirma.
-  captura: [true, async ({ page, pausa, rolar, mostrar, tocar, marca, esperarConteudo }) => {
+  captura: [true, async ({ page, pausa, rolar, tocar, marca, esperarConteudo }) => {
     await page.goto(`${BASE}/capturar`);
     marca("pronto");
     await pausa(1500);
@@ -220,7 +221,7 @@ const CLIPES = {
   }],
 
   // Lado do profissional: perfil publicado e a página pública que os clientes veem.
-  meuperfil: [true, async ({ page, pausa, rolar, mostrar, tocar, marca, esperarConteudo }) => {
+  meuperfil: [true, async ({ page, pausa, rolar, marca }) => {
     await page.goto(`${BASE}/minha-rede/perfil`);
     marca("pronto");
     await pausa(1800);

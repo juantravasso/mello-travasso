@@ -1,6 +1,6 @@
 // Gera a nota fiscal fictícia usada na gravação da captura por IA, com o mesmo desenho dos comprovantes da demo.
 import { writeFileSync } from "node:fs";
-import { comprovanteSvg } from "file:///C:/Users/jntra/projetos/mello-travasso/scripts/demo/recibo.ts";
+import { comprovanteSvg } from "../../../../../scripts/demo/recibo";
 
 const hoje = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 const url = comprovanteSvg({

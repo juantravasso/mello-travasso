@@ -349,6 +349,16 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Chamada de configuração de 20 minutos
+
+Cada empresa nova é convidada a marcar uma conversa de 20 minutos com o fundador. O agendamento é numa página externa (Cal.com, Calendly, Google Agenda): o app guarda só o link.
+
+- **Ligar:** Administração → Teste e e-mails → "Chamada de configuração" ([ChamadaConfiguracaoAdmin.tsx](src/components/admin/ChamadaConfiguracaoAdmin.tsx)). Cole o link (só `https://`) e ligue; vem desligado. Salvar pede motivo e senha e entra no registro de ações.
+- **Quem vê:** só o responsável pela conta, de empresas criadas nos últimos 45 dias que ainda não responderam ([chamadaConfiguracao.ts](src/lib/chamadaConfiguracao.ts)).
+- **Onde aparece:** faixa no topo do app ([ChamadaConfiguracao.tsx](src/components/chamada/ChamadaConfiguracao.tsx)), até a empresa agendar ou dispensar; página `/agendar-configuracao` e link no e-mail de boas-vindas (se os e-mails estiverem ligados).
+- **Botões:** "Agendar 20 min" (abre a agenda e registra o clique), "Já agendei" e "Agora não" (o convite some; `Empresa.chamadaConfiguracaoEstado`). O app **não vê a sua agenda**: "agendada" é o que a empresa informa.
+- **Eventos** para métrica: `chamada_config_clicou`, `chamada_config_agendada`, `chamada_config_dispensada`.
+
 ## Funcionários com acesso, cargos, calendário de contas e movimentação de estoque
 
 - **Acesso pelo cadastro do funcionário** ([novo/page.tsx](src/app/(app)/(gestao)/funcionarios/novo/page.tsx)): o dono marca "Dar acesso ao sistema", escolhe os módulos e confirma a própria senha. O login é o e-mail do funcionário, a senha inicial é

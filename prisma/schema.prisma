@@ -277,6 +277,9 @@ model Empresa {
   testeTerminaEm     String? // ISO datetime; null em cortesia/ativo (RF-07, RF-17)
   aceiteTermosVersao String
   aceiteTermosEm     String
+  /// O que a empresa fez com o convite para a chamada de configuração: "agendada" ou "dispensada". Nulo = ainda não respondeu.
+  chamadaConfiguracaoEstado String?
+  chamadaConfiguracaoEm     String?
   /// Bloqueio pela administração (Fase 6.6): ninguém da empresa entra e o perfil sai do ar.
   /// O motivo é interno, nunca mostrado ao usuário.
   bloqueadaEm        String?

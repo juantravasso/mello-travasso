@@ -17,6 +17,16 @@
         "demo:dev"
       ],
       "port": 3100
+    },
+    {
+      "name": "elo-demo-main",
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "--cwd",
+        "C:/Users/jntra/projetos/mello-travasso",
+        "demo:dev"
+      ],
+      "port": 3100
     }
   ]
 }

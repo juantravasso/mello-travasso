@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Elo Gestão — vídeo para WhatsApp</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Geist"; src: url("assets/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1920px; overflow: hidden; background: #0f2a4a; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: "Geist", sans-serif; color: #f8fafc; }
+      .fundo { position: absolute; inset: 0; background: radial-gradient(1100px 900px at 85% 0%, rgba(45, 212, 191, 0.22), transparent 60%), radial-gradient(900px 800px at 0% 100%, rgba(232, 176, 75, 0.14), transparent 60%), linear-gradient(180deg, #0f2a4a 0%, #0b1f38 100%); }
+      .hl { color: #2dd4bf; }
+      .head { position: absolute; left: 70px; right: 70px; top: 110px; height: 250px; display: flex; align-items: center; }
+      .head h1 { font-size: 74px; line-height: 1.12; font-weight: 700; letter-spacing: -0.02em; }
+      #phone { position: absolute; left: 160px; top: 400px; width: 760px; height: 1645px; border-radius: 72px; overflow: hidden; background: #f5f6f8; box-shadow: 0 0 0 14px #08182b, 0 40px 120px rgba(0, 0, 0, 0.55); }
+      .tela { position: absolute; left: 0; top: 0; width: 760px; height: 1646px; object-fit: cover; }
+      .chip-wrap { position: absolute; left: 0; right: 0; top: 400px; height: 0; display: flex; justify-content: center; }
+      .chip { margin-top: -46px; height: 92px; padding: 0 44px; border-radius: 46px; background: #e8b04b; color: #0f2a4a; font-size: 50px; font-weight: 700; display: flex; align-items: center; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+      .center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 80px; }
+      .center .inner { width: 100%; }
+      .big { font-size: 96px; line-height: 1.08; font-weight: 750; letter-spacing: -0.03em; }
+      .dores { list-style: none; margin-top: 70px; display: flex; flex-direction: column; gap: 26px; }
+      .dores li { font-size: 50px; font-weight: 500; color: #e2e8f0; display: flex; align-items: center; gap: 22px; }
+      .dores.x li::before { content: "✕"; width: 64px; height: 64px; flex: none; border-radius: 50%; background: rgba(248, 113, 113, 0.18); color: #f87171; font-size: 34px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+      .fim .inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
+      .logo { width: 260px; height: 140px; display: block; }
+      .produto { margin-top: 40px; font-size: 104px; font-weight: 750; letter-spacing: -0.03em; }
+      .frase { margin-top: 26px; font-size: 52px; line-height: 1.25; color: #cbd5e1; max-width: 900px; }
+      .botao { margin-top: 80px; padding: 34px 80px; border-radius: 999px; background: #2dd4bf; color: #0f2a4a; font-size: 58px; font-weight: 750; }
+      .site { margin-top: 48px; font-size: 54px; font-weight: 600; color: #e8b04b; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="gestao" data-start="0" data-width="1080" data-height="1920" data-duration="40.01">
+      <div id="bg" class="clip fundo" data-start="0" data-duration="40.01" data-track-index="0"></div>
+      <div id="phone" data-layout-allow-overflow>
+        <video id="v0" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_captura1.mp4" muted playsinline data-start="4.5" data-duration="3.6-->" data-track-index="1"></video>
+        <video id="v1" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_captura2.mp4" muted playsinline data-start="8.1" data-duration="5.2-->" data-track-index="1"></video>
+        <video id="v2" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_baixa1.mp4" muted playsinline data-start="13.3" data-duration="3.13-->" data-track-index="1"></video>
+        <video id="v3" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_baixa2.mp4" muted playsinline data-start="16.43" data-duration="5.93-->" data-track-index="1"></video>
+        <video id="v4" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_painel.mp4" muted playsinline data-start="22.36" data-duration="6.07-->" data-track-index="1"></video>
+        <video id="v5" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_obra.mp4" muted playsinline data-start="28.43" data-duration="1.73-->" data-track-index="1"></video>
+        <video id="v6" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_estoque.mp4" muted playsinline data-start="30.16" data-duration="1.73-->" data-track-index="1"></video>
+        <video id="v7" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_equipe.mp4" muted playsinline data-start="31.89" data-duration="1.73-->" data-track-index="1"></video>
+        <video id="v8" class="clip tela" style="position: absolute; left: 0px; top: 0px; width: 760px; height: 1646px; object-fit: cover" src="assets/clips/g_agenda.mp4" muted playsinline data-start="33.62" data-duration="1.73-->" data-track-index="1"></video>
+      </div>
+      <div id="s0" class="clip center" data-start="0" data-duration="4.5" data-track-index="2"><div class="inner"><h1 class="big">Ainda controla a obra no <span class="hl">caderno e no WhatsApp</span>?</h1><ul class="dores x"><li id="d0_0">Conta esquecida vira multa</li><li id="d0_1">Nota fiscal perdida</li><li id="d0_2">Lucro só no fim do mês</li></ul></div></div>
+      <div id="h1" class="clip head" data-start="4.5" data-duration="8.8" data-track-index="2"><h1 class="inner">Tire foto da nota. <span class="hl">A IA lança pra você.</span></h1></div>
+      <div id="h2" class="clip head" data-start="13.3" data-duration="9.06" data-track-index="2"><h1 class="inner">Veja o que vence e <span class="hl">dê baixa em um toque.</span></h1></div>
+      <div id="h3" class="clip head" data-start="22.36" data-duration="6.07" data-track-index="2"><h1 class="inner">Entradas, saídas e gastos <span class="hl">num só painel.</span></h1></div>
+      <div id="h4" class="clip head" data-start="28.43" data-duration="6.92" data-track-index="2"><h1 class="inner">E ainda:</h1></div>
+      <div id="c4_0" class="clip chip-wrap" data-start="28.43" data-duration="1.73" data-track-index="3"><div class="chip">Projetos</div></div>
+      <div id="c4_1" class="clip chip-wrap" data-start="30.16" data-duration="1.73" data-track-index="3"><div class="chip">Estoque</div></div>
+      <div id="c4_2" class="clip chip-wrap" data-start="31.89" data-duration="1.73" data-track-index="3"><div class="chip">Equipe</div></div>
+      <div id="c4_3" class="clip chip-wrap" data-start="33.62" data-duration="1.73" data-track-index="3"><div class="chip">Agenda</div></div>
+      <div id="s5" class="clip center fim" data-start="35.35" data-duration="4.66" data-track-index="2"><div class="inner">
+        <svg class="logo" viewBox="0 0 120 64" aria-hidden="true"><rect x="6" y="10" width="62" height="44" rx="22" fill="none" stroke="#2dd4bf" stroke-width="10"/><rect x="52" y="10" width="62" height="44" rx="22" fill="none" stroke="#e8b04b" stroke-width="10"/></svg>
+        <p class="produto">Elo Gestão</p>
+        <p class="frase">Sua empresa organizada no celular.</p>
+        <p class="botao">Comece grátis</p>
+        <p class="site">eloprofissionais.com.br</p>
+      </div></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      gsap.set("#phone", { opacity: 0, y: 160 });
+      tl.fromTo("#phone", { y: 160, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 4.35);
+      tl.to("#phone", { y: 160, opacity: 0, duration: 0.35, ease: "power2.in" }, 35.05);
+      tl.fromTo("#s0 .big", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+      tl.fromTo("#d0_0", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 0.9);
+      tl.fromTo("#d0_1", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 1.45);
+      tl.fromTo("#d0_2", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }, 2);
+      tl.to("#s0 .inner", { opacity: 0, y: -30, duration: 0.3, ease: "power2.in" }, 4.2);
+      tl.fromTo("#h1 .inner", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 4.55);
+      tl.fromTo("#h2 .inner", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 13.35);
+      tl.fromTo("#h3 .inner", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 22.41);
+      tl.fromTo("#h4 .inner", { y: 36, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 28.48);
+      tl.fromTo("#c4_0 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 28.45);
+      tl.fromTo("#c4_1 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 30.18);
+      tl.fromTo("#c4_2 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 31.91);
+      tl.fromTo("#c4_3 .chip", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, 33.64);
+      tl.fromTo("#s5 .logo", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 35.45);
+      tl.fromTo("#s5 .produto", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 35.63);
+      tl.fromTo("#s5 .frase", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 35.81);
+      tl.fromTo("#s5 .botao", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 35.99);
+      tl.fromTo("#s5 .site", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 36.17);
+      tl.fromTo("#s5 .botao", { scale: 1 }, { scale: 1.06, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 3 }, 36.65);
+      window.__timelines["gestao"] = tl;
+    </script>
+  </body>
+</html>

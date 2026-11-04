@@ -85,8 +85,9 @@ export default function PrivacidadePage() {
             segurança e mudanças no serviço. Não enviamos propaganda de terceiros.
           </li>
           <li>
-            <strong>Perfil público e avaliações</strong> (consentimento): só aparecem porque você publicou, e você retira
-            o consentimento quando quiser despublicando.
+            <strong>Perfil público e avaliações</strong> (execução de contrato): o Elo Profissionais faz parte do serviço, e pedimos que o
+            responsável publique o perfil ao menos uma vez para liberar o sistema. Nada fica público antes de você clicar em Publicar, e
+            você pode despublicar quando quiser.
           </li>
         </Lista>
         <p>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { lerSessao, type SessaoValida } from "@/lib/auth/sessao";
 import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
 import { temAlgumModulo, type ModuloChave } from "@/lib/auth/modulos";
+import { exigePublicarPerfil } from "@/lib/perfilObrigatorio";
 
 // DAL (Data Access Layer) de autenticação — única fonte de identidade no
 // servidor. Toda Server Action e toda página protegida chamam exigirSessao()
@@ -103,6 +104,20 @@ export const obterRecursosDaEmpresa = cache(async (empresaId: string): Promise<R
 });
 
 /**
+ * O responsável pela conta ainda precisa publicar o perfil no Elo Profissionais (obrigatório uma vez, depois do cadastro)?
+ * cache() por request: lido pelo layout e por toda ação dos módulos de gestão.
+ */
+export const perfilObrigatorioPendente = cache(async (empresaId: string, papel: "dono" | "membro", admin: boolean): Promise<boolean> => {
+  if (papel !== "dono" || admin) return false;
+  const [empresa, perfil, recursos] = await Promise.all([
+    prisma.empresa.findUnique({ where: { id: empresaId }, select: { primeiraPublicacaoEm: true } }),
+    prisma.perfilPublico.findUnique({ where: { empresaId }, select: { status: true } }),
+    obterRecursosDaEmpresa(empresaId),
+  ]);
+  return exigePublicarPerfil({ papel, admin, statusPerfil: perfil?.status ?? null, jaPublicou: empresa?.primeiraPublicacaoEm != null, temRede: recursos.has("rede") });
+});
+
+/**
  * Sessão + o plano da empresa precisa liberar os módulos de gestão (obras,
  * contas, estoque…) + a pessoa precisa ter ao menos um dos módulos listados (o
  * dono tem todos; o membro, os que o dono liberou). Sem lista, vale qualquer
@@ -115,6 +130,8 @@ export async function exigirGestaoAction(...modulos: ModuloChave[]): Promise<Ses
   const recursos = await obterRecursosDaEmpresa(sessao.empresaId);
   if (!recursos.has("gestao")) throw new Error("PLANO_SEM_ACESSO");
   if (!temAlgumModulo(sessao, modulos.length > 0 ? modulos : undefined)) throw new Error("SEM_ACESSO_MODULO");
+  // Depois do cadastro, o responsável precisa publicar o perfil no Elo Profissionais antes de usar a gestão.
+  if (await perfilObrigatorioPendente(sessao.empresaId, sessao.papel, sessao.admin)) throw new Error("PERFIL_PENDENTE");
   return sessao;
 }
 

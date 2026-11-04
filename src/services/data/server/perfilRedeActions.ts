@@ -233,6 +233,12 @@ async function definirPublicacaoInterno(publicar: boolean): Promise<MeuPerfil> {
     data: { status: publicar ? "publicado" : "rascunho", atualizadoEm: new Date().toISOString() },
   });
   if (resultado.count === 0) throw new ErroDeNegocio("Este perfil foi suspenso pela administração.");
+  if (publicar) {
+    await prisma.empresa.updateMany({
+      where: { id: sessao.empresaId, primeiraPublicacaoEm: null },
+      data: { primeiraPublicacaoEm: new Date().toISOString() },
+    });
+  }
 
   const atual = await prisma.perfilPublico.findUniqueOrThrow({ where: { id: perfil.id }, include: incluirProfissoes });
   return paraMeuPerfil(atual);

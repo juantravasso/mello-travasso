@@ -139,8 +139,10 @@ export default function TermosPage() {
       <Secao titulo={`9. Perfil público, recomendações e avaliações (${MARCA.produtos.profissionais.nome})`}>
         <Lista>
           <li>
-            O perfil nasce como rascunho e só fica público quando você publica. O que você marcar como público pode ser
-            visto por qualquer pessoa e indexado por buscadores. Dados de gestão nunca entram no perfil.
+            O perfil nasce como rascunho e só fica público quando você publica. Para liberar o uso do sistema depois do cadastro,
+            pedimos que o responsável pela conta publique o perfil <strong>ao menos uma vez</strong>; depois disso você pode despublicar quando
+            quiser. O que você marcar como público pode ser visto por qualquer pessoa e indexado por buscadores. Dados de gestão nunca entram
+            no perfil.
           </li>
           <li>
             Você responde pelo que publica (textos, fotos, portfólio, avaliações). Não publique conteúdo falso,

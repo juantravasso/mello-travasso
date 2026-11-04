@@ -7,6 +7,7 @@ import { BottomNav } from "./BottomNav";
 import { MenuMovel } from "./MenuMovel";
 import { Sidebar } from "./Sidebar";
 import { FaixaChamadaConfiguracao } from "@/components/chamada/ChamadaConfiguracao";
+import { GuardaPerfilObrigatorio } from "./GuardaPerfilObrigatorio";
 import { Topbar } from "./Topbar";
 import { AvisoEmail } from "./AvisoEmail";
 import { FaixaTeste } from "./FaixaTeste";
@@ -26,6 +27,7 @@ export function ShellWrapper({
   emailUsuario,
   papel,
   modulos,
+  perfilPendente,
 }: {
   children: ReactNode;
   nomeUsuario: string;
@@ -36,6 +38,8 @@ export function ShellWrapper({
   emailUsuario: string;
   papel: "dono" | "membro";
   modulos: readonly ModuloChave[];
+  /** O responsável ainda precisa publicar o perfil no Elo Profissionais (obrigatório uma vez, depois do cadastro). */
+  perfilPendente: boolean;
 }) {
   return (
     <StatusPlanoProvider status={statusPlano}>
@@ -52,6 +56,7 @@ export function ShellWrapper({
             <ColunaPrincipal>
               {!emailConfirmado && <AvisoEmail email={emailUsuario} />}
               <FaixaTeste />
+              <GuardaPerfilObrigatorio pendente={perfilPendente} />
               <FaixaChamadaConfiguracao />
               <TourInicial />
               <Topbar nomeUsuario={nomeUsuario} />

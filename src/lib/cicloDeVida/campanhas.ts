@@ -123,9 +123,9 @@ function conteudoDe(campanha: CampanhaId, c: ContextoEmail): Conteudo {
             assunto: `Bem-vindo ao ${MARCA.nome}: seus ${c.diasDeTeste} dias de teste começaram`,
             paragrafos: [
               `Sua conta está criada e você tem ${c.diasDeTeste} dias para testar o ${GESTAO} e o ${REDE}, sem cartão de crédito.`,
-              "O ponto de partida é o painel: dali você chega a projetos, contas a pagar e a receber, estoque e calendário.",
+              "O primeiro passo é publicar o seu perfil no Elo Profissionais (leva poucos minutos). Depois disso o painel fica liberado: projetos, contas a pagar e a receber, estoque e calendário.",
             ],
-            cta: { rotulo: "Abrir meu painel", caminho: "/dashboard" },
+            cta: { rotulo: "Publicar meu perfil", caminho: "/minha-rede/perfil" },
             fechamento: c.fimFormatado ? `Seu teste vai até ${c.fimFormatado}. Os seus dados continuam disponíveis para consulta depois disso.` : undefined,
           };
 

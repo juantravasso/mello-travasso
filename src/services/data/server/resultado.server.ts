@@ -14,6 +14,7 @@ const AUTORIZACAO: Record<string, { erro: CodigoErro; mensagem: string }> = {
   PLANO_SEM_ACESSO: { erro: "GENERICO", mensagem: "O plano da sua empresa não inclui este recurso." },
   SEM_PERMISSAO: { erro: "GENERICO", mensagem: "Você não tem permissão para fazer isso." },
   SEM_ACESSO_MODULO: { erro: "GENERICO", mensagem: "Você não tem acesso a este módulo. Fale com o responsável pela empresa." },
+  PERFIL_PENDENTE: { erro: "GENERICO", mensagem: "Publique o seu perfil no Elo Profissionais para liberar o sistema." },
   TROCA_SENHA_PENDENTE: { erro: "GENERICO", mensagem: "Defina uma nova senha para continuar usando o sistema." },
 };
 

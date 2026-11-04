@@ -305,7 +305,7 @@ export async function criarConta(
     );
     return {
       ok: true,
-      dados: { redirecionarPara: soRede ? "/minha-rede/perfil" : "/dashboard", trocaObrigatoria: false },
+      dados: { redirecionarPara: "/minha-rede/perfil", trocaObrigatoria: false },
     };
   } catch (erro) {
     // RF-06: documento ou e-mail já cadastrados (unique constraint) viram a

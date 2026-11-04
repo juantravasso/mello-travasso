@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
-import { exigirSessao, obterRecursosDaEmpresa, obterStatusPlano } from "@/lib/auth/dal";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { exigirSessao, obterRecursosDaEmpresa, obterStatusPlano, perfilObrigatorioPendente } from "@/lib/auth/dal";
+import { ROTA_DO_PERFIL, rotaLiberadaSemPerfil } from "@/lib/perfilObrigatorio";
 import { Logo } from "@/components/layout/Logo";
 import { SairButton } from "@/components/layout/SairButton";
 import { ShellWrapper } from "@/components/layout/ShellWrapper";
@@ -37,10 +40,19 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  const [statusPlano, recursos] = await Promise.all([
+  const [statusPlano, recursos, perfilPendente] = await Promise.all([
     obterStatusPlano(sessao.empresaId),
     obterRecursosDaEmpresa(sessao.empresaId),
+    perfilObrigatorioPendente(sessao.empresaId, sessao.papel, sessao.admin),
   ]);
+
+  // Depois do cadastro o responsável publica o perfil no Elo Profissionais antes de usar o resto. Aqui cobre quem abre
+  // a tela direto (link, favorito, recarregar); a navegação dentro do app é coberta por GuardaPerfilObrigatorio, porque
+  // o layout não roda de novo a cada troca de tela, e as ações da gestão recusam no servidor (exigirGestaoAction).
+  if (perfilPendente) {
+    const caminho = (await headers()).get("x-pathname");
+    if (caminho && !rotaLiberadaSemPerfil(caminho)) redirect(ROTA_DO_PERFIL);
+  }
 
   return (
     <ShellWrapper
@@ -52,6 +64,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       emailUsuario={sessao.email}
       papel={sessao.papel}
       modulos={sessao.modulos}
+      perfilPendente={perfilPendente}
     >
       {children}
     </ShellWrapper>

@@ -9,6 +9,7 @@ const GENERICA = "Não foi possível concluir agora. Tente de novo.";
 export function mensagemDeErro(erro: unknown): string {
   if (!(erro instanceof Error) || !erro.message) return GENERICA;
   const mensagem = erro.message;
+  if (mensagem === "PERFIL_PENDENTE") return "Publique o seu perfil no Elo Profissionais para liberar o sistema.";
   if (/^(NAO_|SEM_|PLANO_|SOMENTE_)/.test(mensagem)) return GENERICA;
   if (/minified react error|server components render|omitted in production/i.test(mensagem)) return GENERICA;
   return mensagem;

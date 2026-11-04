@@ -349,6 +349,16 @@ só por fato real) e `yarn testar:onboarding` (integração, banco do `.env.loca
 entradas inválidas recusadas, checklist avançando só com dados reais, isolamento entre pessoas e empresas; cria empresas descartáveis e apaga
 o que criou).
 
+## Publicar o perfil no Elo Profissionais é o primeiro passo
+
+Depois do cadastro, o **responsável pela conta** (dono) só usa o resto do sistema depois de publicar o perfil no Elo Profissionais **ao menos uma vez** ([perfilObrigatorio.ts](src/lib/perfilObrigatorio.ts)). O cadastro já leva ao perfil.
+
+- **Três camadas:** o layout de `(app)` redireciona quem abre outra tela direto; [GuardaPerfilObrigatorio.tsx](src/components/layout/GuardaPerfilObrigatorio.tsx) cobre a navegação dentro do app (o layout não roda a cada troca de tela) e mostra a faixa; e `exigirGestaoAction` recusa as ações da gestão com `PERFIL_PENDENTE`.
+- **Telas liberadas:** Elo Profissionais (`/minha-rede`), Configurações e Ajuda.
+- **Só até a primeira publicação** (`Empresa.primeiraPublicacaoEm`): depois a pessoa pode despublicar, como os Termos prometem, sem ficar presa. Empresas que já estavam publicadas são marcadas na migração.
+- **Quem não é obrigado:** funcionários, administrador da plataforma, perfil suspenso pela administração (não dá para republicar) e plano sem o Elo Profissionais.
+- **Para publicar** é preciso confirmar o e-mail e ter nome, estado, cidade e ao menos uma profissão. Termos e Privacidade foram para a versão 1.1.
+
 ## Chamada de configuração de 20 minutos
 
 Cada empresa nova é convidada a marcar uma conversa de 20 minutos com o fundador. O agendamento é numa página externa (Cal.com, Calendly, Google Agenda): o app guarda só o link.

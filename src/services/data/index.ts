@@ -1,5 +1,6 @@
 import type {
   CapturaRepositorio,
+  ComprasRepositorio,
   DepositoRepositorio,
   CatalogoRepositorio,
   ContasRepositorio,
@@ -25,6 +26,7 @@ import type {
   VerificacoesAdminRepositorio,
 } from "./repositorios";
 import { registrarCaptura } from "./server/capturaActions";
+import { cancelarCompra, efetivarCompra, listarCompras, obterCompra, salvarCompra, sugerirIdentificacao } from "./server/comprasActions";
 import { listarTransferencias, obterCustosTransferidos, obterDeposito, transferirDoDeposito } from "./server/depositoActions";
 import { cancelarSolicitacao, criarSolicitacao, listarMinhasSolicitacoes, obterAvaliacaoComprovavel, obterPerfilReivindicavel } from "./server/verificacaoActions";
 import { contarSolicitacoesPendentes, decidirSolicitacao, desfazerSolicitacao, listarSolicitacoesAdmin } from "./server/verificacaoAdminActions";
@@ -176,6 +178,15 @@ export const itensProdutoRepositorio: ItensProdutoRepositorio = {
 
 export const capturaRepositorio: CapturaRepositorio = {
   registrar: registrarCaptura,
+};
+
+export const comprasRepositorio: ComprasRepositorio = {
+  listar: listarCompras,
+  obter: obterCompra,
+  salvar: salvarCompra,
+  sugerirIdentificacao,
+  efetivar: efetivarCompra,
+  cancelar: cancelarCompra,
 };
 
 export const depositoRepositorio: DepositoRepositorio = {

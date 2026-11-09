@@ -71,6 +71,8 @@ model Obra {
   funcionarios      Funcionario[]
   saldosEstoque     SaldoEstoque[]
   movimentosEstoque MovimentoEstoque[]
+  compras           Compra[]
+  compraItems       CompraItem[]
 
   @@index([empresaId])
 }
@@ -140,7 +142,8 @@ model Fornecedor {
   criadoEm     String
   atualizadoEm String
 
-  contas ContaFinanceira[]
+  contas  ContaFinanceira[]
+  compras Compra[]
 
   @@index([empresaId])
   @@index([nome])
@@ -331,6 +334,8 @@ model Empresa {
   extensoesTeste                ExtensaoTeste[]
   emailsAgendados               EmailAgendado[]
   assinaturasComerciais         AssinaturaComercial[]
+  compras                       Compra[]
+  vinculoProdutos               VinculoProduto[]
 
   @@index([convidadaPorId])
 }
@@ -535,9 +540,11 @@ model Produto {
   criadoEm      String
   atualizadoEm  String
 
-  movimentos  MovimentoEstoque[]
-  saldos      SaldoEstoque[]
-  itensCompra ItemProduto[]
+  movimentos      MovimentoEstoque[]
+  saldos          SaldoEstoque[]
+  itensCompra     ItemProduto[]
+  compraItems     CompraItem[]
+  vinculoProdutos VinculoProduto[]
 
   @@unique([empresaId, sku])
   @@index([empresaId])
@@ -1480,4 +1487,98 @@ model DenunciaPostagem {
 
   @@unique([denuncianteEmpresaId, alvoChave])
   @@index([resolvidaEm, criadoEm])
+}
+
+// --- Compras ----------------------------------------------------------------
+// Uma compra de materiais (nota fiscal): cabeçalho + itens. Nasce rascunho (vinda da foto ou digitada), os itens são
+// identificados com produtos do catálogo e só "Efetivar" gera as contas a pagar e a entrada no estoque.
+enum StatusCompraDb {
+  rascunho
+  efetivada
+  cancelada
+}
+
+model Compra {
+  id                 String         @id @default(uuid())
+  empresaId          String
+  empresa            Empresa        @relation(fields: [empresaId], references: [id])
+  /// Sequencial por empresa (exibido com zeros à esquerda).
+  numero             Int
+  status             StatusCompraDb @default(rascunho)
+  /// "foto" ou "manual".
+  origem             String
+  fornecedorId       String?
+  fornecedor         Fornecedor?    @relation(fields: [fornecedorId], references: [id])
+  fornecedorNome     String
+  numeroNf           String?
+  serie              String?
+  chaveAcesso        String?
+  dataEmissao        String?
+  dataCompra         String
+  obraId             String
+  obra               Obra           @relation(fields: [obraId], references: [id])
+  categoria          String?
+  formaPagamento     String?
+  frete              Float          @default(0)
+  seguro             Float          @default(0)
+  outrasDespesas     Float          @default(0)
+  descontoTotal      Float          @default(0)
+  valorProdutos      Float          @default(0)
+  valorTotal         Float          @default(0)
+  /// Parcelas escolhidas à mão: [{ valor, dataVencimento }]. Vazio = uma parcela na data da compra.
+  parcelas           Json           @default("[]")
+  observacao         String?
+  comprovanteUrl     String         @default("") @db.Text
+  /// Conta a pagar principal (ou a primeira parcela), preenchida ao efetivar.
+  contaFinanceiraId  String?
+  motivoCancelamento String?
+  criadoPor          String
+  criadoEm           String
+  atualizadoEm       String
+
+  itens CompraItem[]
+
+  @@unique([empresaId, numero])
+  @@index([empresaId, status])
+  @@index([fornecedorId])
+}
+
+model CompraItem {
+  id               String   @id @default(uuid())
+  compraId         String
+  compra           Compra   @relation(fields: [compraId], references: [id], onDelete: Cascade)
+  ordem            Int
+  descricao        String
+  /// Código do produto no fornecedor (do XML/nota), quando houver.
+  codigoFornecedor String?
+  ncm              String?
+  unidade          String?
+  quantidade       Float
+  valorUnitario    Float
+  desconto         Float    @default(0)
+  valorTotal       Float
+  obraId           String
+  obra             Obra     @relation(fields: [obraId], references: [id])
+  produtoId        String?
+  produto          Produto? @relation(fields: [produtoId], references: [id])
+
+  @@index([compraId])
+  @@index([produtoId])
+}
+
+// Memória da identificação: "este código (ou esta descrição) deste fornecedor é este produto nosso".
+model VinculoProduto {
+  id              String  @id @default(uuid())
+  empresaId       String
+  empresa         Empresa @relation(fields: [empresaId], references: [id])
+  /// Id do fornecedor ou, sem cadastro, o nome normalizado. Vazio quando a compra não tem fornecedor.
+  fornecedorChave String
+  /// Código do fornecedor ou, sem código, a descrição normalizada.
+  chave           String
+  produtoId       String
+  produto         Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  atualizadoEm    String
+
+  @@unique([empresaId, fornecedorChave, chave])
+  @@index([produtoId])
 }

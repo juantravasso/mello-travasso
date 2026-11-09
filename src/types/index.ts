@@ -17,6 +17,7 @@ export * from "./calendario";
 
 export * from "./deposito";
 export * from "./captura";
+export * from "./compra";
 export * from "./convite";
 export * from "./cicloDeVida";
 export * from "./onboarding";

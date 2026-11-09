@@ -1,6 +1,10 @@
 import type { ModuloChave } from "@/lib/auth/modulos";
 import type {
   EntradaCaptura,
+  CompraDetalhe,
+  ListaCompras,
+  ResultadoEfetivacao,
+  SugestaoProduto,
   NovaTransferenciaInput,
   ResultadoCaptura,
   TransferenciaDeposito,
@@ -109,6 +113,15 @@ export interface ItensProdutoRepositorio {
 
 export interface CapturaRepositorio {
   registrar(entrada: EntradaCaptura): Promise<ResultadoAction<ResultadoCaptura>>;
+}
+
+export interface ComprasRepositorio {
+  listar(filtros: unknown): Promise<ResultadoAction<ListaCompras>>;
+  obter(id: string): Promise<ResultadoAction<CompraDetalhe | null>>;
+  salvar(entrada: unknown, id?: string): Promise<ResultadoAction<{ id: string; numero: number }>>;
+  sugerirIdentificacao(entrada: unknown): Promise<ResultadoAction<(SugestaoProduto | null)[]>>;
+  efetivar(id: string): Promise<ResultadoAction<ResultadoEfetivacao>>;
+  cancelar(entrada: unknown): Promise<ResultadoAction<{ avisoEstoque?: string }>>;
 }
 
 export interface DepositoRepositorio {

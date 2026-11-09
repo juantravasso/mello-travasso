@@ -244,3 +244,11 @@ export const IconeFoto = (p: SVGProps<SVGSVGElement>) => (
     <path d="m4 18 5.5-5 4 3.5 2.5-2L20 18" />
   </Base>
 );
+
+export const IconeCompras = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.76L19.5 8H6" />
+    <circle cx="9" cy="19" r="1.4" />
+    <circle cx="17" cy="19" r="1.4" />
+  </Base>
+);

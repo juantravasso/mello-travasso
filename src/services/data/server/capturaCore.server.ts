@@ -30,9 +30,17 @@ export interface ContextoCaptura {
 
 const centavos = (v: number) => Math.round(v * 100 + 1e-6);
 
+/** Usado só por código de servidor (a Action pública nunca repassa isto): a compra já identificou os produtos e precisa gravar o vínculo na mesma transação. */
+export interface ExtrasCaptura {
+  /** Produto já identificado de cada item, na mesma ordem de `itens`. Sem ele, o produto é resolvido pela descrição. */
+  produtoPorItem?: (string | undefined)[];
+  aposGravar?: (tx: Prisma.TransactionClient, resultado: ResultadoCaptura) => Promise<void>;
+}
+
 export async function registrarCaptura(
   ctx: ContextoCaptura,
   entrada: unknown,
+  extras?: ExtrasCaptura,
 ): Promise<ResultadoCaptura> {
   const parsed = capturaSchema.safeParse(entrada);
   if (!parsed.success)
@@ -168,7 +176,7 @@ export async function registrarCaptura(
       }
 
       // Os itens ficam na primeira conta (como já era com parcelamento): a compra é uma só, não uma por parcela.
-      for (const item of dados.itens) {
+      for (const [posicao, item] of dados.itens.entries()) {
         const criado = await tx.itemProduto.create({
           data: {
             empresaId: ctx.empresaId,
@@ -184,11 +192,10 @@ export async function registrarCaptura(
             criadoEm: agora,
           },
         });
-        const produto = await resolverProdutoComTx(
-          tx,
-          ctx.empresaId,
-          item.descricao,
-        );
+        const produtoIdentificado = extras?.produtoPorItem?.[posicao];
+        const produto = produtoIdentificado
+          ? { id: produtoIdentificado }
+          : await resolverProdutoComTx(tx, ctx.empresaId, item.descricao);
         await tx.itemProduto.update({
           where: { id: criado.id },
           data: { produtoId: produto.id },
@@ -205,12 +212,14 @@ export async function registrarCaptura(
         });
       }
 
-      return {
+      const resultado: ResultadoCaptura = {
         contaId: primeiraContaId,
         contasCriadas: partes.length,
         itensCriados: dados.itens.length,
         rateios: dividida ? rateioBase : undefined,
       };
+      if (extras?.aposGravar) await extras.aposGravar(tx, resultado);
+      return resultado;
     },
     // Uma nota grande faz centenas de escritas em sequência; o padrão (5 s) cortaria a transação no meio.
     { timeout: 60_000, maxWait: 10_000 },

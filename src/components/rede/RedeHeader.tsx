@@ -15,6 +15,9 @@ export async function RedeHeader() {
             <Logo tamanho="sm" produto="profissionais" />
           </Link>
           <nav aria-label={MARCA.nome} className="hidden items-center gap-5 sm:flex">
+            <Link href="/feed" className="text-sm font-medium text-foreground hover:text-primary">
+              Comunidade
+            </Link>
             <Link href="/rede" className="text-sm font-medium text-foreground hover:text-primary">
               Encontrar profissionais
             </Link>

@@ -32,7 +32,7 @@ export default function TermosPage() {
           </li>
           <li>
             <strong>{MARCA.produtos.profissionais.nome}:</strong> perfil público, busca de empresas e autônomos,
-            portfólio, recomendações e avaliações.
+            portfólio, recomendações e avaliações, e a comunidade, um feed de postagens com textos e fotos, curtidas e comentários.
           </li>
           <li>
             A área de compra e venda ({MARCA.produtos.marketplace.nome}) ainda não foi lançada e não faz parte do que
@@ -145,7 +145,14 @@ export default function TermosPage() {
             no perfil.
           </li>
           <li>
-            Você responde pelo que publica (textos, fotos, portfólio, avaliações). Não publique conteúdo falso,
+            <strong>Comunidade (feed):</strong> as postagens e os comentários ficam visíveis a qualquer pessoa, inclusive a quem não tem
+            conta, e podem ser indexados por buscadores. Só publica, comenta e curte quem tem o e-mail confirmado e o perfil publicado.
+            Você pode apagar as suas postagens e comentários a qualquer momento; ao apagar uma postagem, as fotos dela são removidas.
+            Não publique dados pessoais de terceiros, fotos de pessoas sem autorização, propaganda de terceiros, golpes ou conteúdo
+            ilegal. Qualquer pessoa logada pode denunciar um conteúdo, e a administração pode ocultá-lo ou removê-lo.
+          </li>
+          <li>
+            Você responde pelo que publica (textos, fotos, portfólio, avaliações, postagens e comentários). Não publique conteúdo falso,
             ofensivo, ilegal, que viole direito autoral ou de imagem, nem avaliações de quem você não contratou ou que
             você não recebeu como cliente.
           </li>

@@ -27,7 +27,8 @@ export async function GET(request: Request, contexto: { params: Promise<{ id: st
   const meta = await lerMetaArquivo(id);
   if (!meta || meta.finalidade === "documento") return naoEncontrado();
 
-  const publico = meta.perfil?.status === "publicado";
+  // Foto de postagem: pública só com o perfil publicado E a postagem publicada (oculta ou apagada some para todos, menos o dono).
+  const publico = meta.perfil?.status === "publicado" && (meta.finalidade !== "postagem" || meta.fotoPostagem?.postagem.status === "publicada");
   let privado = false;
   if (!publico) {
     const sessao = await obterSessaoOpcional();

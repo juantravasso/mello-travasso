@@ -22,3 +22,4 @@ export * from "./cicloDeVida";
 export * from "./onboarding";
 export * from "./metricas";
 export * from "./planosComerciais";
+export * from "./feed";

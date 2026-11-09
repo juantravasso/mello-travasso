@@ -204,3 +204,43 @@ export const IconeOlhoRiscado = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 3l18 18" />
   </Base>
 );
+
+export const IconeCurtir = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z" />
+  </Base>
+);
+
+export const IconeComentar = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M4 5.5h16a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-9l-4.5 3.5V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" />
+  </Base>
+);
+
+export const IconeInicioRede = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M4 11 12 4l8 7" />
+    <path d="M6 10v9.5h4.5V14h3v5.5H18V10" />
+  </Base>
+);
+
+export const IconeMais = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <path d="M12 5v14M5 12h14" />
+  </Base>
+);
+
+export const IconePerfilRede = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <circle cx="12" cy="8.5" r="3.6" />
+    <path d="M5 20c.8-3.6 3.6-5.4 7-5.4s6.2 1.8 7 5.4" />
+  </Base>
+);
+
+export const IconeFoto = (p: SVGProps<SVGSVGElement>) => (
+  <Base {...p}>
+    <rect x="3" y="4.5" width="18" height="15" rx="2" />
+    <circle cx="9" cy="10" r="1.7" />
+    <path d="m4 18 5.5-5 4 3.5 2.5-2L20 18" />
+  </Base>
+);

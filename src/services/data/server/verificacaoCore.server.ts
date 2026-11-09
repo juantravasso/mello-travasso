@@ -169,7 +169,7 @@ export async function aplicarAprovacao(tx: Prisma.TransactionClient, solicitacao
       tx.denuncia.count({ where: { perfilId: meu.id } }),
       tx.servico.count({ where: { perfilId: meu.id } }),
       tx.trabalho.count({ where: { perfilId: meu.id } }),
-      tx.arquivo.count({ where: { perfilId: meu.id } }),
+      tx.arquivo.count({ where: { perfilId: meu.id, finalidade: { not: "postagem" } } }),
     ]);
     if (meu.status !== "rascunho" || avaliacoes + indicacoes + denuncias + servicos + trabalhos + arquivos > 0) {
       throw new ErroDeNegocio("A empresa já tem um perfil próprio com histórico ou conteúdo (serviços, portfólio, avaliações). Resolva manualmente antes de aprovar.");

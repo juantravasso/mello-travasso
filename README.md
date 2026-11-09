@@ -359,6 +359,17 @@ Depois do cadastro, o **responsável pela conta** (dono) só usa o resto do sist
 - **Quem não é obrigado:** funcionários, administrador da plataforma, perfil suspenso pela administração (não dá para republicar) e plano sem o Elo Profissionais.
 - **Para publicar** é preciso confirmar o e-mail e ter nome, estado, cidade e ao menos uma profissão. Termos e Privacidade foram para a versão 1.1.
 
+## Comunidade (feed) do Elo Profissionais
+
+Feed público em `/feed` (qualquer visitante lê; postar, comentar e curtir exige sessão, e-mail confirmado, módulo da rede e **perfil publicado**: [exigirParticipante](src/services/data/server/feedCore.server.ts)).
+
+- **Dados:** `Postagem`, `PostagemFoto`, `PostagemCurtida`, `ComentarioPostagem`, `DenunciaPostagem`. As fotos ficam na tabela `Arquivo` (finalidade `postagem`), sem EXIF, e **não contam** no teto de 60 arquivos do perfil.
+- **Publicar:** `POST /api/postagens` (multipart: texto + até 4 fotos, tudo numa transação). Limites por empresa/dia em [feed.ts](src/lib/feed.ts): 10 postagens, 60 comentários, 300 curtidas, 10 denúncias.
+- **Visibilidade:** a foto só é servida por `/api/arquivos/<id>` enquanto a postagem está `publicada` e o perfil `publicado`. Apagar uma postagem apaga as fotos.
+- **Moderação:** denúncia por postagem/comentário vai para `/admin/postagens`, onde a administração oculta (reversível) ou mantém, com motivo e senha, e fica no log. Também dá para ocultar uma postagem sem denúncia.
+- **Celular:** a área da rede social (`(rede)`) tem a barra Início · Publicar · Perfil ([NavRedeMobile](src/components/feed/NavRedeMobile.tsx)); a área do app mantém a barra das abas favoritas.
+- **Armazenamento:** hoje no Postgres (Neon). Acompanhe o tamanho do banco: o armazenamento está isolado em `armazenamento.server.ts` para trocar por Blob/S3 sem mexer no resto.
+
 ## Chamada de configuração de 20 minutos
 
 Cada empresa nova é convidada a marcar uma conversa de 20 minutos com o fundador. O agendamento é numa página externa (Cal.com, Calendly, Google Agenda): o app guarda só o link.

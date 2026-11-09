@@ -13,6 +13,7 @@ const abas = [
   { href: "/minha-rede/verificacao", rotulo: "Verificação", tambem: ["/minha-rede/reivindicar", "/minha-rede/comprovar"] },
   { href: "/minha-rede/denuncias", rotulo: "Denúncias", tambem: [] },
   { href: "/minha-rede/notificacoes", rotulo: "Notificações", tambem: [] },
+  { href: "/feed", rotulo: "Comunidade", externa: true, tambem: [] },
   { href: "/rede", rotulo: "Encontrar profissionais", externa: true, tambem: [] },
 ] as const;
 

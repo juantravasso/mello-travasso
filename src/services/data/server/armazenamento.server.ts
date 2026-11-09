@@ -254,13 +254,18 @@ export interface MetaArquivo {
   empresaId: string;
   finalidade: FinalidadeArquivoDb;
   perfil: { status: string } | null;
+  /** Só em foto de postagem: situação da postagem (a foto só é pública enquanto ela estiver publicada). */
+  fotoPostagem: { postagem: { status: string } } | null;
 }
 
 /** Só metadados (sem os bytes): suficiente para decidir se o acesso é permitido. */
 export async function lerMetaArquivo(id: string): Promise<MetaArquivo | null> {
   return prisma.arquivo.findUnique({
     where: { id },
-    select: { mime: true, tamanho: true, empresaId: true, finalidade: true, perfil: { select: { status: true } } },
+    select: { mime: true, tamanho: true, empresaId: true, finalidade: true,
+      perfil: { select: { status: true } },
+      fotoPostagem: { select: { postagem: { select: { status: true } } } },
+    },
   });
 }
 

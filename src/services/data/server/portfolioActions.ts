@@ -38,7 +38,7 @@ export async function obterMeuPortfolio(): Promise<ResultadoAction<MeuPortfolio>
         orderBy: [{ ordem: "asc" }, { id: "asc" }],
       }),
       prisma.arquivo.findFirst({ where: { perfilId: perfil.id, finalidade: "logo" }, orderBy: { criadoEm: "desc" }, select: { id: true } }),
-      prisma.arquivo.count({ where: { perfilId: perfil.id } }),
+      prisma.arquivo.count({ where: { perfilId: perfil.id, finalidade: { not: "postagem" } } }),
     ]);
     return {
       logoArquivoId: logo?.id,

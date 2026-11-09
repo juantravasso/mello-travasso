@@ -49,6 +49,10 @@ export default function PrivacidadePage() {
             estado, áreas de atendimento, fotos, portfólio, Instagram, site e, só se você marcar, telefone e WhatsApp.
           </li>
           <li>
+            <strong>Comunidade:</strong> as postagens (texto e fotos), os comentários e as curtidas que você fizer, ligados ao seu
+            perfil. Postagens e comentários são públicos. As fotos são guardadas sem os metadados da câmera (como localização).
+          </li>
+          <li>
             <strong>Recomendações e avaliações:</strong> o conteúdo escrito e o nome de quem escreveu.
           </li>
           <li>

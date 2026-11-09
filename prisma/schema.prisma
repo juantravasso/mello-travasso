@@ -261,22 +261,22 @@ model Empresa {
   // scripts/backfill-cadastro-empresa.ts). Endereço e dados de contato
   // continuam opcionais (BrasilAPI pode falhar; RF-02 permite preenchimento
   // manual parcial).
-  tipoPessoa         TipoPessoaDb
-  nomeFantasia       String?
-  situacaoCadastral  String?
-  telefone           String?
-  emailContato       String?
-  cep                String?
-  logradouro         String?
-  numero             String?
-  complemento        String?
-  bairro             String?
-  cidade             String?
-  estado             String?
-  plano              PlanoDb
-  testeTerminaEm     String? // ISO datetime; null em cortesia/ativo (RF-07, RF-17)
-  aceiteTermosVersao String
-  aceiteTermosEm     String
+  tipoPessoa                TipoPessoaDb
+  nomeFantasia              String?
+  situacaoCadastral         String?
+  telefone                  String?
+  emailContato              String?
+  cep                       String?
+  logradouro                String?
+  numero                    String?
+  complemento               String?
+  bairro                    String?
+  cidade                    String?
+  estado                    String?
+  plano                     PlanoDb
+  testeTerminaEm            String? // ISO datetime; null em cortesia/ativo (RF-07, RF-17)
+  aceiteTermosVersao        String
+  aceiteTermosEm            String
   /// O que a empresa fez com o convite para a chamada de configuração: "agendada" ou "dispensada". Nulo = ainda não respondeu.
   chamadaConfiguracaoEstado String?
   chamadaConfiguracaoEm     String?
@@ -284,21 +284,21 @@ model Empresa {
   primeiraPublicacaoEm      String?
   /// Bloqueio pela administração (Fase 6.6): ninguém da empresa entra e o perfil sai do ar.
   /// O motivo é interno, nunca mostrado ao usuário.
-  bloqueadaEm        String?
-  bloqueioMotivo     String?
+  bloqueadaEm               String?
+  bloqueioMotivo            String?
   /// Fase 6.5b: a administração conferiu os documentos da empresa (ou do profissional).
-  verificadaEm       String?
+  verificadaEm              String?
   /// Fuso IANA em que os compromissos e lembretes da empresa são interpretados (ver src/lib/calendario/tempo.ts).
-  fusoHorario        String       @default("America/Sao_Paulo")
+  fusoHorario               String       @default("America/Sao_Paulo")
 
   /// Código do link de convite da empresa (8 caracteres sem 0/O/1/I/L). Criado na primeira vez que o dono abre o link.
-  codigoConvite  String?   @unique
+  codigoConvite       String?   @unique
   /// Empresa cujo link de convite originou este cadastro. Só rastreio: não dá acesso a nada da outra empresa.
-  convidadaPorId String?
+  convidadaPorId      String?
   /// Plano comercial contratado (chave de PlanoComercial). Só tem efeito de contagem de vagas; o acesso vem de `plano`.
   planoComercialChave String?
-  convidadaPor   Empresa?  @relation("ConvitesDeCadastro", fields: [convidadaPorId], references: [id], onDelete: SetNull)
-  convidadas     Empresa[] @relation("ConvitesDeCadastro")
+  convidadaPor        Empresa?  @relation("ConvitesDeCadastro", fields: [convidadaPorId], references: [id], onDelete: SetNull)
+  convidadas          Empresa[] @relation("ConvitesDeCadastro")
 
   usuarios Usuario[]
 
@@ -316,6 +316,10 @@ model Empresa {
   saldosEstoque                 SaldoEstoque[]
   movimentosEstoque             MovimentoEstoque[]
   perfilPublico                 PerfilPublico?
+  postagens                     Postagem[]
+  comentariosPostagem           ComentarioPostagem[]
+  curtidasPostagem              PostagemCurtida[]
+  denunciasPostagem             DenunciaPostagem[]
   avaliacoesFeitas              Avaliacao[]
   respostasAvaliacao            RespostaAvaliacao[]
   indicacoesFeitas              Indicacao[]
@@ -374,20 +378,20 @@ model EventoProduto {
 /// Fila de e-mails de ciclo de vida (boas-vindas, dicas, fim do teste). `chave` única impede duplicar o mesmo e-mail;
 /// o conteúdo é montado na hora do envio, depois de conferir de novo se ele ainda faz sentido.
 model EmailAgendado {
-  id                 String   @id @default(uuid())
+  id                 String  @id @default(uuid())
   empresaId          String
-  empresa            Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa            Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   usuarioId          String
-  usuario            Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario            Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   campanha           String
   /// "transacional" (sobre a conta; ignora a preferência) ou "promocional" (dicas e ofertas; respeita o descadastro).
   categoria          String
-  chave              String   @unique
+  chave              String  @unique
   /// Fim do teste (ISO) ou id da extensão a que o e-mail se refere; se mudar antes do envio, o e-mail é cancelado.
   referencia         String?
   /// pendente | enviado | falhou | cancelado
-  status             String   @default("pendente")
-  tentativas         Int      @default(0)
+  status             String  @default("pendente")
+  tentativas         Int     @default(0)
   proximaTentativaEm String
   reservadoAte       String?
   enviadoEm          String?
@@ -681,14 +685,16 @@ model PerfilPublico {
   /// Empresa que criou o perfil por indicação. Não pode avaliar o que criou.
   indicadoPorEmpresaId String?
 
-  profissoes   PerfilProfissao[]
-  avaliacoes   Avaliacao[]
-  indicacoes   Indicacao[]
-  denuncias    Denuncia[]
-  arquivos     Arquivo[]
-  servicos     Servico[]
-  trabalhos    Trabalho[]
-  solicitacoes SolicitacaoVerificacao[]
+  profissoes          PerfilProfissao[]
+  avaliacoes          Avaliacao[]
+  indicacoes          Indicacao[]
+  denuncias           Denuncia[]
+  arquivos            Arquivo[]
+  servicos            Servico[]
+  trabalhos           Trabalho[]
+  solicitacoes        SolicitacaoVerificacao[]
+  postagens           Postagem[]
+  comentariosPostagem ComentarioPostagem[]
 
   @@index([status, estado, cidadeBusca])
   @@index([status, criadoEm])
@@ -1007,6 +1013,8 @@ enum FinalidadeArquivoDb {
   portfolio
   /// Documentos de comprovação (Fase 6.5b): privados e cifrados, nunca servidos em rota pública.
   documento
+  /// Foto de uma postagem do feed (pública enquanto a postagem estiver publicada).
+  postagem
 }
 
 /// Arquivo guardado no próprio Postgres (sem storage externo ainda). Todo acesso
@@ -1032,7 +1040,8 @@ model Arquivo {
   sha256        String?
   criadoEm      String
 
-  foto TrabalhoFoto?
+  foto         TrabalhoFoto?
+  fotoPostagem PostagemFoto?
 
   @@index([perfilId, finalidade])
   @@index([empresaId])
@@ -1278,51 +1287,51 @@ model ProgressoOnboarding {
 /// concede acesso nem cobra (os recursos de cada plano vêm de PlanoRecurso). Preços em centavos; sem preço, o plano
 /// aparece como "sob consulta". Nenhum plano existe até o administrador cadastrar e publicar.
 model PlanoComercial {
-  id                   String   @id @default(uuid())
-  chave                String   @unique
-  nome                 String
-  descricao            String
-  precoMensalCentavos  Int?
-  precoAnualCentavos   Int?
-  beneficios           String[] @default([])
-  destaque             Boolean  @default(false)
-  publicado            Boolean  @default(false)
-  ordem                Int      @default(0)
+  id                  String                @id @default(uuid())
+  chave               String                @unique
+  nome                String
+  descricao           String
+  precoMensalCentavos Int?
+  precoAnualCentavos  Int?
+  beneficios          String[]              @default([])
+  destaque            Boolean               @default(false)
+  publicado           Boolean               @default(false)
+  ordem               Int                   @default(0)
   /// Limite de vagas (ex.: plano fundador). As vagas ocupadas são contadas nas empresas no plano ativo com esta chave; o
   /// "restam N" mostrado ao cliente sai dessa conta, nunca de um número digitado.
-  vagasTotal           Int?
+  vagasTotal          Int?
   /// Só preenchido quando o provedor de pagamento confirmou o parcelamento sem juros; sem isso a página não promete.
-  parcelasSemJuros     Int?
+  parcelasSemJuros    Int?
   /// Condição que vale para o preço (ex.: "Preço garantido por 12 meses").
-  condicao             String?
-  criadoEm             String
-  atualizadoEm         String
-  assinaturas          AssinaturaComercial[]
+  condicao            String?
+  criadoEm            String
+  atualizadoEm        String
+  assinaturas         AssinaturaComercial[]
 }
 
 /// Cobrança real de um plano comercial via Mercado Pago. Mensal é assinatura recorrente (preapproval); anual é
 /// pagamento único parcelado (Checkout Pro) — o Mercado Pago não tem "assinatura parcelada", então o ciclo anual
 /// não tem recorrência de verdade no provedor: a renovação é um novo pagamento, avisado por e-mail antes do vencimento.
 model AssinaturaComercial {
-  id             String         @id @default(uuid())
-  empresaId      String
-  empresa        Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  planoChave     String
-  planoComercial PlanoComercial @relation(fields: [planoChave], references: [chave])
+  id                String         @id @default(uuid())
+  empresaId         String
+  empresa           Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  planoChave        String
+  planoComercial    PlanoComercial @relation(fields: [planoChave], references: [chave])
   /// "mensal" (preapproval) ou "anual" (pagamento único parcelado)
-  ciclo          String
+  ciclo             String
   /// reservada | ativa | pausada | cancelada | expirada | paga_sem_vaga
-  status         String
+  status            String
   /// Id do preapproval (mensal) ou do payment (anual) confirmado pelo Mercado Pago; null enquanto só reservada.
-  referenciaExterna String?     @unique
-  parcelas       Int?
-  valorCentavos  Int
+  referenciaExterna String?        @unique
+  parcelas          Int?
+  valorCentavos     Int
   /// Só setado durante "reservada": passado esse prazo, a reserva deixa de contar na ocupação de vagas.
   reservaExpiraEm   String?
   /// Mensal: início do próximo ciclo do preapproval. Anual: quando a renovação (novo pagamento) vence.
   proximaCobrancaEm String?
-  criadoEm       String
-  atualizadoEm   String
+  criadoEm          String
+  atualizadoEm      String
 
   @@index([empresaId])
   @@index([planoChave, status])
@@ -1370,4 +1379,105 @@ model Cargo {
   atualizadoEm String
 
   @@unique([empresaId, nome])
+}
+
+// --- Feed da comunidade (Elo Profissionais) ----------------------------------
+
+enum StatusPostagemDb {
+  publicada
+  /// Escondida pela administração (moderação).
+  oculta
+  /// Apagada pelo próprio autor.
+  apagada
+}
+
+/// Postagem de uma empresa no feed. Pública para qualquer visitante enquanto estiver "publicada".
+model Postagem {
+  id              String           @id @default(uuid())
+  perfilId        String
+  perfil          PerfilPublico    @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  empresaId       String
+  empresa         Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarioId       String
+  texto           String           @db.Text
+  status          StatusPostagemDb @default(publicada)
+  /// Anotação interna de quem ocultou (nunca exibida).
+  motivoOcultacao String?
+  criadoEm        String
+  atualizadoEm    String
+
+  fotos       PostagemFoto[]
+  curtidas    PostagemCurtida[]
+  comentarios ComentarioPostagem[]
+  denuncias   DenunciaPostagem[]
+
+  @@index([status, criadoEm, id])
+  @@index([perfilId, status, criadoEm])
+  @@index([empresaId, criadoEm])
+}
+
+model PostagemFoto {
+  id         String   @id @default(uuid())
+  postagemId String
+  postagem   Postagem @relation(fields: [postagemId], references: [id], onDelete: Cascade)
+  arquivoId  String   @unique
+  arquivo    Arquivo  @relation(fields: [arquivoId], references: [id], onDelete: Cascade)
+  ordem      Int      @default(0)
+  criadoEm   String
+
+  @@index([postagemId, ordem])
+}
+
+model PostagemCurtida {
+  postagemId String
+  postagem   Postagem @relation(fields: [postagemId], references: [id], onDelete: Cascade)
+  empresaId  String
+  empresa    Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  criadoEm   String
+
+  @@id([postagemId, empresaId])
+  @@index([empresaId])
+}
+
+model ComentarioPostagem {
+  id         String           @id @default(uuid())
+  postagemId String
+  postagem   Postagem         @relation(fields: [postagemId], references: [id], onDelete: Cascade)
+  perfilId   String
+  perfil     PerfilPublico    @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  empresaId  String
+  empresa    Empresa          @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarioId  String
+  texto      String           @db.Text
+  status     StatusPostagemDb @default(publicada)
+  criadoEm   String
+
+  denuncias DenunciaPostagem[]
+
+  @@index([postagemId, status, criadoEm])
+  @@index([empresaId, criadoEm])
+}
+
+/// Denúncia de uma postagem ou de um comentário. `alvoChave` ("p:<id>" ou "c:<id>") garante uma denúncia por
+/// empresa e alvo. Nada é ocultado por ela: só por decisão da administração.
+model DenunciaPostagem {
+  id                   String              @id @default(uuid())
+  postagemId           String
+  postagem             Postagem            @relation(fields: [postagemId], references: [id], onDelete: Cascade)
+  comentarioId         String?
+  comentario           ComentarioPostagem? @relation(fields: [comentarioId], references: [id], onDelete: Cascade)
+  alvoChave            String
+  denuncianteEmpresaId String
+  denunciante          Empresa             @relation(fields: [denuncianteEmpresaId], references: [id], onDelete: Cascade)
+  denuncianteUsuarioId String
+  motivo               TipoDenunciaDb
+  descricao            String              @db.Text
+  criadoEm             String
+  /// Preenchido quando a administração decide; "ocultada" ou "mantida".
+  decisao              String?
+  resolvidaEm          String?
+  adminResponsavelId   String?
+
+  @@unique([denuncianteEmpresaId, alvoChave])
+  @@index([resolvidaEm, criadoEm])
 }

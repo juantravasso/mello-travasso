@@ -114,7 +114,7 @@ export async function receberUpload(request: Request): Promise<RespostaUpload> {
         await travarPerfil(tx, perfil.id);
         const antigos = await tx.arquivo.findMany({ where: { perfilId: perfil.id, finalidade: "logo" }, select: { id: true } });
         // A troca de logo não conta o logo que está saindo.
-        const outros = await tx.arquivo.count({ where: { perfilId: perfil.id, finalidade: { not: "logo" } } });
+        const outros = await tx.arquivo.count({ where: { perfilId: perfil.id, finalidade: { notIn: ["logo", "postagem"] } } });
         if (outros >= MAX_ARQUIVOS_POR_PERFIL) return "limite" as const;
         await excluirArquivos(tx, antigos.map((a) => a.id), sessao.empresaId);
         return salvarArquivo(tx, { empresaId: sessao.empresaId, perfilId: perfil.id, finalidade: "logo", mime, bytes });
@@ -127,7 +127,7 @@ export async function receberUpload(request: Request): Promise<RespostaUpload> {
     const resultado = await prisma.$transaction(async (tx) => {
       // O lock serializa uploads do mesmo perfil: os limites abaixo valem sob concorrência.
       await travarPerfil(tx, perfil.id);
-      if ((await tx.arquivo.count({ where: { perfilId: perfil.id } })) >= MAX_ARQUIVOS_POR_PERFIL) return "limite" as const;
+      if ((await tx.arquivo.count({ where: { perfilId: perfil.id, finalidade: { not: "postagem" } } })) >= MAX_ARQUIVOS_POR_PERFIL) return "limite" as const;
       const trabalho = await tx.trabalho.findFirst({
         where: { id: trabalhoId, perfilId: perfil.id },
         select: { id: true, _count: { select: { fotos: true } } },

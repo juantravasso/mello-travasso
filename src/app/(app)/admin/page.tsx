@@ -85,6 +85,7 @@ export default async function AdminPage() {
         <Atalho href="/admin/perfis" titulo="Perfis da rede" texto="Suspenda um perfil publicado ou reative um suspenso." />
         <Atalho href="/admin/avaliacoes" titulo="Avaliações" texto="Oculte, remova ou restaure avaliações, com motivo registrado." />
         <Atalho href="/admin/recomendacoes" titulo="Recomendações" texto="Veja quem recomendou quem e remova uma recomendação indevida." />
+        <Atalho href="/admin/postagens" titulo="Comunidade (feed)" texto="Denúncias de postagens e comentários e as postagens recentes: oculte o que não deve ficar no ar." />
         <Atalho href="/admin/portfolio" titulo="Portfólio" texto="Trabalhos e fotos que as empresas publicam: veja e remova o que não deve ficar no ar." />
         <Atalho href="/admin/denuncias" titulo="Denúncias" aviso={pendente(resumo.denunciasAbertas, "aberta", "abertas")} texto="Fila de denúncias de avaliações e perfis: analise, peça informações e decida." />
         <Atalho href="/admin/verificacoes" titulo="Verificações" aviso={pendente(pendentes, "pendente", "pendentes")} texto="Selo de verificado, reivindicação de perfil e relação comprovada, com os documentos." />

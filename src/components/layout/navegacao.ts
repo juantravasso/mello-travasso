@@ -3,6 +3,7 @@ import {
   IconeAjuda,
   IconeBusca,
   IconeCaixa,
+  IconeComentar,
   IconeCalendario,
   IconeCamera,
   IconeConfig,
@@ -46,6 +47,7 @@ export const TITULO_GRUPO: Record<GrupoNavegacao, string> = {
 };
 
 export const ITENS_NAVEGACAO: readonly ItemNavegacao[] = [
+  { href: "/feed", rotulo: "Comunidade", rotuloCurto: "Comunidade", Icone: IconeComentar, grupo: "profissionais", destaque: true },
   { href: "/rede", rotulo: "Encontrar profissionais", rotuloCurto: "Buscar", Icone: IconeBusca, grupo: "profissionais", destaque: true },
   { href: "/minha-rede", rotulo: "Minha rede", rotuloCurto: "Minha rede", Icone: IconeRede, grupo: "profissionais" },
   { href: "/dashboard", rotulo: "Painel principal", rotuloCurto: "Início", Icone: IconeDashboard, grupo: "gestao", gestao: true },

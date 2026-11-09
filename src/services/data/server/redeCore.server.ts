@@ -179,11 +179,13 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
     });
   }
   if (distancias) {
-    // O raio já inclui a própria cidade (distância 0): estado e cidade não restringem mais.
-    condicoes.push({ id: { in: [...distancias.keys()] } });
+    // O raio já inclui a própria cidade (distância 0): estado e cidade não restringem mais. Quem não informou
+    // cidade atende o estado inteiro e entra também, depois dos que têm distância medida.
+    condicoes.push({ OR: [{ id: { in: [...distancias.keys()] } }, { estado, cidadeBusca: null }] });
   } else {
     if (estado) condicoes.push({ estado });
-    if (termoCidade) condicoes.push({ cidadeBusca: { contains: termoCidade } });
+    // Perfil sem cidade atende o estado todo: aparece em qualquer cidade daquele estado.
+    if (termoCidade) condicoes.push(estado ? { OR: [{ cidadeBusca: { contains: termoCidade } }, { cidadeBusca: null }] } : { cidadeBusca: { contains: termoCidade } });
   }
   if (tipo) condicoes.push({ tipo });
   // Sem nenhum filtro, a listagem (indexável) não mostra autônomo indicado por
@@ -212,7 +214,8 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
     const achados = await prisma.perfilPublico.findMany({ where, select: { id: true, nome: true } });
     const ordenados = achados.sort(
       (a, b) =>
-        (mapa.get(a.id) ?? 0) - (mapa.get(b.id) ?? 0) || a.nome.localeCompare(b.nome, "pt-BR") || a.id.localeCompare(b.id),
+        (mapa.get(a.id) ?? Infinity) - (mapa.get(b.id) ?? Infinity) ||
+        (mapa.has(a.id) === mapa.has(b.id) ? 0 : mapa.has(a.id) ? -1 : 1) || a.nome.localeCompare(b.nome, "pt-BR") || a.id.localeCompare(b.id),
     );
     total = ordenados.length;
     const idsPagina = ordenados.slice((pagina - 1) * TAMANHO_PAGINA_BUSCA, pagina * TAMANHO_PAGINA_BUSCA).map((p) => p.id);
@@ -234,7 +237,7 @@ export async function buscarPerfisPublicos(filtrosBrutos: FiltrosBuscaPerfil): P
   const resumos = await resumosPorPerfil(perfis.map((p) => p.id));
 
   return {
-    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id), distancias ? Math.round(distancias.get(p.id) ?? 0) : undefined)),
+    itens: perfis.map((p) => paraResumo(p, resumos.get(p.id), distancias?.has(p.id) ? Math.round(distancias.get(p.id) ?? 0) : undefined)),
     total,
     pagina,
     totalPaginas: Math.ceil(total / TAMANHO_PAGINA_BUSCA),

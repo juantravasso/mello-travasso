@@ -60,12 +60,12 @@ export default function ComprasPage() {
         titulo="Compras"
         acao={
           !somenteLeitura && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link href="/compras/foto">
-                <Button tamanho="sm">Lançar por foto</Button>
+                <Button tamanho="sm" className="whitespace-nowrap">Lançar por foto</Button>
               </Link>
               <Link href="/compras/nova">
-                <Button tamanho="sm" variante="outline">
+                <Button tamanho="sm" variante="outline" className="whitespace-nowrap">
                   + Lançar manualmente
                 </Button>
               </Link>

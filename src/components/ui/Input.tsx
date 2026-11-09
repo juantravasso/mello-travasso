@@ -23,8 +23,10 @@ export function Input({ label, erro, destaque, className, id, type, "aria-descri
       aria-invalid={erro ? true : undefined}
       aria-describedby={[idErro, ariaDescribedBy].filter(Boolean).join(" ") || undefined}
       className={cn(
-        "h-11 w-full min-w-0 rounded-lg border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary",
+        "h-11 w-full min-w-0 max-w-full rounded-lg border bg-surface px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted focus:border-primary",
         ehSenha && "pr-12",
+        // No iPhone o campo de data ignora a largura e vaza do cartão: tira a aparência nativa e prende na coluna.
+        type === "date" && "appearance-none [&::-webkit-date-and-time-value]:text-left",
         erro ? "border-danger" : destaque ? "border-info bg-info-bg" : "border-border",
         className,
       )}

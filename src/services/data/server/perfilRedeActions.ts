@@ -52,13 +52,12 @@ function textoBuscaNome(nome: string, nomeFantasia?: string | null): string {
 function faltaParaPublicar(dados: {
   nome?: string | null;
   estado?: string | null;
-  cidade?: string | null;
   quantidadeProfissoes: number;
 }): string[] {
   const faltas: string[] = [];
   if (!dados.nome) faltas.push("nome");
   if (!dados.estado || !SIGLAS_UF.includes(dados.estado)) faltas.push("estado");
-  if (!dados.cidade) faltas.push("cidade");
+  // A cidade é opcional: quem atende o estado todo ou uma região não precisa informar uma.
   if (dados.quantidadeProfissoes === 0) faltas.push("pelo menos uma profissão");
   return faltas;
 }
@@ -142,7 +141,6 @@ async function salvarMeuPerfilInterno(input: SalvarPerfilInput): Promise<MeuPerf
     const faltas = faltaParaPublicar({
       nome: dados.nome,
       estado: dados.estado,
-      cidade: dados.cidade,
       quantidadeProfissoes: idsProfissoes.length,
     });
     if (faltas.length > 0) {
@@ -220,7 +218,6 @@ async function definirPublicacaoInterno(publicar: boolean): Promise<MeuPerfil> {
     const faltas = faltaParaPublicar({
       nome: perfil.nome,
       estado: perfil.estado,
-      cidade: perfil.cidade,
       quantidadeProfissoes: perfil.profissoes.filter((pp) => pp.profissao.ativo).length,
     });
     if (faltas.length > 0) throw new ErroDeNegocio(`Para publicar, preencha: ${faltas.join(", ")}.`);

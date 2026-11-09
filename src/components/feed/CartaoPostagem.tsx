@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { Lightbox } from "@/components/ui/Lightbox";
 import { AvatarIniciais } from "@/components/rede/AvatarIniciais";
 import { IconeComentar, IconeCurtir } from "@/components/layout/icones";
 import { Button } from "@/components/ui/Button";
@@ -21,16 +22,17 @@ const MOTIVOS = [
 ] as const;
 
 function GradeFotos({ fotos }: { fotos: PostagemItem["fotos"] }) {
+  const [aberta, setAberta] = useState<number | null>(null);
   if (fotos.length === 0) return null;
   const colunas = fotos.length === 1 ? "grid-cols-1" : "grid-cols-2";
   return (
     <div className={cn("mt-3 grid gap-1 overflow-hidden rounded-xl border border-border", colunas)}>
       {fotos.map((f, i) => (
-        <a
+        <button
           key={f.id}
-          href={f.url}
-          target="_blank"
-          rel="noopener noreferrer"
+          type="button"
+          onClick={() => setAberta(i)}
+          aria-label={`Ampliar foto ${i + 1} de ${fotos.length}`}
           className={cn("block bg-surface-2", fotos.length === 3 && i === 0 && "col-span-2")}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,8 +42,9 @@ function GradeFotos({ fotos }: { fotos: PostagemItem["fotos"] }) {
             loading="lazy"
             className={cn("w-full object-cover", fotos.length === 1 ? "max-h-[32rem]" : "h-48 sm:h-56")}
           />
-        </a>
+        </button>
       ))}
+      {aberta !== null && <Lightbox fotos={fotos} inicial={aberta} aoFechar={() => setAberta(null)} />}
     </div>
   );
 }

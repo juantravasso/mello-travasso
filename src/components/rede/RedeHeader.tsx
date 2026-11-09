@@ -55,6 +55,20 @@ export async function RedeHeader() {
           )}
         </div>
       </div>
+      {/* No celular a navegação não cabe ao lado do logo: vira uma faixa logo abaixo. */}
+      <nav aria-label={`${MARCA.nome} (celular)`} className="mx-auto flex max-w-5xl items-center gap-5 overflow-x-auto px-4 pb-2 sm:hidden">
+        <Link href="/feed" className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary">
+          Comunidade
+        </Link>
+        <Link href="/rede" className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary">
+          Encontrar profissionais
+        </Link>
+        {(!sessao || temAlgumModulo(sessao)) && (
+          <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/#produtos"} className="whitespace-nowrap text-sm font-medium text-muted hover:text-foreground">
+            {MARCA.produtos.gestao.nome}
+          </Link>
+        )}
+      </nav>
     </header>
   );
 }

@@ -84,6 +84,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Sem zoom por pinça nem por toque duplo no celular (o iPhone só respeita isto, não o meta viewport). */
+html,
+body {
+  touch-action: pan-x pan-y;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

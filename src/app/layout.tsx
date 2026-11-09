@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { BloqueioPinca } from "@/components/layout/BloqueioPinca";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CORES_MARCA, MARCA, TEMPLATE_TITULO, TITULO_PADRAO } from "@/lib/marca";
 import { urlDoSite } from "@/lib/rede/site";
@@ -36,6 +37,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
   themeColor: CORES_MARCA.fundoClaro,
 };
 
@@ -57,7 +59,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* O padrão é o tema claro. Quem escolheu o escuro o recebe antes da primeira pintura, sem flash. */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA_INICIAL }} />
       </head>
-      <body className="min-h-full bg-background text-foreground">{children}</body>
+      <body className="min-h-full bg-background text-foreground">
+        <BloqueioPinca />
+        {children}
+      </body>
     </html>
   );
 }

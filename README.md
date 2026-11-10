@@ -467,7 +467,7 @@ Cada número tem a fórmula escrita em [formulas.ts](src/lib/metricas/formulas.t
 
 - **Cadastros, confirmação de e-mail, ativação, indicação:** direto das tabelas. Ativada = tem projeto, conta, produto, compromisso ou perfil publicado (os fatos do checklist, não um clique).
 - **Tour:** donos por situação (concluído, pulado, em andamento, não iniciado).
-- **Conversão do teste:** entre quem iniciou o teste no período e já teve o prazo vencido (ou mudou de plano), quem está no plano "ativo". Testes em andamento ficam de fora. Hoje o plano é trocado à mão, então é conversão registrada, não pagamento. Mostra também a conversão com e sem extensão.
+- **Conversão do teste:** entre quem iniciou o teste no período e já teve o prazo vencido (ou mudou de plano), quem está no plano "ativo". Testes em andamento ficam de fora. O plano pode ser trocado à mão pelo painel ou pelo pagamento confirmado no Mercado Pago, então é conversão registrada, não necessariamente pagamento. Mostra também a conversão com e sem extensão.
 - **E-mails:** fila por campanha e situação, e descadastros.
 - **Sem dado, sem número:** taxa sem base aparece como "—" (nunca 0%), amostra abaixo de 20 recebe aviso, e o painel lista o que ainda não mede (ofertas, abertura e clique de e-mail, receita).
 
@@ -498,8 +498,15 @@ A parcela é o anual dividido pelo número de parcelas e só aparece se a divis�
 **Conteúdo comercial** ([vitrine.ts](src/lib/planos/vitrine.ts)): os problemas do dia a dia que o sistema resolve e tudo o que o Elo Gestão inclui. Cada item descreve algo que o
 sistema faz hoje, sem prometer resultado (há teste contra absolutos como "garantido", "100%", "ilimitado"). Ao mudar uma funcionalidade, confira o texto.
 
-**Ainda não existe:** pagamento. Falta escolher o provedor (Asaas ou Mercado Pago), criar a conta e definir os planos; só então entram checkout e os eventos de assinatura,
-que só podem nascer do retorno do provedor, nunca de um clique.
+**Cobrança (Mercado Pago).** Existe e está ligada, com a aplicação "Assinaturas" do Mercado Pago (uma só aplicação serve aos dois formatos):
+- **Mensal:** assinatura recorrente (`/preapproval`), só cartão. **Anual:** pagamento único no Checkout Pro (`/checkout/preferences`), parcelado conforme `parcelasSemJuros` do plano.
+- O plano da empresa só muda pelo **retorno do Mercado Pago** (webhook `/api/webhooks/mercadopago`, validado pela assinatura secreta), nunca por um clique na tela.
+  Eventos assinados no painel: "Planos e assinaturas" e "Pagamentos". O endereço cadastrado é o do `www` (o domínio sem `www` redireciona, e webhook não deve passar por redirecionamento).
+- A rotina diária `/api/cron/assinaturas` (workflow `.github/workflows/assinaturas.yml`) suspende quem passou do fim do período pago.
+- **Variáveis:** `MERCADOPAGO_ACCESS_TOKEN` (produção na Vercel; em dev só a credencial de **teste**), `MERCADOPAGO_WEBHOOK_SECRET` e `CRON_SECRET` (Vercel). No GitHub, os segredos `CRON_SECRET` (igual ao da Vercel) e `APP_URL`.
+  Sem o token a página de planos só mostra "Falar com a equipe"; sem o segredo o webhook responde 503.
+- **Testar sem cobrar:** com a credencial de teste e a conta de teste de comprador (o e-mail do pagador tem de ser o de uma conta de teste, no formato `test_user_<número>@testuser.com`). Em produção, o único teste de ponta a ponta é um pagamento real de valor baixo, depois reembolsado.
+- **Ainda manual:** reembolso de 7 dias, emissão de nota fiscal e a homologação do Mercado Pago.
 
 ## Rodando localmente
 

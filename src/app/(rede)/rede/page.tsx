@@ -26,60 +26,31 @@ export default async function RedeInicioPage() {
 
   return (
     <div className="flex flex-col gap-10 animar-entrada">
-      <section className="flex flex-col gap-5">
+      <section className="flex flex-col gap-3">
         <div className="flex max-w-2xl flex-col gap-2">
-          <h1 className="text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
+          <h1 className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
             Ache quem faz o serviço, <span className="text-primary">perto de você.</span>
           </h1>
-          <p className="text-muted">
+          <p className="text-sm text-muted">
             Empresas e profissionais de construção civil, serviços e tecnologia, com avaliações de quem já contratou. A consulta é aberta a todos.
           </p>
         </div>
-        <Card className="p-4 sm:p-5">
+        <Card className="p-3 sm:p-4">
           <BuscaRedeForm taxonomia={taxonomia} />
         </Card>
       </section>
 
-      {categoriasRaiz.length > 0 && (
-        <section className="flex flex-col gap-4" aria-labelledby="titulo-categorias">
-          <h2 id="titulo-categorias" className="text-lg font-semibold text-foreground">
-            Por categoria
-          </h2>
-          <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-            {categoriasRaiz.map((categoria) => {
-              const profissoes = [
-                ...categoria.profissoes,
-                ...taxonomia.filter((c) => c.paiId === categoria.id).flatMap((c) => c.profissoes),
-              ];
-              return (
-                <div key={categoria.id} className="flex flex-col gap-2 border-t border-border pt-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">{categoria.nome}</h3>
-                  <ul className="flex flex-col">
-                    {profissoes.map((p) => (
-                      <li key={p.id}>
-                        <Link
-                          href={`/rede/buscar?profissao=${p.slug}`}
-                          className="block py-1 text-sm text-foreground hover:text-primary"
-                        >
-                          {p.nome}
-                        </Link>
-                      </li>
-                    ))}
-                    {profissoes.length === 0 && <li className="py-1 text-sm text-muted">Em breve.</li>}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
       <section className="flex flex-col gap-4" aria-labelledby="titulo-recentes">
-        <h2 id="titulo-recentes" className="text-lg font-semibold text-foreground">
-          Perfis recentes
-        </h2>
+        <div className="flex items-end justify-between gap-3 border-b-2 border-primary pb-2">
+          <h2 id="titulo-recentes" className="text-2xl font-bold text-foreground">
+            Perfis recentes
+          </h2>
+          <Link href="/rede/buscar" className="text-sm font-semibold text-primary hover:underline">
+            Ver todos
+          </Link>
+        </div>
         {recentes.length > 0 ? (
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
             {recentes.map((perfil) => (
               <PerfilItem key={perfil.slug} perfil={perfil} />
             ))}
@@ -96,6 +67,40 @@ export default async function RedeInicioPage() {
           </Card>
         )}
       </section>
+      {categoriasRaiz.length > 0 && (
+        <details className="group rounded-lg border border-border bg-surface">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-sm font-medium text-foreground">
+            Navegar por categoria
+            <span aria-hidden className="text-muted transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="flex flex-col gap-3 border-t border-border p-3">
+            {categoriasRaiz.map((categoria) => {
+              const profissoes = [
+                ...categoria.profissoes,
+                ...taxonomia.filter((c) => c.paiId === categoria.id).flatMap((c) => c.profissoes),
+              ];
+              return (
+                <div key={categoria.id} className="flex flex-col gap-1.5">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{categoria.nome}</h3>
+                  <ul className="flex flex-wrap gap-1.5">
+                    {profissoes.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          href={`/rede/buscar?profissao=${p.slug}`}
+                          className="inline-flex rounded-full border border-border bg-card px-2.5 py-1 text-xs text-foreground hover:border-primary hover:text-primary"
+                        >
+                          {p.nome}
+                        </Link>
+                      </li>
+                    ))}
+                    {profissoes.length === 0 && <li className="text-xs text-muted">Em breve.</li>}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

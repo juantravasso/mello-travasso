@@ -123,7 +123,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: Searc
         </Card>
       ) : (
         <>
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
             {resultado.itens.map((perfil) => (
               <PerfilItem key={perfil.slug} perfil={perfil} />
             ))}

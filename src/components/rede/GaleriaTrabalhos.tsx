@@ -4,11 +4,11 @@ import { useState } from "react";
 import type { GaleriaPublica } from "@/types";
 import { formatarDataBr } from "@/lib/rede/texto";
 import { Badge } from "@/components/ui/Badge";
-import { ImageLightbox } from "@/components/ui/ImageLightbox";
+import { TrabalhoFotosModal, type TrabalhoParaModal } from "./TrabalhoFotosModal";
 
 /** Portfólio público: trabalhos agrupados por galeria, com fotos que abrem ampliadas. */
 export function GaleriaTrabalhos({ galerias }: { galerias: GaleriaPublica[] }) {
-  const [ampliada, setAmpliada] = useState<{ url: string; alt: string } | null>(null);
+  const [aberto, setAberto] = useState<{ trabalho: TrabalhoParaModal; indice: number } | null>(null);
 
   return (
     <div className="flex flex-col gap-8">
@@ -24,7 +24,12 @@ export function GaleriaTrabalhos({ galerias }: { galerias: GaleriaPublica[] }) {
                       <button
                         key={arquivoId}
                         type="button"
-                        onClick={() => setAmpliada({ url: `/api/arquivos/${arquivoId}`, alt: `${trabalho.titulo}, foto ${indice + 1}` })}
+                        onClick={() =>
+                          setAberto({
+                            trabalho: { titulo: trabalho.titulo, servico: trabalho.servico ?? undefined, dataTrabalho: trabalho.dataTrabalho ?? undefined, descricao: trabalho.descricao ?? undefined, fotos: trabalho.fotos },
+                            indice,
+                          })
+                        }
                         className="relative aspect-[4/3] overflow-hidden rounded-lg bg-surface-2 focus-visible:outline-2 focus-visible:outline-primary"
                         aria-label={`Ampliar foto ${indice + 1} de ${trabalho.titulo}`}
                       >
@@ -54,7 +59,7 @@ export function GaleriaTrabalhos({ galerias }: { galerias: GaleriaPublica[] }) {
           </div>
         </div>
       ))}
-      {ampliada && <ImageLightbox url={ampliada.url} alt={ampliada.alt} onFechar={() => setAmpliada(null)} />}
+      {aberto && <TrabalhoFotosModal trabalho={aberto.trabalho} inicial={aberto.indice} aoFechar={() => setAberto(null)} />}
     </div>
   );
 }

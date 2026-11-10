@@ -13,15 +13,15 @@ export function localizacao(perfil: { cidade?: string; estado?: string }): strin
 export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
   const local = localizacao(perfil);
   return (
-    <li>
+    <li className="min-w-0">
       <Link
         href={`/empresas/${perfil.slug}`}
-        className="group flex gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-surface-2 focus-visible:border-primary focus-visible:outline-none"
+        className="group flex min-w-0 gap-3 rounded-xl border border-border bg-card p-3 transition-colors sm:gap-4 sm:p-4 hover:border-primary/60 hover:bg-surface-2 focus-visible:border-primary focus-visible:outline-none"
       >
         <AvatarIniciais nome={perfil.nome} logoUrl={perfil.logoUrl} />
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="truncate font-semibold text-foreground group-hover:text-primary">{perfil.nome}</h3>
+            <h3 className="min-w-0 break-words font-semibold text-foreground group-hover:text-primary">{perfil.nome}</h3>
             <Badge tom="neutral">{perfil.tipo === "pj" ? "Empresa" : "Autônomo"}</Badge>
             {perfil.indicado && <Badge tom="info">Indicada pela rede</Badge>}
             {perfil.verificado && <SeloVerificado tipo={perfil.tipo} />}
@@ -34,7 +34,7 @@ export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
             </p>
           )}
           {perfil.profissoes.length > 0 && (
-            <p className="truncate text-sm text-foreground">{perfil.profissoes.join(" · ")}</p>
+            <p className="break-words text-sm text-foreground">{perfil.profissoes.join(" · ")}</p>
           )}
           {local && (
             <p className="text-sm text-muted">
@@ -44,7 +44,7 @@ export function PerfilItem({ perfil }: { perfil: PerfilPublicoResumo }) {
               )}
             </p>
           )}
-          {perfil.descricao && <p className="line-clamp-2 text-sm text-muted">{perfil.descricao}</p>}
+          {perfil.descricao && <p className="whitespace-pre-line break-words text-sm text-muted">{perfil.descricao}</p>}
         </div>
       </Link>
     </li>

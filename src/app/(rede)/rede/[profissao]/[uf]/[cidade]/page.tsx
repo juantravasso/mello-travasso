@@ -101,7 +101,7 @@ export default async function LocalPage({ params, searchParams }: { params: Para
         </Card>
       ) : (
         <>
-          <ul className="grid gap-3 md:grid-cols-2">
+          <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
             {itens.map((perfil) => (
               <PerfilItem key={perfil.slug} perfil={perfil} />
             ))}

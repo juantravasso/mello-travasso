@@ -40,8 +40,8 @@ export function TrabalhoFotosModal({ trabalho, inicial, aoFechar }: { trabalho: 
     };
   }, [aoFechar, total]);
 
-  if (!montado || total === 0) return null;
-  const atual = trabalho.fotos[indice] ?? trabalho.fotos[0]!;
+  if (!montado) return null;
+  const atual = trabalho.fotos[indice] ?? trabalho.fotos[0];
   const seta =
     "absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl leading-none text-white hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white";
 
@@ -52,8 +52,12 @@ export function TrabalhoFotosModal({ trabalho, inicial, aoFechar }: { trabalho: 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative flex-shrink-0 bg-black">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`/api/arquivos/${atual}`} alt={`${trabalho.titulo}, foto ${indice + 1} de ${total}`} className="mx-auto max-h-[55dvh] w-full object-contain" />
+          {atual ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`/api/arquivos/${atual}`} alt={`${trabalho.titulo}, foto ${indice + 1} de ${total}`} className="mx-auto max-h-[55dvh] w-full object-contain" />
+          ) : (
+            <div className="h-12" />
+          )}
           <button
             type="button"
             onClick={aoFechar}

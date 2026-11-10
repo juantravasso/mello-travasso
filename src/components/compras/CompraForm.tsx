@@ -109,8 +109,12 @@ export function CompraForm({ compra, dadosExtraidos, comprovanteUrl = "", origem
   const extraidoRef = useRef<DadosExtraidosComprovante | null>(null);
 
   useEffect(() => {
-    if (!obraId && obras.length > 0 && obras[0]) setObraId(obras[0].id);
-  }, [obras, obraId]);
+    // Compra nova: o destino padrão é sempre o depósito (só cai na primeira obra se não houver depósito).
+    if (!obraId) {
+      const padrao = deposito ?? obras[0];
+      if (padrao) setObraId(padrao.id);
+    }
+  }, [obras, deposito, obraId]);
 
   // Preenche o formulário com o que a IA leu da foto (uma vez por leitura).
   useEffect(() => {

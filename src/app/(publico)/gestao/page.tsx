@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/layout/Logo";
 import { Rodape } from "@/components/layout/Rodape";
 import { MARCA, SLOGAN_INICIO, type ProdutoMarca } from "@/lib/marca";
+
+export const metadata: Metadata = {
+  title: "Elo Gestão e Elo Profissionais",
+  alternates: { canonical: "/gestao" },
+};
 
 const areas = Object.values(MARCA.produtos as Record<string, ProdutoMarca>);
 

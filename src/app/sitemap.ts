@@ -20,7 +20,8 @@ async function montar(): Promise<MetadataRoute.Sitemap> {
   const base = urlDoSite();
   const [perfis, locais] = await Promise.all([listarSlugsPublicados(), listarLocaisIndexaveis()]);
   return [
-    { url: `${base}/rede`, changeFrequency: "daily", priority: 0.8 },
+    { url: base, changeFrequency: "daily", priority: 1 },
+    { url: `${base}/gestao`, changeFrequency: "monthly", priority: 0.5 },
     ...perfis.map((p) => ({
       url: `${base}/empresas/${p.slug}`,
       lastModified: p.atualizadoEm,

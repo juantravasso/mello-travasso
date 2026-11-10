@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "Encontrar profissionais e empresas",
   description:
     `Pesquise empresas e profissionais de construção civil, serviços e tecnologia por profissão, cidade e estado. Veja perfis, avaliações e trabalhos no ${MARCA.produtos.profissionais.nome}.`,
-  alternates: { canonical: "/rede" },
+  alternates: { canonical: "/" },
 };
 
 export const dynamic = "force-dynamic";

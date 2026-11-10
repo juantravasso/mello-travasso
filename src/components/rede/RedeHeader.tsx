@@ -22,7 +22,7 @@ export async function RedeHeader() {
               Encontrar profissionais
             </Link>
             {(!sessao || temAlgumModulo(sessao)) && (
-              <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/#produtos"} className="text-sm font-medium text-muted hover:text-foreground">
+              <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/gestao"} className="text-sm font-medium text-muted hover:text-foreground">
                 {MARCA.produtos.gestao.nome}
               </Link>
             )}
@@ -64,7 +64,7 @@ export async function RedeHeader() {
           Encontrar profissionais
         </Link>
         {(!sessao || temAlgumModulo(sessao)) && (
-          <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/#produtos"} className="col-span-2 py-1 text-center text-sm font-medium text-muted hover:text-foreground">
+          <Link href={sessao ? primeiraRotaPermitida(sessao, new Set(["gestao"])) : "/gestao"} className="col-span-2 py-1 text-center text-sm font-medium text-muted hover:text-foreground">
             {MARCA.produtos.gestao.nome}
           </Link>
         )}

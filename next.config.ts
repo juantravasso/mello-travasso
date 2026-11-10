@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // O domínio abre a busca de profissionais (/rede) sem redirecionar: a URL continua sendo só o domínio, o que vale mais
+  // para o Google do que um 308. A vitrine dos dois produtos, que era a página inicial, fica em /gestao.
+  async rewrites() {
+    return { beforeFiles: [{ source: "/", destination: "/rede" }], afterFiles: [], fallback: [] };
+  },
   async headers() {
     return [
       {

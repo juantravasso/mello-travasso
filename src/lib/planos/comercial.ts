@@ -35,6 +35,11 @@ export function valorDaParcela(anualCentavos: number | null, parcelas: number | 
   return anualCentavos / parcelas;
 }
 
+/** Quanto o anual equivale por mês (anual ÷ 12, arredondado ao centavo). null se não houver preço anual. */
+export function mensalEquivalente(anualCentavos: number | null): number | null {
+  return anualCentavos === null ? null : Math.round(anualCentavos / 12);
+}
+
 /** Quanto sobra por ano pagando o plano barato em vez do outro, ambos pelo mensal. null se não houver diferença a favor. */
 export function diferencaAnualEntrePlanos(barato: number | null, caro: number | null): number | null {
   if (barato === null || caro === null || caro <= barato) return null;

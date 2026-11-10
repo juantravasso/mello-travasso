@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { centavosParaReais, economiaAnual, planoComercialSchema, reaisParaCentavos } from "./comercial";
+import { centavosParaReais, economiaAnual, mensalEquivalente, planoComercialSchema, reaisParaCentavos } from "./comercial";
 
 const base = { chave: "profissional", nome: "Profissional", descricao: "Para quem gerencia projetos.", precoMensalCentavos: 4990, precoAnualCentavos: 49900, beneficios: ["Contas a pagar"], destaque: false, publicado: true, ordem: 1, vagasTotal: null, parcelasSemJuros: null, condicao: null };
 
@@ -85,5 +85,11 @@ describe("vagas e parcelas", () => {
     assert.ok(!planoComercialSchema.safeParse({ ...b, precoAnualCentavos: 47881 }).success);
     assert.ok(!planoComercialSchema.safeParse({ ...b, precoAnualCentavos: null }).success);
     assert.ok(!planoComercialSchema.safeParse({ ...b, vagasTotal: 0 }).success);
+  });
+
+  it("mensal equivalente do anual", () => {
+    assert.equal(mensalEquivalente(120000), 10000);
+    assert.equal(mensalEquivalente(47881), 3990);
+    assert.equal(mensalEquivalente(null), null);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import type { PlanoComercialPublico } from "@/types";
-import { diferencaAnualEntrePlanos, economiaAnual, formatarPreco, valorDaParcela } from "@/lib/planos/comercial";
+import { diferencaAnualEntrePlanos, economiaAnual, formatarPreco, mensalEquivalente, valorDaParcela } from "@/lib/planos/comercial";
 import { FUNCIONALIDADES, PROBLEMAS } from "@/lib/planos/vitrine";
 import { MARCA } from "@/lib/marca";
 import { cn } from "@/lib/cn";
@@ -53,14 +53,18 @@ function ContratarPlano({ plano, pagamentoDisponivel }: { plano: PlanoComercialP
 
   return (
     <div className="flex flex-col gap-2">
-      {plano.precoMensalCentavos !== null && (
-        <Button onClick={() => contratar("mensal")} disabled={pendente}>
-          {pendente && acaoPendente === "mensal" ? "Abrindo pagamento…" : "Assinar mensal"}
+      {plano.precoAnualCentavos !== null && (
+        <Button onClick={() => contratar("anual")} disabled={pendente} className="h-12 text-base">
+          {pendente && acaoPendente === "anual"
+            ? "Abrindo pagamento…"
+            : plano.parcelasSemJuros
+              ? `Assinar o anual em ${plano.parcelasSemJuros}x sem juros`
+              : "Assinar o anual"}
         </Button>
       )}
-      {plano.precoAnualCentavos !== null && (
-        <Button variante="outline" onClick={() => contratar("anual")} disabled={pendente}>
-          {pendente && acaoPendente === "anual" ? "Abrindo pagamento…" : plano.parcelasSemJuros ? `Pagar o anual em ${plano.parcelasSemJuros}x sem juros` : "Pagar o anual"}
+      {plano.precoMensalCentavos !== null && (
+        <Button variante={plano.precoAnualCentavos !== null ? "outline" : "primary"} onClick={() => contratar("mensal")} disabled={pendente}>
+          {pendente && acaoPendente === "mensal" ? "Abrindo pagamento…" : "Assinar mensal"}
         </Button>
       )}
       {erro && (
@@ -85,28 +89,59 @@ function textoVagas(p: PlanoComercialPublico): { texto: string; esgotado: boolea
 function Precos({ plano }: { plano: PlanoComercialPublico }) {
   const mensal = formatarPreco(plano.precoMensalCentavos);
   const anual = formatarPreco(plano.precoAnualCentavos);
-  const parcela = formatarPreco(valorDaParcela(plano.precoAnualCentavos, plano.parcelasSemJuros));
+  const parcelas = plano.parcelasSemJuros;
+  const parcela = formatarPreco(valorDaParcela(plano.precoAnualCentavos, parcelas));
+  const porMes = formatarPreco(mensalEquivalente(plano.precoAnualCentavos));
   const economia = economiaAnual(plano);
+  const cheio = plano.precoMensalCentavos === null ? null : formatarPreco(plano.precoMensalCentavos * 12);
   if (!mensal && !anual) return <p className="text-lg font-semibold text-foreground">Sob consulta</p>;
+
+  // Só com mensal: o mensal é o preço principal.
+  if (!anual) {
+    return (
+      <p className="tabular-nums text-foreground">
+        <span className="text-3xl font-semibold">{mensal}</span> <span className="text-sm text-muted">por mês</span>
+      </p>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-1 tabular-nums">
+    <div className="flex flex-col gap-3 tabular-nums">
+      <div className="rounded-xl border-2 border-primary bg-primary/5 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary-foreground">Melhor escolha</span>
+          {economia && <span className="rounded-full bg-success-bg px-2.5 py-1 text-xs font-bold text-success">Economize {economia.percentual}%</span>}
+        </div>
+        {parcela && parcelas ? (
+          <>
+            <p className="mt-3 text-foreground">
+              <span className="text-4xl font-bold text-primary">
+                {parcelas}x de {parcela}
+              </span>{" "}
+              <span className="text-sm font-semibold text-success">sem juros</span>
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              Você paga <span className="font-semibold">{parcela} por mês</span> durante {parcelas} meses, no cartão de crédito. Total de {anual} por ano.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-3 text-foreground">
+              <span className="text-4xl font-bold text-primary">{anual}</span> <span className="text-sm text-muted">por ano</span>
+            </p>
+            {porMes && <p className="mt-1 text-sm text-foreground">Equivale a <span className="font-semibold">{porMes} por mês</span>.</p>}
+          </>
+        )}
+        {economia && cheio && (
+          <p className="mt-3 rounded-lg bg-success-bg px-3 py-2 text-sm font-semibold text-success">
+            Você economiza {formatarPreco(economia.centavos)} por ano em relação ao plano mensal ({cheio} em 12 meses).
+          </p>
+        )}
+      </div>
       {mensal && (
-        <p className="text-foreground">
-          <span className="text-3xl font-semibold">{mensal}</span> <span className="text-sm text-muted">por mês</span>
-        </p>
-      )}
-      {anual && (
-        <p className="text-sm text-foreground">
-          {parcela && plano.parcelasSemJuros ? (
-            <>
-              ou <span className="font-semibold">{plano.parcelasSemJuros}x de {parcela}</span> sem juros <span className="text-muted">(total de {anual} por ano)</span>
-            </>
-          ) : (
-            <>
-              ou <span className="font-semibold">{anual}</span> por ano
-            </>
-          )}
-          {economia && <span className="ml-1 text-success">· {economia.percentual}% menos que pagar 12 meses</span>}
+        <p className="px-1 text-sm text-foreground">
+          <span className="text-muted">Prefere o mensal?</span> <span className="font-semibold">{mensal} por mês</span>
+          {cheio && <span className="text-muted"> ({cheio} em 12 meses)</span>}
         </p>
       )}
     </div>

@@ -30,6 +30,8 @@ export const criarContaSchema = z
     modo: z.enum(["teste", "rede"]).default("teste"),
     /** Código do link de convite que trouxe a pessoa. Só o formato é limitado aqui: código inválido é ignorado no servidor. */
     codigoConvite: z.string().trim().max(40).optional(),
+    /** O link veio como indicação: ao publicar o perfil, quem convidou passa a indicá-lo. Só vale com um código de convite válido. */
+    comoIndicacao: z.boolean().optional(),
     aceiteTermos: z.boolean().refine((v) => v === true, "Marque a caixa para aceitar os Termos de Uso e a Política de Privacidade."),
     empresaConfirmacao: z.string().max(500).optional(),
   })

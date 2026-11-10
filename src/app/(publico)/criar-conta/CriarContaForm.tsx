@@ -33,10 +33,11 @@ const ESTADO_INICIAL: EstadoCadastro = {};
  * e-mail e senha; o endereço é opcional e fica recolhido. Telefone e endereço completos se preenchem depois, em
  * Configurações. Os erros aparecem todos juntos, cada um com o nome do campo e o que fazer.
  */
-export function CriarContaForm({ codigoConvite, diasDeTeste }: { codigoConvite?: string; diasDeTeste: number }) {
+export function CriarContaForm({ codigoConvite, comoIndicacao, diasDeTeste }: { codigoConvite?: string; comoIndicacao?: boolean; diasDeTeste: number }) {
   const router = useRouter();
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoaCadastro>("pj");
-  const [modo, setModo] = useState<ModoCadastro>("teste");
+  // Quem chega por um link de indicação vem para ter perfil na rede: já começa no cadastro só da rede.
+  const [modo, setModo] = useState<ModoCadastro>(comoIndicacao ? "rede" : "teste");
   const [documento, setDocumento] = useState("");
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [avisoCnpj, setAvisoCnpj] = useState<string | null>(null);
@@ -149,6 +150,7 @@ export function CriarContaForm({ codigoConvite, diasDeTeste }: { codigoConvite?:
         senha,
         modo,
         codigoConvite,
+        comoIndicacao: comoIndicacao || undefined,
         aceiteTermos,
         empresaConfirmacao: String(formData.get("empresaConfirmacao") ?? ""),
       };
@@ -170,7 +172,7 @@ export function CriarContaForm({ codigoConvite, diasDeTeste }: { codigoConvite?:
       }
       return { erroGeral: resultado.mensagem, campos: resultado.campos };
     },
-    [tipoPessoa, nomeUsuario, email, aceiteTermos, razaoSocial, nomeFantasia, situacaoCadastral, telefone, cep, logradouro, numero, complemento, bairro, cidade, estado, senha, modo, codigoConvite, router],
+    [tipoPessoa, nomeUsuario, email, aceiteTermos, razaoSocial, nomeFantasia, situacaoCadastral, telefone, cep, logradouro, numero, complemento, bairro, cidade, estado, senha, modo, codigoConvite, comoIndicacao, router],
   );
 
   const [estadoForm, formAction, emAndamento] = useActionState(acao, ESTADO_INICIAL);

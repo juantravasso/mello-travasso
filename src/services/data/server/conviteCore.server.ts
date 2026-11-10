@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { gerarCodigoConvite, linkDoConvite, normalizarCodigoConvite } from "@/lib/convite";
 import type { ResumoConvite } from "@/types";
+import { nomePublicoDaEmpresa, registrarRecomendacao, selecaoEmpresaParaNome } from "./avaliacaoCore.server";
 
 // Link de convite da empresa. É só rastreio: guarda qual empresa convidou qual, sem dar acesso a nada da outra.
 // O código nasce na primeira vez que o dono abre o link (empresas antigas não precisam de backfill).
@@ -45,4 +46,26 @@ export async function resolverEmpresaConvidante(codigoBruto: unknown): Promise<s
   const empresa = await prisma.empresa.findUnique({ where: { codigoConvite: codigo }, select: { id: true, bloqueadaEm: true } });
   if (!empresa || empresa.bloqueadaEm) return null;
   return empresa.id;
+}
+
+/**
+ * Convite como indicação: a empresa que se cadastrou pelo link de indicação passa a ser indicada por quem convidou assim
+ * que publica o perfil (antes disso não há perfil público para indicar). Roda uma vez: a marca só sai depois de gravar
+ * a indicação. Se der qualquer problema (teto diário de recomendações do convidante, por exemplo), não atrapalha a
+ * publicação e a marca continua para a próxima tentativa.
+ */
+export async function concluirIndicacaoPorConvite(empresaId: string, perfil: { id: string; empresaId: string | null }): Promise<void> {
+  try {
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { indicadaPorConvite: true, convidadaPorId: true } });
+    if (!empresa?.indicadaPorConvite || !empresa.convidadaPorId || empresa.convidadaPorId === empresaId) return;
+    const convidante = await prisma.empresa.findUnique({
+      where: { id: empresa.convidadaPorId },
+      select: { id: true, bloqueadaEm: true, ...selecaoEmpresaParaNome },
+    });
+    if (!convidante || convidante.bloqueadaEm) return;
+    await registrarRecomendacao(convidante.id, perfil, `${nomePublicoDaEmpresa(convidante).nome} indicou o seu perfil.`);
+    await prisma.empresa.updateMany({ where: { id: empresaId, indicadaPorConvite: true }, data: { indicadaPorConvite: false } });
+  } catch (erro) {
+    console.error("[convite] não foi possível registrar a indicação por convite", empresaId, erro);
+  }
 }

@@ -11,7 +11,9 @@ export const metadata: Metadata = {
 
 export default async function CriarContaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   // Link de convite de outra empresa (/criar-conta?convite=…). Aqui só se limita o tamanho; quem decide se o código vale é o servidor.
-  const convite = (await searchParams)[PARAMETRO_CONVITE];
+  const parametros = await searchParams;
+  const convite = parametros[PARAMETRO_CONVITE];
+  const comoIndicacao = parametros.indicacao === "1";
   const codigoConvite = typeof convite === "string" ? convite.slice(0, 40) : undefined;
   const { testeDias } = await obterConfigCiclo();
 
@@ -29,7 +31,7 @@ export default async function CriarContaPage({ searchParams }: { searchParams: P
         <p className="text-sm text-muted">Para empresas, prestadores de serviços e autônomos. {testeDias} dias grátis para começar.</p>
       </div>
 
-      <CriarContaForm codigoConvite={codigoConvite} diasDeTeste={testeDias} />
+      <CriarContaForm codigoConvite={codigoConvite} comoIndicacao={comoIndicacao && Boolean(codigoConvite)} diasDeTeste={testeDias} />
     </main>
   );
 }

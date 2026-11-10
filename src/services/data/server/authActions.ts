@@ -269,6 +269,7 @@ export async function criarConta(
           aceiteTermosVersao: VERSAO_TERMOS_ATUAL,
           aceiteTermosEm: agora,
           convidadaPorId,
+          indicadaPorConvite: Boolean(convidadaPorId && dadosForm.comoIndicacao),
           criadoEm: agora,
           atualizadoEm: agora,
         },

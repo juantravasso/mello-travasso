@@ -336,6 +336,9 @@ model Empresa {
   assinaturasComerciais         AssinaturaComercial[]
   compras                       Compra[]
   vinculoProdutos               VinculoProduto[]
+  convitesFuncionario           ConviteFuncionario[]
+  /// O cadastro veio de um link de indicação: ao publicar o perfil, a empresa que convidou passa a indicá-la.
+  indicadaPorConvite            Boolean                       @default(false)
 
   @@index([convidadaPorId])
 }
@@ -1581,4 +1584,29 @@ model VinculoProduto {
 
   @@unique([empresaId, fornecedorChave, chave])
   @@index([produtoId])
+}
+
+// --- Convite de cadastro de funcionário ---------------------------------------
+// O dono gera um link individual (uso único, expira); o funcionário preenche os próprios dados numa página pública e a
+// ficha fica aguardando a aprovação do dono, que completa salário/projeto e vira Funcionario. O token vai só no link:
+// aqui fica o hash. Os dados enviados ficam em `dados` até a decisão e são apagados ao aprovar (já viraram ficha),
+// recusar ou cancelar.
+model ConviteFuncionario {
+  id            String  @id @default(uuid())
+  empresaId     String
+  empresa       Empresa @relation(fields: [empresaId], references: [id])
+  tokenHash     String  @unique
+  nomeSugerido  String?
+  cargoSugerido String?
+  criadoPorNome String
+  expiraEm      String
+  dados         Json?
+  preenchidoEm  String?
+  /// "aprovado" | "recusado" | "cancelado". Nulo = ainda em andamento.
+  decisao       String?
+  decididoEm    String?
+  funcionarioId String?
+  criadoEm      String
+
+  @@index([empresaId, decisao])
 }

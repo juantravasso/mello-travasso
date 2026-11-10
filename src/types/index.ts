@@ -18,6 +18,7 @@ export * from "./calendario";
 export * from "./deposito";
 export * from "./captura";
 export * from "./compra";
+export * from "./conviteFuncionario";
 export * from "./convite";
 export * from "./cicloDeVida";
 export * from "./onboarding";

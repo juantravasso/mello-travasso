@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { ConviteIndicacao } from "./ConviteIndicacao";
 
 function FormularioIndicar({ taxonomia, aoIndicar }: { taxonomia: CategoriaItem[]; aoIndicar: () => Promise<void> }) {
   const [nome, setNome] = useState("");
@@ -150,6 +151,7 @@ export function IndicacoesPainel() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
+      <ConviteIndicacao />
       <FormularioIndicar taxonomia={taxonomia} aoIndicar={carregar} />
 
       <section className="flex flex-col gap-3" aria-labelledby="titulo-minhas-indicacoes">

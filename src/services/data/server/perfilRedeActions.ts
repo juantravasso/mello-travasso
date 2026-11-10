@@ -11,6 +11,7 @@ import type { MeuPerfil, ResultadoAction, SalvarPerfilInput } from "@/types";
 import { criarNotificacao } from "./avaliacaoCore.server";
 import { exigirEmailConfirmado } from "./emailConfirmado.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
+import { concluirIndicacaoPorConvite } from "./conviteCore.server";
 
 type PerfilRegistro = Prisma.PerfilPublicoGetPayload<{
   include: { profissoes: { include: { profissao: true } } };
@@ -235,6 +236,8 @@ async function definirPublicacaoInterno(publicar: boolean): Promise<MeuPerfil> {
       where: { id: sessao.empresaId, primeiraPublicacaoEm: null },
       data: { primeiraPublicacaoEm: new Date().toISOString() },
     });
+    // Veio por um link de indicação: agora que há perfil público, quem convidou passa a indicá-lo.
+    await concluirIndicacaoPorConvite(sessao.empresaId, { id: perfil.id, empresaId: sessao.empresaId });
   }
 
   const atual = await prisma.perfilPublico.findUniqueOrThrow({ where: { id: perfil.id }, include: incluirProfissoes });

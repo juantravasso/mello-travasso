@@ -92,6 +92,17 @@ export interface BaixarContaInput {
   dataBaixa: string; // ISO date
 }
 
+export interface BaixarContasEmLoteInput {
+  contaIds: string[];
+  dataBaixa: string; // ISO date
+}
+
+export interface ResultadoBaixaEmLote {
+  baixadas: number;
+  /** Selecionadas que não estavam mais em aberto (já pagas, canceladas) e por isso ficaram como estavam. */
+  ignoradas: number;
+}
+
 export interface CancelarContaInput {
   contaId: string;
   motivo?: string;

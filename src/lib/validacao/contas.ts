@@ -42,6 +42,13 @@ export const baixarContaSchema = z
   })
   .strict();
 
+export const baixarEmLoteSchema = z
+  .object({
+    contaIds: z.array(z.string().uuid()).min(1, "Selecione ao menos uma conta.").max(100, "Selecione no máximo 100 contas por vez."),
+    dataBaixa: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  })
+  .strict();
+
 export const cancelarContaSchema = z
   .object({
     contaId: z.string().uuid(),

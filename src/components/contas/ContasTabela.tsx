@@ -9,15 +9,30 @@ import { formatarData, formatarMoeda } from "@/lib/formatadores";
 export function ContasTabela({
   contas,
   obraPorId,
+  selecao,
 }: {
   contas: ContaFinanceira[];
   obraPorId: Map<string, Obra>;
+  /** Quando informada, a tabela ganha caixas para marcar várias contas em aberto de uma vez. */
+  selecao?: { marcadas: Set<string>; todasMarcadas: boolean; haSelecionaveis: boolean; alternar: (id: string) => void; alternarTodas: () => void };
 }) {
   return (
     <Card className="hidden overflow-x-auto p-0 md:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-muted">
+            {selecao && (
+              <th className="w-10 p-3">
+                <input
+                  type="checkbox"
+                  aria-label="Selecionar todas as contas em aberto"
+                  checked={selecao.todasMarcadas}
+                  disabled={!selecao.haSelecionaveis}
+                  onChange={selecao.alternarTodas}
+                  className="h-4 w-4 cursor-pointer"
+                />
+              </th>
+            )}
             <th className="p-3 font-medium">Fornecedor/Cliente</th>
             <th className="p-3 font-medium">Projeto</th>
             <th className="p-3 font-medium">Lançado por</th>
@@ -33,6 +48,19 @@ export function ContasTabela({
               key={conta.id}
               className="border-b border-border transition-colors last:border-0 hover:bg-surface-2"
             >
+              {selecao && (
+                <td className="w-10 p-3">
+                  {conta.status === "em_aberto" && (
+                    <input
+                      type="checkbox"
+                      aria-label={`Selecionar ${conta.favorecidoOuCliente}`}
+                      checked={selecao.marcadas.has(conta.id)}
+                      onChange={() => selecao.alternar(conta.id)}
+                      className="h-4 w-4 cursor-pointer"
+                    />
+                  )}
+                </td>
+              )}
               <td className="p-3">
                 <Link
                   href={`/${conta.tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"}/${conta.id}`}

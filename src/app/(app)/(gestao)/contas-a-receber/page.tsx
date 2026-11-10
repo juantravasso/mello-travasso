@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { FiltrosContaFinanceira } from "@/types";
 import { useContas } from "@/hooks/useContas";
 import { useObras } from "@/hooks/useObras";
+import { useSelecaoContas } from "@/hooks/useSelecaoContas";
+import { BarraBaixaEmLote } from "@/components/contas/BarraBaixaEmLote";
 import { ContaForm } from "@/components/contas/ContaForm";
 import { ContaListItem } from "@/components/contas/ContaListItem";
 import { ContasTabela } from "@/components/contas/ContasTabela";
@@ -18,7 +20,8 @@ export default function ContasAReceberPage() {
   const [filtros, setFiltros] = useState<FiltrosContaFinanceira>({ status: "em_aberto" });
   const [modalAberto, setModalAberto] = useState(false);
   const { obras, locais } = useObras();
-  const { contas, carregando, criarConta } = useContas("receber", filtros);
+  const { contas, carregando, criarConta, recarregar } = useContas("receber", filtros);
+  const selecao = useSelecaoContas(contas);
   const { somenteLeitura } = useStatusPlano();
 
   const totalEmAberto = useMemo(
@@ -53,13 +56,47 @@ export default function ContasAReceberPage() {
       {carregando && <p className="text-sm text-muted">Carregando…</p>}
       {!carregando && contas.length === 0 && <p className="text-sm text-muted">Nenhuma conta encontrada.</p>}
 
-      <ContasTabela contas={contas} obraPorId={obraPorId} />
+      <ContasTabela
+        contas={contas}
+        obraPorId={obraPorId}
+        selecao={
+          somenteLeitura
+            ? undefined
+            : { marcadas: selecao.marcadas, todasMarcadas: selecao.todasMarcadas, haSelecionaveis: selecao.selecionaveis.length > 0, alternar: selecao.alternar, alternarTodas: selecao.alternarTodas }
+        }
+      />
 
       <div className="flex flex-col gap-3 md:hidden">
         {contas.map((conta) => (
-          <ContaListItem key={conta.id} conta={conta} obra={obraPorId.get(conta.obraId)} />
+          <div key={conta.id} className="flex items-stretch gap-2">
+            {!somenteLeitura && conta.status === "em_aberto" && (
+              <label className="flex w-8 flex-shrink-0 cursor-pointer items-center justify-center">
+                <input
+                  type="checkbox"
+                  aria-label={`Selecionar ${conta.favorecidoOuCliente}`}
+                  checked={selecao.marcadas.has(conta.id)}
+                  onChange={() => selecao.alternar(conta.id)}
+                  className="h-5 w-5"
+                />
+              </label>
+            )}
+            <div className="min-w-0 flex-1">
+              <ContaListItem conta={conta} obra={obraPorId.get(conta.obraId)} />
+            </div>
+          </div>
         ))}
       </div>
+
+      <BarraBaixaEmLote
+        tipo="receber"
+        ids={selecao.selecionadas.map((c) => c.id)}
+        total={selecao.total}
+        onLimpar={selecao.limpar}
+        onConcluir={async () => {
+          selecao.limpar();
+          await recarregar();
+        }}
+      />
 
       {modalAberto && (
         <Modal titulo="Nova conta a receber" tamanho="lg" onFechar={() => setModalAberto(false)}>

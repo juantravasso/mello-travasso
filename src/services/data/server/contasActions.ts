@@ -8,10 +8,14 @@ import {
   novaContaSchema,
   atualizarContaSchema,
   baixarContaSchema,
+  baixarEmLoteSchema,
   cancelarContaSchema,
 } from "@/lib/validacao/contas";
 import type {
   BaixarContaInput,
+  BaixarContasEmLoteInput,
+  ResultadoAction,
+  ResultadoBaixaEmLote,
   CancelarContaInput,
   CompromissoItem,
   ContaFinanceira,
@@ -24,6 +28,7 @@ import type {
 import { dataDaBaixaAutomatica, deveBaixarSozinha, proximoVencimento } from "@/lib/formaPagamento";
 import { reverterEstoqueDaConta } from "./estoqueCore.server";
 import { configuracaoDaForma } from "./formaPagamentoCore.server";
+import { ErroDeNegocio, executar } from "./resultado.server";
 
 // Toda leitura traz o rateio: notas divididas entre projetos e Depósito precisam dele para os custos fecharem.
 const comRateios = { rateios: true } satisfies Prisma.ContaFinanceiraInclude;
@@ -300,6 +305,49 @@ export async function baixarConta(input: BaixarContaInput): Promise<ContaFinance
     include: comRateios,
   });
   return paraConta(registro);
+}
+
+/**
+ * Dá baixa em várias contas de uma vez, na mesma data. Só baixa o que ainda está em aberto (uma conta já paga ou cancelada
+ * fica como está e entra na contagem de ignoradas), confere o acesso ao tipo de cada conta e é tudo-ou-nada: se algo
+ * falhar no meio, nenhuma baixa fica pela metade.
+ */
+export async function baixarContasEmLote(input: BaixarContasEmLoteInput): Promise<ResultadoAction<ResultadoBaixaEmLote>> {
+  const sessao = await exigirGestaoEscritaAction(...ACESSO.contasPagarEscrever, ...ACESSO.contasReceberEscrever);
+  return executar(async () => {
+    const parsed = baixarEmLoteSchema.safeParse(input);
+    if (!parsed.success) throw new ErroDeNegocio(parsed.error.issues[0]?.message ?? "Dados inválidos.");
+    const ids = [...new Set(parsed.data.contaIds)];
+
+    const contas = await prisma.contaFinanceira.findMany({
+      where: { id: { in: ids }, empresaId: sessao.empresaId },
+      select: { id: true, tipo: true, status: true, historico: true },
+    });
+    if (contas.length !== ids.length) throw new ErroDeNegocio("Alguma conta não foi encontrada. Recarregue a lista e tente de novo.");
+    // Quem não pode escrever num dos tipos não baixa nenhuma: nada de baixa parcial por permissão.
+    for (const tipo of new Set(contas.map((c) => c.tipo))) exigirTipo(sessao, tipo, ESCRITA);
+
+    const abertas = contas.filter((c) => c.status === "em_aberto");
+    const agora = new Date().toISOString();
+    await prisma.$transaction(
+      async (tx) => {
+        for (const c of abertas) {
+          // status "em_aberto" no where: se outra pessoa baixou entre a leitura e aqui, esta conta fica de fora.
+          await tx.contaFinanceira.updateMany({
+            where: { id: c.id, empresaId: sessao.empresaId, status: "em_aberto" },
+            data: {
+              status: "baixada",
+              dataBaixa: parsed.data.dataBaixa,
+              historico: [...((c.historico as unknown as EventoHistorico[]) ?? []), evento("baixa", sessao.nome, "Baixa em lote")] as unknown as Prisma.InputJsonValue,
+              atualizadoEm: agora,
+            },
+          });
+        }
+      },
+      { timeout: 30_000, maxWait: 10_000 },
+    );
+    return { baixadas: abertas.length, ignoradas: contas.length - abertas.length };
+  });
 }
 
 export async function cancelarConta(input: CancelarContaInput): Promise<ResultadoCancelamentoConta> {

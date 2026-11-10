@@ -108,6 +108,7 @@ import {
 import {
   atualizarConta,
   baixarConta,
+  baixarContasEmLote,
   cancelarConta,
   criarConta,
   listarContas,
@@ -166,6 +167,7 @@ export const contasRepositorio: ContasRepositorio = {
   criar: criarConta,
   atualizar: atualizarConta,
   baixar: baixarConta,
+  baixarEmLote: baixarContasEmLote,
   cancelar: cancelarConta,
 };
 

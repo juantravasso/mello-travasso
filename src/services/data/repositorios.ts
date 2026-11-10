@@ -24,6 +24,8 @@ import type {
   AvaliacaoParaEditar,
   AvaliacaoRecebida,
   BaixarContaInput,
+  BaixarContasEmLoteInput,
+  ResultadoBaixaEmLote,
   CancelarContaInput,
   CategoriaItem,
   ContaFinanceira,
@@ -101,6 +103,7 @@ export interface ContasRepositorio {
   criar(input: NovaContaFinanceiraInput): Promise<ContaFinanceira>;
   atualizar(id: string, input: Partial<NovaContaFinanceiraInput>): Promise<ContaFinanceira>;
   baixar(input: BaixarContaInput): Promise<ContaFinanceira>;
+  baixarEmLote(input: BaixarContasEmLoteInput): Promise<ResultadoAction<ResultadoBaixaEmLote>>;
   cancelar(input: CancelarContaInput): Promise<ResultadoCancelamentoConta>;
 }
 

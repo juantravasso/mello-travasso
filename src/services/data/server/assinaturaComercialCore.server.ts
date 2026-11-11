@@ -43,8 +43,19 @@ export async function reservarVaga(empresaId: string, chave: string, ciclo: "men
     const preco = ciclo === "mensal" ? plano.precoMensalCentavos : plano.precoAnualCentavos;
     if (preco === null) throw new ErroDeNegocio("Este plano está sob consulta: fale com a equipe.");
 
+    // Reserva vencida não pode travar quem tenta de novo: descarta já, sem esperar a rotina diária.
+    await tx.assinaturaComercial.updateMany({
+      where: { empresaId, planoChave: chave, ciclo, status: "reservada", reservaExpiraEm: { lt: agoraIso } },
+      data: { status: "expirada", atualizadoEm: agoraIso },
+    });
     const jaTem = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo, status: { in: ["reservada", "ativa"] } } });
-    if (jaTem) throw new ErroDeNegocio("Você já tem uma contratação em andamento ou ativa para este plano.");
+    if (jaTem) {
+      if (jaTem.status === "reservada" && jaTem.reservaExpiraEm) {
+        const minutos = Math.max(1, Math.ceil((new Date(jaTem.reservaExpiraEm).getTime() - agora.getTime()) / 60_000));
+        throw new ErroDeNegocio(`Você já abriu o pagamento deste plano. Conclua-o ou tente de novo em ${minutos} min.`);
+      }
+      throw new ErroDeNegocio("Você já tem uma contratação ativa para este plano.");
+    }
     const empresa = await tx.empresa.findUnique({ where: { id: empresaId }, select: { plano: true, planoComercialChave: true } });
     if (empresa?.plano === "ativo" && empresa.planoComercialChave === chave) {
       // Quem cancelou e ainda está no período pago pode assinar de novo (a assinatura nova assume quando o período acabar).

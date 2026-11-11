@@ -132,6 +132,16 @@ describe("configuração", () => {
     assert.equal(configCicloSchema.safeParse(CONFIG_PADRAO).success, true);
   });
 
+  it("configuração salva antes da campanha de perfil continua valendo (não volta ao padrão nem desliga os e-mails)", () => {
+    const emailsAntigos: Record<string, unknown> = { ...CONFIG_PADRAO.emails };
+    delete emailsAntigos.perfilPendente;
+    const antiga = { ...CONFIG_PADRAO, emails: { ...emailsAntigos, ativos: true, ativadoEm: "2026-11-01T00:00:00.000Z" } };
+    const lida = lerConfigCiclo(antiga);
+    assert.equal(lida.emails.ativos, true, "a chave geral escolhida pelo administrador é mantida");
+    assert.deepEqual(lida.emails.perfilPendente, CONFIG_PADRAO.emails.perfilPendente);
+    assert.equal(configCicloSchema.safeParse({ ...CONFIG_PADRAO, emails: { ...CONFIG_PADRAO.emails, perfilPendente: { ativa: true, aposDias: 0, lembreteAposDias: 5 } } }).success, false);
+  });
+
   it("valor ausente ou corrompido volta ao padrão", () => {
     assert.deepEqual(lerConfigCiclo(null), CONFIG_PADRAO);
     assert.deepEqual(lerConfigCiclo({ testeDias: "muitos" }), CONFIG_PADRAO);
@@ -156,9 +166,19 @@ describe("quando cada campanha se aplica", () => {
     assert.equal(campanhaSeAplica("primeira_acao", novo({ contas: 1 })), false);
   });
 
-  it("primeira ação (só rede) só sai para quem ainda não publicou o perfil", () => {
-    assert.equal(campanhaSeAplica("primeira_acao", novo({ plano: "gratuito", perfilPublicado: false })), true);
+  it("primeira ação não repete o aviso de perfil para quem só tem a rede (quem cuida disso é perfil_pendente)", () => {
+    assert.equal(campanhaSeAplica("primeira_acao", novo({ plano: "gratuito", perfilPublicado: false })), false);
     assert.equal(campanhaSeAplica("primeira_acao", novo({ plano: "gratuito", perfilPublicado: true })), false);
+  });
+
+  it("perfil não publicado: aviso e lembrete só saem enquanto o perfil não foi publicado, em qualquer plano", () => {
+    for (const c of ["perfil_pendente", "perfil_pendente_lembrete"] as CampanhaId[]) {
+      for (const plano of ["teste", "gratuito", "ativo", "cortesia"]) {
+        assert.equal(campanhaSeAplica(c, novo({ plano, perfilPublicado: false })), true, `${c}/${plano}`);
+        assert.equal(campanhaSeAplica(c, novo({ plano, perfilPublicado: true })), false, `${c}/${plano}`);
+      }
+      assert.equal(CATEGORIA_DA_CAMPANHA[c], "promocional", "dica: respeita o descadastro");
+    }
   });
 
   it("a dica do problema some quando estoque e calendário já foram usados", () => {
@@ -188,7 +208,7 @@ describe("quando cada campanha se aplica", () => {
 });
 
 describe("modelos de e-mail", () => {
-  const TODAS: CampanhaId[] = ["boas_vindas", "primeira_acao", "problema", "recursos", "fim_do_teste", "teste_estendido"];
+  const TODAS: CampanhaId[] = ["boas_vindas", "primeira_acao", "problema", "recursos", "perfil_pendente", "perfil_pendente_lembrete", "fim_do_teste", "teste_estendido"];
 
   it("só fim do teste, boas-vindas e extensão são transacionais; as dicas são promocionais", () => {
     assert.equal(CATEGORIA_DA_CAMPANHA.fim_do_teste, "transacional");

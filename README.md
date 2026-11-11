@@ -295,6 +295,12 @@ grava o instante, e dicas e boas-vindas só valem para quem se cadastrar depois 
 teste também aparecem no app (sino) e não dependem da chave de e-mails. O descadastro é em `/descadastrar/<token>` (página com botão; o GET
 não muda nada) e em `POST /api/descadastrar/<token>` (um clique do provedor), e a preferência fica em Configurações.
 
+**Perfil não publicado.** Quem confirmou o e-mail e nunca publicou o perfil (`primeiraPublicacaoEm` vazio) recebe um aviso no app (sino) e um e-mail
+de dica depois de 1 dia, e um único lembrete 5 dias depois do primeiro: no máximo 2 e-mails por pessoa. Diferente das outras dicas, **vale também para
+quem já estava cadastrado** antes de ligar os e-mails (continua exigindo a chave geral ligada). É promocional (respeita o descadastro; quem parou de
+receber dicas ainda vê o aviso no app). As dicas têm teto próprio por dia (60% do teto geral) e os e-mails da conta saem primeiro na fila, então uma fila
+grande de dicas não atrasa a boas-vindas nem o aviso do fim do teste. Dias e liga/desliga ficam na configuração do ciclo de vida (admin).
+
 **Eventos.** `EventoProduto` (sem relações, sem conteúdo sensível, `chave` única = idempotente): `cadastro_concluido`, `primeiro_acesso`,
 `teste_iniciado`, `teste_estendido`, `teste_encerrado`, `aviso_fim_teste_app`, `email_enviado`, `email_falhou`, `email_descadastro`. Nenhum evento
 é inventado: assinatura confirmada e checkout só existirão quando houver cobrança real. "E-mail entregue/aberto" depende do webhook do

@@ -26,6 +26,8 @@ const ROTULO_CAMPANHA: Record<string, string> = {
   primeira_acao: "Dica: primeira ação",
   problema: "Dica: problema do dia a dia",
   recursos: "Recursos não usados",
+  perfil_pendente: "Perfil não publicado",
+  perfil_pendente_lembrete: "Perfil não publicado (lembrete)",
   fim_do_teste: "Fim do teste",
   teste_estendido: "Teste estendido",
 };
@@ -229,6 +231,18 @@ export function CicloDeVidaAdmin() {
               <Numero rotulo="Dias após o cadastro" valor={emails[chave].aposDias} min={1} max={30} aoMudar={(n) => mudar((c) => ({ ...c, emails: { ...c.emails, [chave]: { ...c.emails[chave], aposDias: n } } }))} />
             </div>
           ))}
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="min-w-56 flex-1">
+              <Chave
+                rotulo="Perfil não publicado (e-mail e no app)"
+                ligado={emails.perfilPendente.ativa}
+                aoMudar={(v) => mudar((c) => ({ ...c, emails: { ...c.emails, perfilPendente: { ...c.emails.perfilPendente, ativa: v } } }))}
+                descricao="Vale também para quem já estava cadastrado. No máximo dois e-mails por pessoa (aviso e lembrete); quem publica o perfil ou parou de receber dicas não recebe."
+              />
+            </div>
+            <Numero rotulo="Dias após confirmar o e-mail" valor={emails.perfilPendente.aposDias} min={1} max={30} aoMudar={(n) => mudar((c) => ({ ...c, emails: { ...c.emails, perfilPendente: { ...c.emails.perfilPendente, aposDias: n } } }))} />
+            <Numero rotulo="Lembrete após (dias)" valor={emails.perfilPendente.lembreteAposDias} min={2} max={60} aoMudar={(n) => mudar((c) => ({ ...c, emails: { ...c.emails, perfilPendente: { ...c.emails.perfilPendente, lembreteAposDias: n } } }))} />
+          </div>
           <div className="flex flex-wrap items-end gap-4">
             <div className="min-w-56 flex-1">
               <Chave rotulo="Avisos de fim do teste (e-mail e no app)" ligado={emails.fimDoTeste.ativa} aoMudar={(v) => mudar((c) => ({ ...c, emails: { ...c.emails, fimDoTeste: { ...c.emails.fimDoTeste, ativa: v } } }))} descricao="Avisos sobre a conta: sempre chegam, mesmo para quem parou de receber dicas." />

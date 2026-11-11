@@ -38,6 +38,15 @@ export const configCicloSchema = z
         primeiraAcao: campanhaComAtraso,
         problema: campanhaComAtraso,
         recursos: campanhaComAtraso,
+        /**
+         * Perfil nunca publicado: um aviso depois de `aposDias` dias de e-mail confirmado e, se continuar sem publicar, um
+         * lembrete `lembreteAposDias` dias depois do primeiro. Vale também para quem já estava cadastrado antes de ligar os
+         * e-mails. Opcional na leitura: a configuração antiga, sem esta chave, continua valendo.
+         */
+        perfilPendente: z
+          .object({ ativa: z.boolean(), aposDias: inteiro(1, 30), lembreteAposDias: inteiro(2, 60) })
+          .strict()
+          .default({ ativa: true, aposDias: 1, lembreteAposDias: 5 }),
         fimDoTeste: z
           .object({
             ativa: z.boolean(),
@@ -67,6 +76,7 @@ export const CONFIG_PADRAO: ConfigCicloDeVida = {
     primeiraAcao: { ativa: true, aposDias: 1 },
     problema: { ativa: true, aposDias: 3 },
     recursos: { ativa: true, aposDias: 7 },
+    perfilPendente: { ativa: true, aposDias: 1, lembreteAposDias: 5 },
     fimDoTeste: { ativa: true, diasAntes: [3, 1, 0] },
   },
 };

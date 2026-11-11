@@ -22,7 +22,10 @@ const T0 = new Date();
 const em = (dias: number) => new Date(T0.getTime() + dias * DIA_MS);
 const emMin = (min: number) => new Date(T0.getTime() + min * 60_000);
 
-const CONFIG: ConfigCicloDeVida = { ...CONFIG_PADRAO, emails: { ...CONFIG_PADRAO.emails, ativos: true, ativadoEm: em(-30).toISOString() } };
+// A campanha de perfil não publicado fica desligada aqui: os cenários antigos medem as outras campanhas (cada empresa de
+// teste nova está sem perfil publicado e entraria nela). Os cenários dela usam CONFIG_PERFIL.
+const CONFIG: ConfigCicloDeVida = { ...CONFIG_PADRAO, emails: { ...CONFIG_PADRAO.emails, ativos: true, ativadoEm: em(-30).toISOString(), perfilPendente: { ativa: false, aposDias: 1, lembreteAposDias: 5 } } };
+const CONFIG_PERFIL: ConfigCicloDeVida = { ...CONFIG, emails: { ...CONFIG.emails, perfilPendente: { ativa: true, aposDias: 1, lembreteAposDias: 5 } } };
 
 const resultados: { nome: string; ok: boolean; erro?: string }[] = [];
 async function teste(nome: string, corpo: () => Promise<void>): Promise<void> {
@@ -404,6 +407,96 @@ async function main(): Promise<void> {
     const boas = f.enviados.find((m) => m.assunto.startsWith("Bem-vindo"));
     assert.ok(boas?.texto.includes("/minha-rede/perfil"));
     assert.ok(!/dias de teste/.test(boas?.assunto ?? ""));
+  });
+
+  await teste("19. perfil não publicado: e-mail e aviso no app saem uma vez, e repetir não duplica", async () => {
+    const e = await criarEmpresa("P1", { plano: "gratuito" });
+    const dono = await criarDono(e, "p1", { criadoEm: em(-3) });
+    const f = enviadorFalso();
+    const r1 = await rodar(T0, f, CONFIG_PERFIL, [e]);
+    assert.equal(r1.avisosNoApp, 1);
+    const msgs = f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto));
+    assert.equal(msgs.length, 1);
+    assert.ok(msgs[0]!.texto.includes("/minha-rede/perfil"));
+    assert.match(msgs[0]!.texto, /descadastrar/, "é dica: leva o link para parar de receber");
+    await rodar(emMin(5), f, CONFIG_PERFIL, [e]);
+    assert.equal(await notificacoes("perfil_pendente", e), 1, "aviso no app uma vez só");
+    assert.equal(porCampanha(await linhas(dono.id), "perfil_pendente").length, 1);
+  });
+
+  await teste("20. quem já estava cadastrado antes de ligar os e-mails também é avisado", async () => {
+    const e = await criarEmpresa("P2", { plano: "gratuito" });
+    const dono = await criarDono(e, "p2", { criadoEm: em(-90) });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    assert.equal(f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto)).length, 1);
+  });
+
+  await teste("21. perfil já publicado: nada sai e nenhum aviso no app", async () => {
+    const e = await criarEmpresa("P3", { plano: "gratuito" });
+    await prisma.empresa.update({ where: { id: e }, data: { primeiraPublicacaoEm: iso(em(-2)) } });
+    const dono = await criarDono(e, "p3", { criadoEm: em(-5) });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    assert.equal(f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto)).length, 0);
+    assert.equal(await notificacoes("perfil_pendente", e), 0);
+  });
+
+  await teste("22. quem parou de receber dicas não recebe o e-mail, mas vê o aviso no app", async () => {
+    const e = await criarEmpresa("P4", { plano: "gratuito" });
+    const dono = await criarDono(e, "p4", { criadoEm: em(-5), promocionais: false });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    assert.equal(f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto)).length, 0);
+    assert.equal(porCampanha(await linhas(dono.id), "perfil_pendente")[0]?.status, "cancelado");
+    assert.equal(await notificacoes("perfil_pendente", e), 1);
+  });
+
+  await teste("23. um lembrete depois de 5 dias e nunca mais: no máximo dois e-mails por pessoa", async () => {
+    const e = await criarEmpresa("P5", { plano: "gratuito" });
+    const dono = await criarDono(e, "p5", { criadoEm: em(-4) });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    await rodar(em(2), f, CONFIG_PERFIL, [e]);
+    assert.equal(porCampanha(await linhas(dono.id), "perfil_pendente_lembrete").length, 0, "antes dos 5 dias não há lembrete");
+    await rodar(em(5.5), f, CONFIG_PERFIL, [e]);
+    await rodar(em(12), f, CONFIG_PERFIL, [e]);
+    await rodar(em(40), f, CONFIG_PERFIL, [e]);
+    const dePerfil = f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto));
+    assert.equal(dePerfil.length, 2);
+    assert.match(dePerfil[1]!.assunto, /Falta só publicar/);
+  });
+
+  await teste("24. publicou o perfil antes do lembrete: o lembrete não sai", async () => {
+    const e = await criarEmpresa("P6", { plano: "gratuito" });
+    const dono = await criarDono(e, "p6", { criadoEm: em(-4) });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    await prisma.empresa.update({ where: { id: e }, data: { primeiraPublicacaoEm: iso(em(1)) } });
+    await rodar(em(6), f, CONFIG_PERFIL, [e]);
+    assert.equal(f.enviados.filter((m) => m.para === dono.email && /perfil/i.test(m.assunto)).length, 1);
+    assert.equal(porCampanha(await linhas(dono.id), "perfil_pendente_lembrete").length, 0);
+  });
+
+  await teste("25. e-mail não confirmado: o aviso de perfil não é agendado (não escreve para endereço não confirmado)", async () => {
+    const e = await criarEmpresa("P7", { plano: "gratuito" });
+    const dono = await criarDono(e, "p7", { criadoEm: em(-5), confirmado: false });
+    const f = enviadorFalso();
+    await rodar(T0, f, CONFIG_PERFIL, [e]);
+    assert.equal(porCampanha(await linhas(dono.id), "perfil_pendente").length, 0);
+    assert.equal(f.enviados.filter((m) => m.para === dono.email).length, 0);
+  });
+
+  await teste("26. e-mail da conta (boas-vindas) sai antes das dicas na fila", async () => {
+    const e = await criarEmpresa("P8", { plano: "gratuito" });
+    await criarDono(e, "p8", { criadoEm: em(-5) });
+    const f = enviadorFalso();
+    await processarCicloDeVida({ agora: T0, enviar: f.enviar, urlBase: URL_BASE, config: CONFIG_PERFIL, apenasEmpresas: [e], semTetoDiario: true, limiteEnvio: 0 });
+    const novo = await criarDono(e, "p8b", { criadoEm: emMin(-30) });
+    await agendarBoasVindas(prisma, { id: novo.id, empresaId: e }, emMin(1));
+    await processarCicloDeVida({ agora: emMin(2), enviar: f.enviar, urlBase: URL_BASE, config: CONFIG_PERFIL, apenasEmpresas: [e], semTetoDiario: true, limiteEnvio: 1 });
+    assert.equal(f.enviados.length, 1);
+    assert.match(f.enviados[0]!.assunto, /Bem-vindo/, "a boas-vindas (conta) passa na frente da dica que estava esperando");
   });
 
   await teste("18. nenhuma mensagem de todo o teste saiu para alguém de fora das empresas descartáveis", async () => {

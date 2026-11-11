@@ -15,6 +15,8 @@ const ROTULO_CAMPANHA: Record<string, string> = {
   primeira_acao: "Dica: primeira ação",
   problema: "Dica: problema do dia a dia",
   recursos: "Recursos não usados",
+  perfil_pendente: "Perfil não publicado",
+  perfil_pendente_lembrete: "Perfil não publicado (lembrete)",
   fim_do_teste: "Fim do teste",
   teste_estendido: "Teste estendido",
 };

@@ -9,7 +9,7 @@ import { CORES_MARCA, MARCA } from "@/lib/marca";
 //  - transacional: sobre a conta (boas-vindas, fim do teste, extensão). Não depende da preferência de comunicação.
 //  - promocional: dicas e sugestões de uso. Respeita o descadastro e leva o link para parar de receber.
 
-export type CampanhaId = "boas_vindas" | "primeira_acao" | "problema" | "recursos" | "fim_do_teste" | "teste_estendido";
+export type CampanhaId = "boas_vindas" | "primeira_acao" | "problema" | "recursos" | "perfil_pendente" | "perfil_pendente_lembrete" | "fim_do_teste" | "teste_estendido";
 export type Categoria = "transacional" | "promocional";
 
 export const CATEGORIA_DA_CAMPANHA: Record<CampanhaId, Categoria> = {
@@ -17,6 +17,8 @@ export const CATEGORIA_DA_CAMPANHA: Record<CampanhaId, Categoria> = {
   primeira_acao: "promocional",
   problema: "promocional",
   recursos: "promocional",
+  perfil_pendente: "promocional",
+  perfil_pendente_lembrete: "promocional",
   fim_do_teste: "transacional",
   teste_estendido: "transacional",
 };
@@ -50,11 +52,15 @@ export function campanhaSeAplica(campanha: CampanhaId, s: SinaisDaEmpresa): bool
     case "boas_vindas":
       return emTeste(s) || soRede(s);
     case "primeira_acao":
-      return emTeste(s) ? s.contas === 0 : soRede(s) ? !s.perfilPublicado : false;
+      // Quem só tem o Elo Profissionais e não publicou o perfil é avisado por "perfil_pendente" (não repete o mesmo assunto aqui).
+      return emTeste(s) ? s.contas === 0 : false;
     case "problema":
       return emTeste(s) ? s.produtos === 0 || s.compromissos === 0 : soRede(s);
     case "recursos":
       return emTeste(s) ? recursosNaoUsados(s).length > 0 : soRede(s);
+    case "perfil_pendente":
+    case "perfil_pendente_lembrete":
+      return !s.perfilPublicado;
     case "fim_do_teste":
     case "teste_estendido":
       return emTeste(s);
@@ -200,6 +206,27 @@ function conteudoDe(campanha: CampanhaId, c: ContextoEmail): Conteudo {
           ...(c.fimFormatado ? [`O teste vai até ${c.fimFormatado}.`] : []),
         ],
         cta: { rotulo: "Abrir meu painel", caminho: "/dashboard" },
+      };
+
+    case "perfil_pendente":
+      return {
+        assunto: "Seu perfil ainda não aparece na busca",
+        paragrafos: [
+          `Sua conta no ${REDE} está criada, mas o perfil ainda não foi publicado. Quem procura um profissional por profissão e cidade só encontra perfis publicados, então hoje ninguém encontra você.`,
+          "Leva poucos minutos: escolha a profissão, diga onde atende e descreva o que você faz.",
+          ...(emTeste(s) ? ["Publicar também libera o painel de gestão do seu teste."] : []),
+        ],
+        cta: { rotulo: "Publicar meu perfil", caminho: "/minha-rede/perfil" },
+      };
+
+    case "perfil_pendente_lembrete":
+      return {
+        assunto: "Falta só publicar o seu perfil",
+        paragrafos: [
+          "Faz alguns dias que você criou a conta, e o seu perfil continua sem publicar. Por isso ele ainda não aparece na busca.",
+          "Se algo travou no caminho, responda este e-mail que a gente ajuda. Este é o último lembrete que enviamos sobre isso.",
+        ],
+        cta: { rotulo: "Publicar meu perfil", caminho: "/minha-rede/perfil" },
       };
 
     case "fim_do_teste": {

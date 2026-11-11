@@ -39,6 +39,8 @@ const RESERVA_MS = 5 * 60 * 1000;
 const MS_MINUTO = 60_000;
 const INTERVALO_PROMOCIONAL_MS = 2 * DIA_MS;
 const LIMITE_DIARIO = Number(process.env.EMAIL_LIMITE_CICLO_DIA) > 0 ? Number(process.env.EMAIL_LIMITE_CICLO_DIA) : 50;
+/** Dicas têm teto próprio, menor que o geral: uma fila grande de dicas nunca gasta o dia inteiro e atrasa os e-mails da conta. */
+const LIMITE_PROMOCIONAL_DIA = Math.max(1, Math.floor(LIMITE_DIARIO * 0.6));
 const CAMPANHAS_DE_ONBOARDING: CampanhaId[] = ["boas_vindas", "primeira_acao", "problema", "recursos"];
 
 export type EnviadorEmail = (mensagem: MensagemEmail) => Promise<boolean>;
@@ -231,6 +233,10 @@ function atrasoDaCampanha(config: ConfigCicloDeVida, c: CampanhaId): { ativa: bo
       return e.problema;
     case "recursos":
       return e.recursos;
+    case "perfil_pendente":
+      return { ativa: e.perfilPendente.ativa, aposDias: e.perfilPendente.aposDias };
+    case "perfil_pendente_lembrete":
+      return { ativa: e.perfilPendente.ativa, aposDias: e.perfilPendente.lembreteAposDias };
     default:
       return { ativa: false, aposDias: 0 };
   }
@@ -277,6 +283,107 @@ async function agendarCampanhas(agora: Date, config: ConfigCicloDeVida, r: Resul
       });
       r.emailsAgendados += novos.count;
     }
+  }
+}
+
+/** Empresas cujo perfil nunca foi publicado (quem publicou e depois escondeu o perfil escolheu isso, não é lembrado). */
+function empresaSemPerfilPublicado(empresas?: string[]): Prisma.EmpresaWhereInput {
+  return {
+    bloqueadaEm: null,
+    primeiraPublicacaoEm: null,
+    OR: [{ perfilPublico: { is: null } }, { perfilPublico: { is: { status: { not: "publicado" } } } }],
+    ...(empresas ? { id: { in: empresas } } : {}),
+  };
+}
+
+/**
+ * Perfil não publicado: agenda o primeiro aviso (e-mail e aviso no app) para quem confirmou o e-mail há pelo menos
+ * `aposDias` dias, inclusive quem já estava cadastrado antes de ligar os e-mails, e depois um único lembrete. Cada pessoa
+ * recebe no máximo estes dois e-mails (a chave de cada um é única). Quem publica deixa de se encaixar; quem se descadastrou
+ * não recebe (o envio cancela). O envio em si segue a fila: teto diário, no máximo um e-mail de dica a cada 2 dias.
+ */
+async function agendarPerfilPendente(agora: Date, config: ConfigCicloDeVida, r: ResultadoCiclo, empresas?: string[]): Promise<void> {
+  const cfg = config.emails.perfilPendente;
+  if (!config.emails.ativos || !cfg.ativa) return;
+  const iso = agora.toISOString();
+  const empresa = empresaSemPerfilPublicado(empresas);
+
+  const donos = await prisma.usuario.findMany({
+    where: {
+      papel: "dono",
+      desativadoEm: null,
+      bloqueadoPlataformaEm: null,
+      emailConfirmadoEm: { not: null, lte: new Date(agora.getTime() - cfg.aposDias * DIA_MS).toISOString() },
+      empresa,
+      emailsAgendados: { none: { campanha: "perfil_pendente" } },
+    },
+    orderBy: { criadoEm: "asc" },
+    select: { id: true, empresaId: true },
+    take: 200,
+  });
+  for (const dono of donos) {
+    await prisma.$transaction(async (tx) => {
+      const novo = await registrarEvento(tx, { tipo: "aviso_perfil_pendente_app", empresaId: dono.empresaId, chave: `aviso-app:perfil-pendente:${dono.empresaId}`, agora });
+      if (novo) {
+        await tx.notificacao.create({
+          data: {
+            empresaId: dono.empresaId,
+            tipo: "perfil_pendente",
+            titulo: "Seu perfil ainda não está publicado",
+            texto: "Sem publicar, você não aparece na busca de profissionais. Leva poucos minutos.",
+            href: "/minha-rede/perfil",
+            criadoEm: iso,
+          },
+        });
+        r.avisosNoApp++;
+      }
+      const criados = await tx.emailAgendado.createMany({
+        data: [
+          {
+            empresaId: dono.empresaId,
+            usuarioId: dono.id,
+            campanha: "perfil_pendente",
+            categoria: CATEGORIA_DA_CAMPANHA.perfil_pendente,
+            chave: `${dono.id}:perfil_pendente`,
+            proximaTentativaEm: iso,
+            criadoEm: iso,
+            atualizadoEm: iso,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      r.emailsAgendados += criados.count;
+    });
+  }
+
+  const paraLembrar = await prisma.emailAgendado.findMany({
+    where: {
+      campanha: "perfil_pendente",
+      status: "enviado",
+      enviadoEm: { lte: new Date(agora.getTime() - cfg.lembreteAposDias * DIA_MS).toISOString() },
+      empresa,
+      usuario: { emailsAgendados: { none: { campanha: "perfil_pendente_lembrete" } } },
+    },
+    select: { usuarioId: true, empresaId: true },
+    take: 200,
+  });
+  for (const p of paraLembrar) {
+    const criados = await prisma.emailAgendado.createMany({
+      data: [
+        {
+          empresaId: p.empresaId,
+          usuarioId: p.usuarioId,
+          campanha: "perfil_pendente_lembrete",
+          categoria: CATEGORIA_DA_CAMPANHA.perfil_pendente_lembrete,
+          chave: `${p.usuarioId}:perfil_pendente_lembrete`,
+          proximaTentativaEm: iso,
+          criadoEm: iso,
+          atualizadoEm: iso,
+        },
+      ],
+      skipDuplicates: true,
+    });
+    r.emailsAgendados += criados.count;
   }
 }
 
@@ -367,6 +474,13 @@ async function tratarEmail(e: Candidato, agora: Date, config: ConfigCicloDeVida,
     if (recente > 0) return adiar(e.id, maisMinutos(agora, 24 * 60), iso, r);
   }
 
+  if (!semTeto && categoria === "promocional") {
+    const tetoDicas = await verificarLimite("email-ciclo-promo-dia", LIMITE_PROMOCIONAL_DIA, DIA_MS);
+    if (!tetoDicas.permitido) {
+      await prisma.emailAgendado.updateMany({ where: { id: e.id, status: "pendente" }, data: { reservadoAte: null } });
+      return "parar";
+    }
+  }
   if (!semTeto) {
     const teto = await verificarLimite("email-ciclo-dia", LIMITE_DIARIO, DIA_MS);
     if (!teto.permitido) {
@@ -436,7 +550,8 @@ async function enviarPendentes(agora: Date, config: ConfigCicloDeVida, enviar: E
       OR: [{ reservadoAte: null }, { reservadoAte: { lt: iso } }],
       ...(empresas ? { empresaId: { in: empresas } } : {}),
     },
-    orderBy: [{ proximaTentativaEm: "asc" }, { id: "asc" }],
+    // "transacional" vem depois de "promocional" em ordem alfabética: decrescente põe os e-mails da conta na frente.
+    orderBy: [{ categoria: "desc" }, { proximaTentativaEm: "asc" }, { id: "asc" }],
     take: limite,
     include: {
       usuario: { select: { nome: true, email: true, emailsPromocionais: true, tokenDescadastro: true, desativadoEm: true, bloqueadoPlataformaEm: true, emailConfirmadoEm: true, criadoEm: true } },
@@ -469,6 +584,7 @@ export async function processarCicloDeVida(opcoes: OpcoesCiclo = {}): Promise<Re
     await registrarEncerramentos(agora, r, opcoes.apenasEmpresas);
     await avisarFimDoTeste(agora, config, r, opcoes.apenasEmpresas);
     await agendarCampanhas(agora, config, r, opcoes.apenasEmpresas);
+    await agendarPerfilPendente(agora, config, r, opcoes.apenasEmpresas);
   }
   await enviarPendentes(agora, config, opcoes.enviar ?? enviarEmail, opcoes.urlBase ?? urlDoSite(), opcoes.limiteEnvio ?? 40, opcoes.semTetoDiario ?? false, r, opcoes.apenasEmpresas);
   return r;

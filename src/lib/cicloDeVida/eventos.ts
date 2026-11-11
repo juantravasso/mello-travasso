@@ -8,6 +8,7 @@ export const TIPOS_EVENTO = [
   "teste_estendido",
   "teste_encerrado",
   "aviso_fim_teste_app",
+  "aviso_perfil_pendente_app",
   "email_enviado",
   "email_falhou",
   "email_descadastro",

@@ -8,9 +8,9 @@ import { registrarEvento } from "./eventosCore.server";
 import { contarOcupacao } from "./planosComerciaisCore.server";
 import { ErroDeNegocio } from "./resultado.server";
 
-// Cobrança real dos planos comerciais via Mercado Pago. Mensal é assinatura recorrente (preapproval): o Mercado
-// Pago manda o estado certo. Anual é pagamento único parcelado: não existe recorrência de verdade no provedor, a
-// "renovação" é só um aviso por e-mail antes do vencimento, seguido de um novo pagamento.
+// Cobrança real dos planos comerciais via Mercado Pago. Mensal no cartão é assinatura recorrente (preapproval): o
+// Mercado Pago manda o estado certo. Anual (cartão em até 12x) e Pix (mensal ou anual) são pagamento único: não existe
+// recorrência no provedor, a "renovação" é um aviso por e-mail antes do vencimento, seguido de um novo pagamento.
 //
 // Vaga (vagasTotal do plano): reservada no início do checkout, não só confirmada no webhook — evita que alguém
 // pague por uma vaga que já foi para outro cliente enquanto está no meio do pagamento. Reserva expira em
@@ -18,7 +18,13 @@ import { ErroDeNegocio } from "./resultado.server";
 // acesso (o pagamento pode ter chegado depois da reserva expirar, ou a vaga pode ter ido para outro).
 
 const TTL_RESERVA_MIN = 45;
-const DIAS_AVISO_RENOVACAO = 14;
+/** Pagamento único (Pix ou anual) não renova sozinho: o cliente é avisado e paga de novo nesta janela antes do vencimento. */
+const DIAS_AVISO_RENOVACAO = { anual: 14, mensal: 3 } as const;
+
+export type MeioPagamento = "cartao" | "pix";
+
+/** Pagamento único: anual (qualquer meio) ou Pix. Cartão mensal é a assinatura recorrente do Mercado Pago, que cobra sozinha. */
+export const ehPagamentoUnico = (ciclo: string, meio: string): boolean => ciclo === "anual" || meio === "pix";
 
 type Tx = Prisma.TransactionClient;
 
@@ -32,8 +38,13 @@ export interface ReservaCriada {
   valorCentavos: number;
 }
 
-/** Reserva a vaga (se o plano tiver limite) e cria a cobrança em status "reservada". Lança ErroDeNegocio se não houver vaga ou a empresa já tiver uma contratação em andamento/ativa neste plano e ciclo. */
-export async function reservarVaga(empresaId: string, chave: string, ciclo: "mensal" | "anual", parcelas: number | null): Promise<ReservaCriada> {
+/**
+ * Reserva a vaga (se o plano tiver limite) e cria a cobrança em status "reservada". Uma nova tentativa da mesma empresa
+ * substitui a anterior ainda em aberto (quem trocou de ideia, por exemplo do cartão para o Pix, não fica travado). Lança
+ * ErroDeNegocio se não houver vaga ou se a empresa já tiver este plano ativo; pagamento único (Pix/anual) perto do
+ * vencimento pode ser renovado.
+ */
+export async function reservarVaga(empresaId: string, chave: string, ciclo: "mensal" | "anual", meio: MeioPagamento = "cartao"): Promise<ReservaCriada> {
   const agora = new Date();
   const agoraIso = agora.toISOString();
   return prisma.$transaction(async (tx) => {
@@ -43,21 +54,20 @@ export async function reservarVaga(empresaId: string, chave: string, ciclo: "men
     const preco = ciclo === "mensal" ? plano.precoMensalCentavos : plano.precoAnualCentavos;
     if (preco === null) throw new ErroDeNegocio("Este plano está sob consulta: fale com a equipe.");
 
-    // Reserva vencida não pode travar quem tenta de novo: descarta já, sem esperar a rotina diária.
     await tx.assinaturaComercial.updateMany({
-      where: { empresaId, planoChave: chave, ciclo, status: "reservada", reservaExpiraEm: { lt: agoraIso } },
+      where: { empresaId, planoChave: chave, ciclo, status: "reservada" },
       data: { status: "expirada", atualizadoEm: agoraIso },
     });
-    const jaTem = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo, status: { in: ["reservada", "ativa"] } } });
-    if (jaTem) {
-      if (jaTem.status === "reservada" && jaTem.reservaExpiraEm) {
-        const minutos = Math.max(1, Math.ceil((new Date(jaTem.reservaExpiraEm).getTime() - agora.getTime()) / 60_000));
-        throw new ErroDeNegocio(`Você já abriu o pagamento deste plano. Conclua-o ou tente de novo em ${minutos} min.`);
-      }
-      throw new ErroDeNegocio("Você já tem uma contratação ativa para este plano.");
+
+    const ativa = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo, status: "ativa" } });
+    let renovando = false;
+    if (ativa) {
+      const janela = new Date(agora.getTime() + DIAS_AVISO_RENOVACAO[ciclo] * 86_400_000).toISOString();
+      renovando = ehPagamentoUnico(ativa.ciclo, ativa.meio) && ehPagamentoUnico(ciclo, meio) && !!ativa.proximaCobrancaEm && ativa.proximaCobrancaEm <= janela;
+      if (!renovando) throw new ErroDeNegocio("Você já tem uma contratação ativa para este plano.");
     }
     const empresa = await tx.empresa.findUnique({ where: { id: empresaId }, select: { plano: true, planoComercialChave: true } });
-    if (empresa?.plano === "ativo" && empresa.planoComercialChave === chave) {
+    if (!renovando && empresa?.plano === "ativo" && empresa.planoComercialChave === chave) {
       // Quem cancelou e ainda está no período pago pode assinar de novo (a assinatura nova assume quando o período acabar).
       const emCarencia = await tx.assinaturaComercial.findFirst({ where: { empresaId, planoChave: chave, ciclo: "mensal", status: "cancelada", proximaCobrancaEm: { gt: agoraIso } } });
       if (!emCarencia) throw new ErroDeNegocio("Sua empresa já está neste plano.");
@@ -73,8 +83,8 @@ export async function reservarVaga(empresaId: string, chave: string, ciclo: "men
         empresaId,
         planoChave: chave,
         ciclo,
+        meio,
         status: "reservada",
-        parcelas,
         valorCentavos: preco,
         reservaExpiraEm: new Date(agora.getTime() + TTL_RESERVA_MIN * 60_000).toISOString(),
         criadoEm: agoraIso,
@@ -103,7 +113,7 @@ export async function liberarReserva(reservaId: string): Promise<void> {
 export async function confirmarAssinaturaMensal(reservaId: string, preapprovalId: string, statusMp: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const reserva = await tx.assinaturaComercial.findUnique({ where: { id: reservaId } });
-    if (!reserva || reserva.ciclo !== "mensal") return;
+    if (!reserva || reserva.ciclo !== "mensal" || reserva.meio === "pix") return;
     const agoraIso = new Date().toISOString();
 
     if (statusMp === "authorized") {
@@ -137,12 +147,17 @@ export async function confirmarAssinaturaMensal(reservaId: string, preapprovalId
   });
 }
 
-/** Confirmação de pagamento do anual (payment). Mesma lógica de `reservaId` = external_reference do confirmarAssinaturaMensal. */
-export async function confirmarPagamentoAnual(reservaId: string, paymentId: string, statusMp: string): Promise<void> {
+/**
+ * Confirmação de pagamento único (payment): anual no cartão ou Pix (mensal ou anual). Mesma lógica de `reservaId` =
+ * external_reference do confirmarAssinaturaMensal. O período pago vale a partir de agora, ou a partir do vencimento
+ * se for uma renovação antecipada (quem renova antes não perde os dias que sobravam).
+ */
+export async function confirmarPagamentoUnico(reservaId: string, paymentId: string, statusMp: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const reserva = await tx.assinaturaComercial.findUnique({ where: { id: reservaId } });
-    if (!reserva || reserva.ciclo !== "anual") return;
-    const agoraIso = new Date().toISOString();
+    if (!reserva || !ehPagamentoUnico(reserva.ciclo, reserva.meio)) return;
+    const agora = new Date();
+    const agoraIso = agora.toISOString();
 
     if (statusMp === "approved") {
       if (reserva.status === "ativa") return;
@@ -154,7 +169,12 @@ export async function confirmarPagamentoAnual(reservaId: string, paymentId: stri
           return;
         }
       }
-      const proximaCobrancaEm = new Date(Date.now() + 365 * 86_400_000).toISOString();
+      const anterior = await tx.assinaturaComercial.findFirst({
+        where: { empresaId: reserva.empresaId, planoChave: reserva.planoChave, ciclo: reserva.ciclo, status: "ativa", id: { not: reserva.id } },
+      });
+      const base = anterior?.proximaCobrancaEm && anterior.proximaCobrancaEm > agoraIso ? new Date(anterior.proximaCobrancaEm) : agora;
+      const proximaCobrancaEm = (reserva.ciclo === "anual" ? new Date(base.getTime() + 365 * 86_400_000) : somarMeses(base, 1)).toISOString();
+      if (anterior) await tx.assinaturaComercial.update({ where: { id: anterior.id }, data: { status: "renovada", atualizadoEm: agoraIso } });
       await tx.assinaturaComercial.update({ where: { id: reserva.id }, data: { status: "ativa", referenciaExterna: paymentId, proximaCobrancaEm, atualizadoEm: agoraIso } });
       await tx.empresa.update({ where: { id: reserva.empresaId }, data: { plano: "ativo", planoComercialChave: reserva.planoChave, atualizadoEm: agoraIso } });
     } else if (statusMp === "rejected" || statusMp === "cancelled") {
@@ -198,30 +218,39 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
   });
   resultado.reservasExpiradas = expiradas.count;
 
-  const limiteAviso = new Date(agora.getTime() + DIAS_AVISO_RENOVACAO * 86_400_000).toISOString();
-  const aRenovar = await prisma.assinaturaComercial.findMany({
-    where: { ciclo: "anual", status: "ativa", proximaCobrancaEm: { lte: limiteAviso, gt: agoraIso } },
-    include: { planoComercial: true },
-  });
-  for (const a of aRenovar) {
-    if (!a.proximaCobrancaEm) continue;
-    const chave = `assinatura:renovacao:${a.id}:${a.proximaCobrancaEm}`;
-    const novo = await registrarEvento(prisma, { tipo: "assinatura_renovacao_avisada", empresaId: a.empresaId, chave, dados: { plano: a.planoChave } });
-    if (!novo) continue;
-    const vencimento = a.proximaCobrancaEm.slice(0, 10);
-    for (const dono of await donosAtivos(a.empresaId)) {
-      await enviarEmail({
-        para: dono.email,
-        assunto: `Sua assinatura anual (${a.planoComercial.nome}) vence em ${vencimento}`,
-        texto: `Olá! Sua assinatura anual do plano ${a.planoComercial.nome} vence em ${vencimento}. Acesse ${urlDoSite()}/planos para renovar.`,
-        html: `<p>Olá! Sua assinatura anual do plano <strong>${a.planoComercial.nome}</strong> vence em ${vencimento}.</p><p><a href="${urlDoSite()}/planos">Renovar agora</a></p>`,
-        chaveIdempotencia: chave,
-      });
+  const UNICOS = [
+    { ciclo: "anual", dias: DIAS_AVISO_RENOVACAO.anual, rotulo: "anual" },
+    { ciclo: "mensal", meio: "pix", dias: DIAS_AVISO_RENOVACAO.mensal, rotulo: "mensal (Pix)" },
+  ] as const;
+
+  for (const u of UNICOS) {
+    const limiteAviso = new Date(agora.getTime() + u.dias * 86_400_000).toISOString();
+    const aRenovar = await prisma.assinaturaComercial.findMany({
+      where: { ciclo: u.ciclo, ...("meio" in u ? { meio: u.meio } : {}), status: "ativa", proximaCobrancaEm: { lte: limiteAviso, gt: agoraIso } },
+      include: { planoComercial: true },
+    });
+    for (const a of aRenovar) {
+      if (!a.proximaCobrancaEm) continue;
+      const chave = `assinatura:renovacao:${a.id}:${a.proximaCobrancaEm}`;
+      const novo = await registrarEvento(prisma, { tipo: "assinatura_renovacao_avisada", empresaId: a.empresaId, chave, dados: { plano: a.planoChave } });
+      if (!novo) continue;
+      const vencimento = a.proximaCobrancaEm.slice(0, 10);
+      for (const dono of await donosAtivos(a.empresaId)) {
+        await enviarEmail({
+          para: dono.email,
+          assunto: `Sua assinatura ${u.rotulo} (${a.planoComercial.nome}) vence em ${vencimento}`,
+          texto: `Olá! Sua assinatura ${u.rotulo} do plano ${a.planoComercial.nome} vence em ${vencimento}. Acesse ${urlDoSite()}/planos para renovar.`,
+          html: `<p>Olá! Sua assinatura ${u.rotulo} do plano <strong>${a.planoComercial.nome}</strong> vence em ${vencimento}.</p><p><a href="${urlDoSite()}/planos">Renovar agora</a></p>`,
+          chaveIdempotencia: chave,
+        });
+      }
+      resultado.avisosRenovacao++;
     }
-    resultado.avisosRenovacao++;
   }
 
-  const vencidas = await prisma.assinaturaComercial.findMany({ where: { ciclo: "anual", status: "ativa", proximaCobrancaEm: { lt: agoraIso } } });
+  const vencidas = await prisma.assinaturaComercial.findMany({
+    where: { status: "ativa", proximaCobrancaEm: { lt: agoraIso }, OR: [{ ciclo: "anual" }, { ciclo: "mensal", meio: "pix" }] },
+  });
   for (const a of vencidas) {
     const processou = await prisma.$transaction(async (tx) => {
       const chave = `assinatura:suspensao:${a.id}:${a.proximaCobrancaEm}`;
@@ -235,7 +264,7 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
   }
 
   // Mensal cancelada: o acesso valeu até o fim do período pago; passou da data, suspende (somente leitura).
-  const fimDoAcesso = await prisma.assinaturaComercial.findMany({ where: { ciclo: "mensal", status: "cancelada", proximaCobrancaEm: { lt: agoraIso } } });
+  const fimDoAcesso = await prisma.assinaturaComercial.findMany({ where: { ciclo: "mensal", meio: "cartao", status: "cancelada", proximaCobrancaEm: { lt: agoraIso } } });
   for (const a of fimDoAcesso) {
     const processou = await prisma.$transaction(async (tx) => {
       const chave = `assinatura:fim-do-acesso:${a.id}:${a.proximaCobrancaEm}`;

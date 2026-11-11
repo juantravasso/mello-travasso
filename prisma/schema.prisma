@@ -1310,7 +1310,7 @@ model PlanoComercial {
   /// Limite de vagas (ex.: plano fundador). As vagas ocupadas são contadas nas empresas no plano ativo com esta chave; o
   /// "restam N" mostrado ao cliente sai dessa conta, nunca de um número digitado.
   vagasTotal          Int?
-  /// Só preenchido quando o provedor de pagamento confirmou o parcelamento sem juros; sem isso a página não promete.
+  /// Sem uso: o parcelamento sem juros foi abandonado (o anual parcela no cartão com os juros do cartão).
   parcelasSemJuros    Int?
   /// Condição que vale para o preço (ex.: "Preço garantido por 12 meses").
   condicao            String?
@@ -1328,8 +1328,10 @@ model AssinaturaComercial {
   empresa           Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   planoChave        String
   planoComercial    PlanoComercial @relation(fields: [planoChave], references: [chave])
-  /// "mensal" (preapproval) ou "anual" (pagamento único parcelado)
+  /// "mensal" (preapproval, só cartão, ou pagamento único por Pix) ou "anual" (pagamento único: cartão em até 12x ou Pix)
   ciclo             String
+  /// "cartao" | "pix". Pix é sempre pagamento único pelo período (1 mês ou 1 ano): não existe recorrência no Pix.
+  meio              String         @default("cartao")
   /// reservada | ativa | pausada | cancelada | expirada | paga_sem_vaga
   status            String
   /// Id do preapproval (mensal) ou do payment (anual) confirmado pelo Mercado Pago; null enquanto só reservada.

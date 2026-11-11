@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import type { PlanoComercialPublico } from "@/types";
-import { diferencaAnualEntrePlanos, economiaAnual, formatarPreco, mensalEquivalente, valorDaParcela } from "@/lib/planos/comercial";
+import { diferencaAnualEntrePlanos, economiaAnual, formatarPreco, mensalEquivalente } from "@/lib/planos/comercial";
 import { FUNCIONALIDADES, PROBLEMAS } from "@/lib/planos/vitrine";
 import { MARCA } from "@/lib/marca";
 import { cn } from "@/lib/cn";
@@ -10,26 +10,36 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { registrarInteracaoOferta } from "@/services/data/server/planosComerciaisActions";
-import { iniciarAssinaturaMensal, iniciarPagamentoAnual } from "@/services/data/server/assinaturaComercialActions";
+import { iniciarAssinaturaMensal, iniciarPagamentoAnual, iniciarPagamentoPix, type PixIniciado } from "@/services/data/server/assinaturaComercialActions";
+import { PagamentoPixModal } from "./PagamentoPixModal";
 
 const contato = (assunto: string) => `mailto:${MARCA.emailContato}?subject=${encodeURIComponent(assunto)}`;
 
-/** CTA do plano: checkout real do Mercado Pago quando configurado, ou o contato com a equipe (único caminho sem preço ou sem provedor). */
+type Acao = "anual-cartao" | "anual-pix" | "mensal-cartao" | "mensal-pix";
+
+/** CTA do plano: checkout real do Mercado Pago (cartão) ou Pix dentro do site, quando configurado; ou o contato com a equipe (único caminho sem preço ou sem provedor). */
 function ContratarPlano({ plano, pagamentoDisponivel }: { plano: PlanoComercialPublico; pagamentoDisponivel: boolean }) {
   const [erro, setErro] = useState<string | null>(null);
-  const [acaoPendente, setAcaoPendente] = useState<"mensal" | "anual" | null>(null);
+  const [acaoPendente, setAcaoPendente] = useState<Acao | null>(null);
+  const [pix, setPix] = useState<PixIniciado | null>(null);
   const [pendente, iniciar] = useTransition();
 
   function registrarClique() {
     void registrarInteracaoOferta({ contexto: "pagina_planos", tipo: "clicada", planoChave: plano.chave }).catch(() => undefined);
   }
 
-  function contratar(ciclo: "mensal" | "anual") {
+  function contratar(acao: Acao) {
     setErro(null);
-    setAcaoPendente(ciclo);
+    setAcaoPendente(acao);
     registrarClique();
     iniciar(async () => {
-      const resultado = ciclo === "mensal" ? await iniciarAssinaturaMensal(plano.chave) : await iniciarPagamentoAnual(plano.chave);
+      if (acao === "anual-pix" || acao === "mensal-pix") {
+        const resultado = await iniciarPagamentoPix(plano.chave, acao === "anual-pix" ? "anual" : "mensal");
+        if (resultado.ok) setPix(resultado.dados);
+        else setErro(resultado.mensagem);
+        return;
+      }
+      const resultado = acao === "mensal-cartao" ? await iniciarAssinaturaMensal(plano.chave) : await iniciarPagamentoAnual(plano.chave);
       if (resultado.ok) {
         window.location.href = resultado.dados.url;
       } else {
@@ -51,22 +61,39 @@ function ContratarPlano({ plano, pagamentoDisponivel }: { plano: PlanoComercialP
     );
   }
 
+  const rotulo = (acao: Acao, texto: string) => (pendente && acaoPendente === acao ? "Abrindo…" : texto);
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       {plano.precoAnualCentavos !== null && (
-        <Button onClick={() => contratar("anual")} disabled={pendente} className="h-12 text-base">
-          {pendente && acaoPendente === "anual"
-            ? "Abrindo pagamento…"
-            : plano.parcelasSemJuros
-              ? `Assinar o anual em ${plano.parcelasSemJuros}x sem juros`
-              : "Assinar o anual"}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-foreground">Pagar o anual</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={() => contratar("anual-cartao")} disabled={pendente} className="h-12">
+              {rotulo("anual-cartao", "Cartão em até 12x")}
+            </Button>
+            <Button variante="outline" onClick={() => contratar("anual-pix")} disabled={pendente} className="h-12">
+              {rotulo("anual-pix", "Pix")}
+            </Button>
+          </div>
+        </div>
       )}
       {plano.precoMensalCentavos !== null && (
-        <Button variante={plano.precoAnualCentavos !== null ? "outline" : "primary"} onClick={() => contratar("mensal")} disabled={pendente}>
-          {pendente && acaoPendente === "mensal" ? "Abrindo pagamento…" : "Assinar mensal"}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-semibold text-foreground">Pagar o mensal</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variante="outline" onClick={() => contratar("mensal-cartao")} disabled={pendente}>
+              {rotulo("mensal-cartao", "Cartão")}
+            </Button>
+            <Button variante="outline" onClick={() => contratar("mensal-pix")} disabled={pendente}>
+              {rotulo("mensal-pix", "Pix")}
+            </Button>
+          </div>
+        </div>
       )}
+      <p className="text-xs text-muted">
+        No cartão o mensal renova sozinho. No Pix você paga a cada período e a gente avisa por e-mail antes de vencer. O anual parcelado no cartão tem os juros do cartão.
+      </p>
       {erro && (
         <p role="alert" className="text-xs text-danger">
           {erro}
@@ -75,6 +102,7 @@ function ContratarPlano({ plano, pagamentoDisponivel }: { plano: PlanoComercialP
       <a href={contato(`Quero contratar o plano ${plano.nome}`)} onClick={registrarClique} className="text-center text-xs text-muted underline underline-offset-2 hover:text-foreground">
         Prefiro combinar com a equipe
       </a>
+      {pix && <PagamentoPixModal pix={pix} titulo={`Pagar com Pix · ${plano.nome}`} onFechar={() => setPix(null)} />}
     </div>
   );
 }
@@ -89,8 +117,6 @@ function textoVagas(p: PlanoComercialPublico): { texto: string; esgotado: boolea
 function Precos({ plano }: { plano: PlanoComercialPublico }) {
   const mensal = formatarPreco(plano.precoMensalCentavos);
   const anual = formatarPreco(plano.precoAnualCentavos);
-  const parcelas = plano.parcelasSemJuros;
-  const parcela = formatarPreco(valorDaParcela(plano.precoAnualCentavos, parcelas));
   const porMes = formatarPreco(mensalEquivalente(plano.precoAnualCentavos));
   const economia = economiaAnual(plano);
   const cheio = plano.precoMensalCentavos === null ? null : formatarPreco(plano.precoMensalCentavos * 12);
@@ -100,7 +126,7 @@ function Precos({ plano }: { plano: PlanoComercialPublico }) {
   if (!anual) {
     return (
       <p className="tabular-nums text-foreground">
-        <span className="text-3xl font-semibold">{mensal}</span> <span className="text-sm text-muted">por mês</span>
+        <span className="text-3xl font-semibold">{mensal}</span> <span className="text-sm text-muted">por mês, no Pix ou no cartão</span>
       </p>
     );
   }
@@ -112,25 +138,13 @@ function Precos({ plano }: { plano: PlanoComercialPublico }) {
           <span className="rounded-full bg-primary px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary-foreground">Melhor escolha</span>
           {economia && <span className="rounded-full bg-success-bg px-2.5 py-1 text-xs font-bold text-success">Economize {economia.percentual}%</span>}
         </div>
-        {parcela && parcelas ? (
-          <>
-            <p className="mt-3 text-foreground">
-              <span className="text-4xl font-bold text-primary">
-                {parcelas}x de {parcela}
-              </span>{" "}
-              <span className="text-sm font-semibold text-success">sem juros</span>
-            </p>
-            <p className="mt-1 text-sm text-foreground">
-              Você paga <span className="font-semibold">{parcela} por mês</span> durante {parcelas} meses, no cartão de crédito. Total de {anual} por ano.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="mt-3 text-foreground">
-              <span className="text-4xl font-bold text-primary">{anual}</span> <span className="text-sm text-muted">por ano</span>
-            </p>
-            {porMes && <p className="mt-1 text-sm text-foreground">Equivale a <span className="font-semibold">{porMes} por mês</span>.</p>}
-          </>
+        <p className="mt-3 text-foreground">
+          <span className="text-4xl font-bold text-primary">{anual}</span> <span className="text-sm text-muted">por ano</span>
+        </p>
+        {porMes && (
+          <p className="mt-1 text-sm text-foreground">
+            Equivale a <span className="font-semibold">{porMes} por mês</span>. Pix ou cartão de crédito em até 12x (com os juros do cartão).
+          </p>
         )}
         {economia && cheio && (
           <p className="mt-3 rounded-lg bg-success-bg px-3 py-2 text-sm font-semibold text-success">
@@ -140,7 +154,7 @@ function Precos({ plano }: { plano: PlanoComercialPublico }) {
       </div>
       {mensal && (
         <p className="px-1 text-sm text-foreground">
-          <span className="text-muted">Prefere o mensal?</span> <span className="font-semibold">{mensal} por mês</span>
+          <span className="text-muted">Prefere o mensal?</span> <span className="font-semibold">{mensal} por mês</span> <span className="text-muted">no Pix ou no cartão</span>
           {cheio && <span className="text-muted"> ({cheio} em 12 meses)</span>}
         </p>
       )}

@@ -53,6 +53,12 @@ export interface PreferenciaCriada {
   init_point: string;
 }
 
+export interface PagamentoPixCriado {
+  id: number;
+  status: string;
+  point_of_interaction?: { transaction_data?: { qr_code?: string; qr_code_base64?: string; ticket_url?: string } };
+}
+
 export interface PagamentoConsultado {
   id: number;
   status: string;
@@ -93,12 +99,14 @@ export async function criarPreapproval(args: {
   });
 }
 
-/** Cria a preferência de pagamento único do anual, com teto de parcelas sem juros (config real fica na conta MP). */
+/**
+ * Cria a preferência de pagamento único do anual (Checkout Pro): só cartão de crédito, em até 12x com os juros do
+ * cartão (o Pix tem fluxo próprio, dentro do site). Quem paga os juros é o cliente.
+ */
 export async function criarPreferenciaAnual(args: {
   titulo: string;
   externalReference: string;
   valorCentavos: number;
-  parcelas: number;
   payerEmail: string;
   backUrls: { success: string; failure: string; pending: string };
   chaveIdempotencia: string;
@@ -110,9 +118,32 @@ export async function criarPreferenciaAnual(args: {
       items: [{ title: args.titulo, quantity: 1, unit_price: args.valorCentavos / 100, currency_id: "BRL" }],
       external_reference: args.externalReference,
       payer: { email: args.payerEmail },
-      payment_methods: { installments: args.parcelas, default_installments: args.parcelas },
+      payment_methods: { installments: 12, excluded_payment_types: [{ id: "bank_transfer" }, { id: "ticket" }, { id: "debit_card" }] },
       back_urls: args.backUrls,
       auto_return: "approved",
+    },
+  });
+}
+
+/** Cria um pagamento por Pix. O QR e o "copia e cola" voltam na resposta, para mostrar dentro do site. */
+export async function criarPagamentoPix(args: {
+  descricao: string;
+  externalReference: string;
+  valorCentavos: number;
+  payerEmail: string;
+  expiraEm: Date;
+  chaveIdempotencia: string;
+}): Promise<PagamentoPixCriado> {
+  return chamar<PagamentoPixCriado>("/v1/payments", {
+    method: "POST",
+    chaveIdempotencia: args.chaveIdempotencia,
+    corpo: {
+      transaction_amount: args.valorCentavos / 100,
+      description: args.descricao,
+      payment_method_id: "pix",
+      external_reference: args.externalReference,
+      payer: { email: args.payerEmail },
+      date_of_expiration: args.expiraEm.toISOString().replace("Z", "+00:00"),
     },
   });
 }

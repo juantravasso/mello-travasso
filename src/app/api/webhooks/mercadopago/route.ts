@@ -1,9 +1,9 @@
 import { consultarPagamento, consultarPreapproval, ErroMercadoPago } from "@/lib/mercadopago/cliente.server";
 import { classificarTopico, validarAssinaturaWebhook } from "@/lib/mercadopago/assinaturaWebhook";
-import { confirmarAssinaturaMensal, confirmarPagamentoAnual, registrarWebhookProcessado } from "@/services/data/server/assinaturaComercialCore.server";
+import { confirmarAssinaturaMensal, confirmarPagamentoUnico, registrarWebhookProcessado } from "@/services/data/server/assinaturaComercialCore.server";
 
-// Recebe as notificações do Mercado Pago (preapproval = assinatura mensal; payment = cobrança avulsa, inclui o
-// anual parcelado). Autenticação por assinatura de payload (x-signature), não por segredo fixo — ver
+// Recebe as notificações do Mercado Pago (preapproval = assinatura mensal; payment = cobrança avulsa: anual no
+// cartão e Pix). Autenticação por assinatura de payload (x-signature), não por segredo fixo — ver
 // src/lib/mercadopago/assinaturaWebhook.ts. Sem MERCADOPAGO_WEBHOOK_SECRET configurado, a rota fica fechada (503),
 // nunca aberta, mesmo padrão de /api/cron/lembretes.
 //
@@ -47,7 +47,7 @@ async function tratar(request: Request): Promise<Response> {
     } else if (topico === "pagamento") {
       const pagamento = await consultarPagamento(dataId);
       estado = pagamento.status;
-      if (pagamento.external_reference) await confirmarPagamentoAnual(pagamento.external_reference, String(pagamento.id), pagamento.status);
+      if (pagamento.external_reference) await confirmarPagamentoUnico(pagamento.external_reference, String(pagamento.id), pagamento.status);
     } else {
       // Cobrança de um ciclo da assinatura mensal: o estado da assinatura chega no tópico de assinatura, então aqui só
       // fica a trilha (cada cobrança aparece na auditoria).

@@ -10,8 +10,6 @@ export interface PlanoComercialPublico {
   vagasTotal: number | null;
   /** Vagas que sobram, calculadas no servidor a partir das empresas que de fato ocupam o plano; null = sem limite. */
   vagasRestantes: number | null;
-  /** Número de parcelas sem juros confirmado pelo provedor de pagamento; null = a página não promete parcelamento. */
-  parcelasSemJuros: number | null;
   condicao: string | null;
 }
 

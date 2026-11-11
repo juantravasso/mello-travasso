@@ -26,7 +26,6 @@ const CAMPOS = {
   beneficios: true,
   destaque: true,
   vagasTotal: true,
-  parcelasSemJuros: true,
   condicao: true,
 } as const;
 

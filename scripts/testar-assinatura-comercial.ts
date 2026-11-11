@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 import { PrismaClient } from "@prisma/client";
 import { calcularStatusPlano } from "../src/lib/auth/plano";
-import { confirmarAssinaturaMensal, confirmarPagamentoAnual, processarAssinaturasComerciais, reservarVaga } from "../src/services/data/server/assinaturaComercialCore.server";
+import { confirmarAssinaturaMensal, confirmarPagamentoUnico, processarAssinaturasComerciais, reservarVaga } from "../src/services/data/server/assinaturaComercialCore.server";
 import { atribuirPlanoComercial } from "../src/services/data/server/planosComerciaisCore.server";
 
 // Teste de integração da reserva de vaga do checkout comercial contra o banco REAL — sem chamar o Mercado Pago.
@@ -52,8 +52,8 @@ async function main(): Promise<void> {
     const plano = await criarPlano("a", 1);
     const e1 = await criarEmpresa("a1");
     const e2 = await criarEmpresa("a2");
-    await reservarVaga(e1, plano, "mensal", null);
-    await falha(reservarVaga(e2, plano, "mensal", null), "não tem mais vagas");
+    await reservarVaga(e1, plano, "mensal");
+    await falha(reservarVaga(e2, plano, "mensal"), "não tem mais vagas");
     assert.equal(await ocupacao(plano), 1);
   });
 
@@ -61,23 +61,28 @@ async function main(): Promise<void> {
     const plano = await criarPlano("b", 1);
     const e1 = await criarEmpresa("b1");
     const e2 = await criarEmpresa("b2");
-    const r = await Promise.allSettled([reservarVaga(e1, plano, "mensal", null), reservarVaga(e2, plano, "mensal", null)]);
+    const r = await Promise.allSettled([reservarVaga(e1, plano, "mensal"), reservarVaga(e2, plano, "mensal")]);
     assert.equal(r.filter((x) => x.status === "fulfilled").length, 1, "exatamente uma reserva a vaga");
     assert.equal(await ocupacao(plano), 1);
   });
 
-  await teste("3. a mesma empresa não pode reservar o mesmo plano/ciclo duas vezes", async () => {
+  await teste("3. uma nova tentativa da mesma empresa substitui a anterior ainda em aberto (não fica travada)", async () => {
     const plano = await criarPlano("c", null);
     const e1 = await criarEmpresa("c1");
-    await reservarVaga(e1, plano, "mensal", null);
-    await falha(reservarVaga(e1, plano, "mensal", null), "em andamento ou ativa");
+    const antiga = await reservarVaga(e1, plano, "mensal");
+    const nova = await reservarVaga(e1, plano, "mensal", "pix");
+    const linhas = await prisma.assinaturaComercial.findMany({ where: { empresaId: e1, planoChave: plano } });
+    assert.equal(linhas.find((l) => l.id === antiga.id)?.status, "expirada");
+    assert.equal(linhas.find((l) => l.id === nova.id)?.status, "reservada");
+    assert.equal(linhas.find((l) => l.id === nova.id)?.meio, "pix");
+    assert.equal(await ocupacao(plano), 1, "só a tentativa nova ocupa vaga");
   });
 
   await teste("4. a mesma empresa pode reservar mensal e anual ao mesmo tempo (ciclos diferentes)", async () => {
     const plano = await criarPlano("d", null);
     const e1 = await criarEmpresa("d1");
-    await reservarVaga(e1, plano, "mensal", null);
-    await reservarVaga(e1, plano, "anual", 12);
+    await reservarVaga(e1, plano, "mensal");
+    await reservarVaga(e1, plano, "anual");
     assert.equal(await prisma.assinaturaComercial.count({ where: { empresaId: e1, planoChave: plano } }), 2);
   });
 
@@ -85,9 +90,9 @@ async function main(): Promise<void> {
     const plano = await criarPlano("e", 1);
     const e1 = await criarEmpresa("e1");
     const e2 = await criarEmpresa("e2");
-    const r1 = await reservarVaga(e1, plano, "mensal", null);
+    const r1 = await reservarVaga(e1, plano, "mensal");
     await prisma.assinaturaComercial.update({ where: { id: r1.id }, data: { reservaExpiraEm: iso(new Date(Date.now() - 60_000)) } });
-    await reservarVaga(e2, plano, "mensal", null);
+    await reservarVaga(e2, plano, "mensal");
     assert.equal(await ocupacao(plano), 1);
   });
 
@@ -95,17 +100,17 @@ async function main(): Promise<void> {
     const chave = `${marca}-f`;
     await prisma.planoComercial.create({ data: { chave, nome: "Plano f", descricao: "Plano de teste.", beneficios: ["x1"], publicado: true, criadoEm: iso(), atualizadoEm: iso() } });
     const e1 = await criarEmpresa("f1");
-    await falha(reservarVaga(e1, chave, "anual", 12), "sob consulta");
+    await falha(reservarVaga(e1, chave, "anual"), "sob consulta");
   });
 
   await teste("7. plano inexistente ou despublicado é recusado", async () => {
     const e1 = await criarEmpresa("g1");
-    await falha(reservarVaga(e1, `${marca}-nao-existe`, "mensal", null), "não encontrado");
+    await falha(reservarVaga(e1, `${marca}-nao-existe`, "mensal"), "não encontrado");
   });
 
   await teste("8. plano sem limite aceita quantas reservas forem", async () => {
     const plano = await criarPlano("h", null);
-    for (const s of ["h1", "h2", "h3"]) await reservarVaga(await criarEmpresa(s), plano, "mensal", null);
+    for (const s of ["h1", "h2", "h3"]) await reservarVaga(await criarEmpresa(s), plano, "mensal");
     assert.equal(await ocupacao(plano), 3);
   });
 
@@ -122,14 +127,14 @@ async function main(): Promise<void> {
   await teste("9. pagamento anual: pendente primeiro e aprovado depois ativa o plano (a 2ª notificação não é descartada)", async () => {
     const plano = await criarPlano("i", null);
     const e1 = await criarEmpresa("i1");
-    const r1 = await reservarVaga(e1, plano, "anual", 12);
-    await confirmarPagamentoAnual(r1.id, "pay-1", "pending");
+    const r1 = await reservarVaga(e1, plano, "anual");
+    await confirmarPagamentoUnico(r1.id, "pay-1", "pending");
     assert.equal((await empresa(e1)).plano, "teste", "pendente não libera nada");
-    await confirmarPagamentoAnual(r1.id, "pay-1", "approved");
+    await confirmarPagamentoUnico(r1.id, "pay-1", "approved");
     const dep = await empresa(e1);
     assert.equal(dep.plano, "ativo");
     assert.equal(dep.planoComercialChave, plano);
-    await confirmarPagamentoAnual(r1.id, "pay-1", "approved");
+    await confirmarPagamentoUnico(r1.id, "pay-1", "approved");
     assert.equal((await empresa(e1)).plano, "ativo", "repetir a notificação é inofensivo");
   });
 
@@ -137,12 +142,12 @@ async function main(): Promise<void> {
     const plano = await criarPlano("j", 1);
     const e1 = await criarEmpresa("j1");
     const e2 = await criarEmpresa("j2");
-    const r1 = await reservarVaga(e1, plano, "mensal", null);
+    const r1 = await reservarVaga(e1, plano, "mensal");
     await confirmarAssinaturaMensal(r1.id, "pre-1", "authorized");
     assert.equal((await empresa(e1)).plano, "ativo");
     const aposAutorizar = await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } });
     assert.ok(aposAutorizar.proximaCobrancaEm && new Date(aposAutorizar.proximaCobrancaEm).getTime() > Date.now(), "o primeiro mês pago termina no futuro");
-    await falha(reservarVaga(e2, plano, "mensal", null), "não tem mais vagas");
+    await falha(reservarVaga(e2, plano, "mensal"), "não tem mais vagas");
 
     await confirmarAssinaturaMensal(r1.id, "pre-1", "cancelled");
     const cancelada = await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } });
@@ -161,16 +166,16 @@ async function main(): Promise<void> {
     assert.equal(dep.plano, "suspenso");
     assert.equal(calcularStatusPlano({ plano: dep.plano, testeTerminaEm: dep.testeTerminaEm }).somenteLeitura, true, "acabou o período: sem escrita, dados preservados");
     assert.equal((await processarAssinaturasComerciais()).fimDoAcesso, 0, "rodar de novo não repete");
-    await reservarVaga(e2, plano, "mensal", null);
+    await reservarVaga(e2, plano, "mensal");
   });
 
   await teste("10b. quem cancelou e assinou de novo o mesmo plano não é suspenso quando o período da assinatura antiga acaba", async () => {
     const plano = await criarPlano("j2", null);
     const e1 = await criarEmpresa("jb1");
-    const antiga = await reservarVaga(e1, plano, "mensal", null);
+    const antiga = await reservarVaga(e1, plano, "mensal");
     await confirmarAssinaturaMensal(antiga.id, "pre-5", "authorized");
     await confirmarAssinaturaMensal(antiga.id, "pre-5", "cancelled");
-    const nova = await reservarVaga(e1, plano, "mensal", null);
+    const nova = await reservarVaga(e1, plano, "mensal");
     await confirmarAssinaturaMensal(nova.id, "pre-6", "authorized");
     await prisma.assinaturaComercial.update({ where: { id: antiga.id }, data: { proximaCobrancaEm: iso(new Date(Date.now() - 3600_000)) } });
     await processarAssinaturasComerciais();
@@ -180,7 +185,7 @@ async function main(): Promise<void> {
   await teste("11. assinatura pausada suspende e voltar a autorizada reativa", async () => {
     const plano = await criarPlano("k", null);
     const e1 = await criarEmpresa("k1");
-    const r1 = await reservarVaga(e1, plano, "mensal", null);
+    const r1 = await reservarVaga(e1, plano, "mensal");
     await confirmarAssinaturaMensal(r1.id, "pre-2", "authorized");
     await confirmarAssinaturaMensal(r1.id, "pre-2", "paused");
     assert.equal((await empresa(e1)).plano, "suspenso");
@@ -193,10 +198,10 @@ async function main(): Promise<void> {
     const adm = await admin();
     const e1 = await criarEmpresa("l1", "ativo");
     await atribuirPlanoComercial(adm, e1, plano, "teste");
-    await falha(reservarVaga(e1, plano, "anual", 12), "já está neste plano");
+    await falha(reservarVaga(e1, plano, "anual"), "já está neste plano");
     const e2 = await criarEmpresa("l2", "ativo");
     await atribuirPlanoComercial(adm, e2, plano, "teste");
-    const r2 = await reservarVaga(await criarEmpresa("l3"), plano, "mensal", null);
+    const r2 = await reservarVaga(await criarEmpresa("l3"), plano, "mensal");
     await confirmarAssinaturaMensal(r2.id, "pre-3", "cancelled");
     assert.equal((await empresa(e1)).plano, "ativo");
     assert.equal((await empresa(e2)).plano, "ativo");
@@ -207,10 +212,10 @@ async function main(): Promise<void> {
     const adm = await admin();
     const manual = await criarEmpresa("m1", "ativo");
     await atribuirPlanoComercial(adm, manual, plano, "teste");
-    await falha(reservarVaga(await criarEmpresa("m2"), plano, "mensal", null), "não tem mais vagas");
+    await falha(reservarVaga(await criarEmpresa("m2"), plano, "mensal"), "não tem mais vagas");
 
     const plano2 = await criarPlano("n", 1);
-    await reservarVaga(await criarEmpresa("n1"), plano2, "mensal", null);
+    await reservarVaga(await criarEmpresa("n1"), plano2, "mensal");
     await falha(atribuirPlanoComercial(adm, await criarEmpresa("n2", "ativo"), plano2, "teste"), "não tem mais vagas");
   });
 
@@ -218,10 +223,10 @@ async function main(): Promise<void> {
     const plano = await criarPlano("o", 1);
     const adm = await admin();
     const e1 = await criarEmpresa("o1");
-    const r1 = await reservarVaga(e1, plano, "anual", 12);
+    const r1 = await reservarVaga(e1, plano, "anual");
     await prisma.assinaturaComercial.update({ where: { id: r1.id }, data: { reservaExpiraEm: iso(new Date(Date.now() - 60_000)) } });
     await atribuirPlanoComercial(adm, await criarEmpresa("o2", "ativo"), plano, "teste");
-    await confirmarPagamentoAnual(r1.id, "pay-9", "approved");
+    await confirmarPagamentoUnico(r1.id, "pay-9", "approved");
     assert.equal((await empresa(e1)).plano, "teste");
     assert.equal((await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } })).status, "paga_sem_vaga");
   });
@@ -229,13 +234,79 @@ async function main(): Promise<void> {
   await teste("15. o cron suspende o anual vencido (somente leitura) sem derrubar cortesia", async () => {
     const plano = await criarPlano("p", null);
     const e1 = await criarEmpresa("p1");
-    const r1 = await reservarVaga(e1, plano, "anual", 12);
-    await confirmarPagamentoAnual(r1.id, "pay-10", "approved");
+    const r1 = await reservarVaga(e1, plano, "anual");
+    await confirmarPagamentoUnico(r1.id, "pay-10", "approved");
     await prisma.assinaturaComercial.update({ where: { id: r1.id }, data: { proximaCobrancaEm: iso(new Date(Date.now() - 3600_000)) } });
     const cort = await criarEmpresa("p2", "cortesia");
     await processarAssinaturasComerciais();
     assert.equal((await empresa(e1)).plano, "suspenso");
     assert.equal((await empresa(cort)).plano, "cortesia");
+  });
+
+  await teste("16. Pix mensal aprovado ativa por um mês; a confirmação repetida não muda nada", async () => {
+    const plano = await criarPlano("q", null);
+    const e1 = await criarEmpresa("q1");
+    const r1 = await reservarVaga(e1, plano, "mensal", "pix");
+    await confirmarPagamentoUnico(r1.id, "pix-1", "pending");
+    assert.equal((await empresa(e1)).plano, "teste", "pendente não ativa");
+    await confirmarPagamentoUnico(r1.id, "pix-1", "approved");
+    const a = await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } });
+    assert.equal(a.status, "ativa");
+    assert.equal((await empresa(e1)).plano, "ativo");
+    const dias = (new Date(a.proximaCobrancaEm!).getTime() - Date.now()) / 86_400_000;
+    assert.ok(dias > 27 && dias < 32, `período de ~1 mês, veio ${dias.toFixed(1)} dias`);
+    await confirmarPagamentoUnico(r1.id, "pix-1", "approved");
+    assert.equal((await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } })).proximaCobrancaEm, a.proximaCobrancaEm);
+  });
+
+  await teste("17. Pix mensal não é confirmado como assinatura recorrente (são caminhos separados)", async () => {
+    const plano = await criarPlano("r", null);
+    const e1 = await criarEmpresa("r1");
+    const r1 = await reservarVaga(e1, plano, "mensal", "pix");
+    await confirmarAssinaturaMensal(r1.id, "pre-x", "authorized");
+    assert.equal((await prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } })).status, "reservada");
+  });
+
+  await teste("18. renovar o Pix perto do vencimento soma ao período que sobrava; longe do vencimento é recusado", async () => {
+    const plano = await criarPlano("s", null);
+    const e1 = await criarEmpresa("s1");
+    const r1 = await reservarVaga(e1, plano, "mensal", "pix");
+    await confirmarPagamentoUnico(r1.id, "pix-2", "approved");
+    await falha(reservarVaga(e1, plano, "mensal", "pix"), "já tem uma contratação ativa");
+    const venceEm = new Date(Date.now() + 2 * 86_400_000);
+    await prisma.assinaturaComercial.update({ where: { id: r1.id }, data: { proximaCobrancaEm: iso(venceEm) } });
+    const r2 = await reservarVaga(e1, plano, "mensal", "pix");
+    await confirmarPagamentoUnico(r2.id, "pix-3", "approved");
+    const [antiga, nova] = await Promise.all([prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r1.id } }), prisma.assinaturaComercial.findUniqueOrThrow({ where: { id: r2.id } })]);
+    assert.equal(antiga.status, "renovada");
+    assert.equal(nova.status, "ativa");
+    const dias = (new Date(nova.proximaCobrancaEm!).getTime() - venceEm.getTime()) / 86_400_000;
+    assert.ok(dias > 27 && dias < 32, `soma um mês ao vencimento antigo, veio ${dias.toFixed(1)} dias`);
+    assert.equal((await empresa(e1)).plano, "ativo");
+  });
+
+  await teste("19. o cron suspende Pix mensal vencido, mas não mexe em assinatura mensal no cartão", async () => {
+    const plano = await criarPlano("t", null);
+    const e1 = await criarEmpresa("t1");
+    const e2 = await criarEmpresa("t2");
+    const rp = await reservarVaga(e1, plano, "mensal", "pix");
+    await confirmarPagamentoUnico(rp.id, "pix-4", "approved");
+    const rc = await reservarVaga(e2, plano, "mensal", "cartao");
+    await confirmarAssinaturaMensal(rc.id, "pre-9", "authorized");
+    const passado = iso(new Date(Date.now() - 3600_000));
+    await prisma.assinaturaComercial.updateMany({ where: { id: { in: [rp.id, rc.id] } }, data: { proximaCobrancaEm: passado } });
+    await processarAssinaturasComerciais();
+    assert.equal((await empresa(e1)).plano, "suspenso", "Pix vencido suspende");
+    assert.equal((await empresa(e2)).plano, "ativo", "cartão recorrente é do Mercado Pago, o cron não suspende");
+  });
+
+  await teste("20. Pix não renova com assinatura de cartão ativa no mesmo ciclo", async () => {
+    const plano = await criarPlano("u", null);
+    const e1 = await criarEmpresa("u1");
+    const rc = await reservarVaga(e1, plano, "mensal", "cartao");
+    await confirmarAssinaturaMensal(rc.id, "pre-10", "authorized");
+    await prisma.assinaturaComercial.update({ where: { id: rc.id }, data: { proximaCobrancaEm: iso(new Date(Date.now() + 86_400_000)) } });
+    await falha(reservarVaga(e1, plano, "mensal", "pix"), "já tem uma contratação ativa");
   });
 }
 

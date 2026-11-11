@@ -29,12 +29,6 @@ export function vagasRestantes(total: number | null, ocupadas: number): number |
   return Math.max(0, total - Math.max(0, ocupadas));
 }
 
-/** Valor de cada parcela do anual; null se não divide certo (então a página não anuncia parcela). */
-export function valorDaParcela(anualCentavos: number | null, parcelas: number | null): number | null {
-  if (anualCentavos === null || parcelas === null || parcelas < 1 || anualCentavos % parcelas !== 0) return null;
-  return anualCentavos / parcelas;
-}
-
 /** Quanto o anual equivale por mês (anual ÷ 12, arredondado ao centavo). null se não houver preço anual. */
 export function mensalEquivalente(anualCentavos: number | null): number | null {
   return anualCentavos === null ? null : Math.round(anualCentavos / 12);
@@ -65,16 +59,10 @@ export const planoComercialSchema = z
     publicado: z.boolean(),
     ordem: z.number().int().min(0).max(99),
     vagasTotal: z.number().int().min(1, "Vagas: no mínimo 1.").max(10_000).nullable(),
-    parcelasSemJuros: z.number().int().min(2, "Parcelas: no mínimo 2.").max(12, "Parcelas: no máximo 12.").nullable(),
     condicao: z.string().trim().min(3).max(120).nullable(),
   })
   .strict()
-  .refine((p) => !p.publicado || p.beneficios.length > 0, { message: "Para publicar, liste ao menos um benefício.", path: ["beneficios"] })
-  .refine((p) => p.parcelasSemJuros === null || p.precoAnualCentavos !== null, { message: "O parcelamento do anual precisa do preço anual.", path: ["parcelasSemJuros"] })
-  .refine((p) => p.parcelasSemJuros === null || (p.precoAnualCentavos ?? 0) % p.parcelasSemJuros === 0, {
-    message: "O preço anual precisa dividir certo pelas parcelas (sem centavos sobrando).",
-    path: ["parcelasSemJuros"],
-  });
+  .refine((p) => !p.publicado || p.beneficios.length > 0, { message: "Para publicar, liste ao menos um benefício.", path: ["beneficios"] });
 
 export type PlanoComercialEntrada = z.infer<typeof planoComercialSchema>;
 

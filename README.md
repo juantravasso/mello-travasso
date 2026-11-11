@@ -492,14 +492,15 @@ com aquela chave de plano comercial (`Empresa.planoComercialChave`, definida por
 escassez mostrada é sempre a real. A atribuição confere as vagas na mesma transação, com a linha do plano travada (`planosComerciaisCore.server.ts`), e duas
 atribuições simultâneas não passam do limite. Quem sai do plano Ativo libera a vaga. Teste: `yarn testar:planos`.
 
-**Parcelamento sem juros.** O campo `parcelasSemJuros` fica vazio até o provedor de pagamento confirmar que oferece; só então a página mostra "12x de R$ X sem juros".
+**Parcelamento.** Não há parcelamento sem juros: o anual no cartão vai em até 12x, com os juros do cartão pagos pelo cliente. A coluna `parcelasSemJuros` do banco ficou sem uso.
 A parcela é o anual dividido pelo número de parcelas e só aparece se a divisão for exata.
 
 **Conteúdo comercial** ([vitrine.ts](src/lib/planos/vitrine.ts)): os problemas do dia a dia que o sistema resolve e tudo o que o Elo Gestão inclui. Cada item descreve algo que o
 sistema faz hoje, sem prometer resultado (há teste contra absolutos como "garantido", "100%", "ilimitado"). Ao mudar uma funcionalidade, confira o texto.
 
 **Cobrança (Mercado Pago).** Existe e está ligada, com a aplicação "Assinaturas" do Mercado Pago (uma só aplicação serve aos dois formatos):
-- **Mensal:** assinatura recorrente (`/preapproval`), só cartão. **Anual:** pagamento único no Checkout Pro (`/checkout/preferences`), parcelado conforme `parcelasSemJuros` do plano.
+- **Cartão:** mensal = assinatura recorrente (`/preapproval`); anual = pagamento único no Checkout Pro (`/checkout/preferences`), em até 12x com os juros do cartão.
+- **Pix (mensal ou anual):** pagamento único pelo período (1 mês ou 1 ano), gerado em `/v1/payments`; o QR e o copia e cola aparecem dentro do site e a tela confere o pagamento sozinha. Não existe recorrência no Pix: a renovação é um novo Pix, avisado por e-mail (3 dias antes no mensal, 14 no anual). Exige chave Pix cadastrada na conta do Mercado Pago.
 - O plano da empresa só muda pelo **retorno do Mercado Pago** (webhook `/api/webhooks/mercadopago`, validado pela assinatura secreta), nunca por um clique na tela.
   Eventos assinados no painel: "Planos e assinaturas" e "Pagamentos". O endereço cadastrado é o do `www` (o domínio sem `www` redireciona, e webhook não deve passar por redirecionamento).
 - A rotina diária `/api/cron/assinaturas` (workflow `.github/workflows/assinaturas.yml`) suspende quem passou do fim do período pago.

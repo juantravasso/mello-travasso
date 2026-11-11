@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { LoginForm } from "./LoginForm";
@@ -21,6 +22,16 @@ export default function LoginPage() {
         <Suspense fallback={null}>
           <LoginForm />
         </Suspense>
+
+        <div className="flex flex-col gap-3 border-t border-border pt-6">
+          <p className="text-sm text-muted">Ainda não tem cadastro?</p>
+          <Link
+            href="/criar-conta"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-border bg-transparent px-4 text-base font-medium text-foreground transition-colors hover:bg-surface-2"
+          >
+            Criar conta
+          </Link>
+        </div>
       </div>
     </main>
   );

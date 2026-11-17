@@ -6,6 +6,7 @@ import { EmpresaForm } from "@/components/layout/EmpresaForm";
 import { FormasPagamentoConfig } from "@/components/layout/FormasPagamentoConfig";
 import { PreferenciasLembretes } from "@/components/layout/PreferenciasLembretes";
 import { PreferenciasComunicacao } from "@/components/layout/PreferenciasComunicacao";
+import { VinculoWhatsapp } from "@/components/layout/VinculoWhatsapp";
 import { UsuariosEmpresa } from "@/components/layout/UsuariosEmpresa";
 import { ConviteEmpresa } from "@/components/layout/ConviteEmpresa";
 import { SairButton } from "@/components/layout/SairButton";
@@ -31,6 +32,7 @@ export default async function ConfiguracoesPage() {
       {sessao.papel === "dono" && <FormasPagamentoConfig />}
       <PreferenciasLembretes />
       <PreferenciasComunicacao />
+      <VinculoWhatsapp />
       <Suspense fallback={null}>
         <TrocarSenhaForm />
       </Suspense>

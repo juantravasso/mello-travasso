@@ -515,6 +515,16 @@ sistema faz hoje, sem prometer resultado (há teste contra absolutos como "garan
 - **Testar sem cobrar:** com a credencial de teste e a conta de teste de comprador (o e-mail do pagador tem de ser o de uma conta de teste, no formato `test_user_<número>@testuser.com`). Em produção, o único teste de ponta a ponta é um pagamento real de valor baixo, depois reembolsado.
 - **Ainda manual:** reembolso de 7 dias, emissão de nota fiscal e a homologação do Mercado Pago.
 
+## WhatsApp: vínculo do número (etapa 1)
+
+O Elo tem um número de WhatsApp (`WHATSAPP_NUMERO_ELO`), ligado a um WAHA hospedado por nós (fora da Vercel; precisa ficar sempre no ar). Em **Configurações → WhatsApp** a pessoa vincula o próprio número:
+
+- **O Elo nunca escreve primeiro.** A pessoa toca em "Vincular", o site gera um código (8 caracteres, vale 30 min, só o sha256 fica no banco) e abre o WhatsApp com a mensagem `VINCULAR <código>` pronta. Mandar a mensagem é a prova de que ela controla o número, e abre a conversa sem risco de disparo frio.
+- **Webhook:** `POST /api/webhooks/whatsapp`. O WAHA assina o corpo com HMAC-SHA512 (`X-Webhook-Hmac`, chave `WAHA_WEBHOOK_HMAC_KEY`); sem a chave a rota fica fechada (503). Só a mensagem `VINCULAR` faz algo; **qualquer outra conversa é ignorada**, porque o mesmo número também atende suporte, por pessoas, pelo aparelho.
+- **Identidade:** o WhatsApp pode entregar o remetente como `@lid` (código anônimo, não o telefone). Por isso o vínculo guarda o `chatId` que chegou e só guarda `numero` quando o WhatsApp informa o telefone de verdade. Um WhatsApp só vincula a uma conta.
+- **Sem configuração, desligado:** faltando qualquer `WAHA_*`/`WHATSAPP_NUMERO_ELO`, a tela esconde o recurso e nada é enviado.
+- Teste de integração (banco demo): `yarn testar:whatsapp`. Unitários: `src/lib/whatsapp/vinculo.test.ts`.
+
 ## Rodando localmente
 
 ```bash

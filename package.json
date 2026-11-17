@@ -15,6 +15,7 @@
     "testar:convite": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-convite.ts",
     "testar:metricas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-metricas.ts",
     "testar:planos": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-planos-comerciais.ts",
+    "testar:whatsapp": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-whatsapp.ts",
     "testar:assinaturas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-assinatura-comercial.ts",
     "demo:semear": "node --conditions=react-server --import tsx scripts/demo/semear-demo.ts",
     "demo:dev": "node scripts/demo/comando.mjs dev",

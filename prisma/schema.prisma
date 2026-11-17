@@ -475,6 +475,7 @@ model Usuario {
   tokensEmail         TokenEmail[]
   emailsAgendados     EmailAgendado[]
   progressoOnboarding ProgressoOnboarding?
+  vinculoWhatsapp     VinculoWhatsapp?
 
   compromissosCriados        Compromisso[]
   compromissosCompartilhados CompromissoParticipante[]
@@ -482,6 +483,25 @@ model Usuario {
   notificacoes               Notificacao[]
 
   @@index([empresaId])
+}
+
+/// Vínculo entre o usuário e o WhatsApp dele. A pessoa prova que controla o número mandando o código ao número do Elo
+/// (o Elo nunca escreve primeiro). Só o sha256 do código fica no banco. `chatId` é o identificador que o WhatsApp
+/// entrega (pode ser `...@c.us` ou `...@lid`); `numero` só é guardado quando o WhatsApp informa o telefone de verdade.
+model VinculoWhatsapp {
+  id               String  @id @default(uuid())
+  usuarioId        String  @unique
+  usuario          Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  codigoHash       String? @unique
+  codigoExpiraEm   String?
+  chatId           String? @unique
+  numero           String?
+  verificadoEm     String?
+  /// Avisos da conta (fim do teste, cobrança, perfil). Ligado ao vincular; a pessoa desliga quando quiser.
+  avisosAtivos     Boolean @default(true)
+  ultimaMensagemEm String?
+  criadoEm         String
+  atualizadoEm     String
 }
 
 /// Token de uso único enviado por e-mail (hoje só a confirmação de endereço).

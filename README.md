@@ -526,6 +526,18 @@ O Elo tem um número de WhatsApp (`WHATSAPP_NUMERO_ELO`), ligado a um WAHA hospe
 - **Sem configuração, desligado:** faltando qualquer `WAHA_*`/`WHATSAPP_NUMERO_ELO`, a tela esconde o recurso e nada é enviado.
 - Teste de integração (banco demo): `yarn testar:whatsapp`. Unitários: `src/lib/whatsapp/vinculo.test.ts`.
 
+### Avisos da conta pelo WhatsApp (etapa 2)
+
+Fim do teste (mesmos marcos do aviso no app), renovação de assinatura perto do vencimento (anual e mensal no Pix) e
+suspensão por vencimento também vão pelo WhatsApp, só para **donos** com o número vinculado e os avisos ligados
+([whatsappAvisosCore.server.ts](src/services/data/server/whatsappAvisosCore.server.ts)):
+
+- **Fila `AvisoWhatsapp`** com chave única (o mesmo aviso nunca vai duas vezes). Sem WhatsApp configurado, nada é agendado.
+- **Envio contido** (provedor não oficial): roda no agendador do ciclo de vida (a cada 15 min), no máximo 10 por rodada com 1,5 s entre mensagens, só das 8h às 20h no fuso da empresa e com teto de 60 em 24 h (`WHATSAPP_AVISOS_DIA`).
+- Vínculo, avisos ligados e bloqueios são conferidos **de novo na hora de enviar**; quem desligou ou desvinculou depois não recebe.
+- Aviso que passou de `expiraEm` é **cancelado**, nunca enviado atrasado ("termina amanhã" vale até o fim do teste ou 24 h). Falha do provedor: novas tentativas em 1 h e 4 h; na terceira, desiste.
+- Teste de integração (banco demo, envio falso): `yarn testar:whatsapp-avisos`.
+
 ### Foto da nota pelo WhatsApp (etapa 3)
 
 Quem tem o WhatsApp vinculado manda a foto da nota para o número do Elo e recebe de volta um **rascunho de compra**:

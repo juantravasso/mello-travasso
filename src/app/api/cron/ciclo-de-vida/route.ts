@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { processarCicloDeVida } from "@/services/data/server/cicloDeVidaCore.server";
+import { enviarAvisosWhatsapp, type ResultadoAvisosWhatsapp } from "@/services/data/server/whatsappAvisosCore.server";
 
 // Processa o ciclo de vida do cliente: avisos de fim do teste, campanhas de e-mail e a fila de envio. Quem chama é um
 // agendador externo (GitHub Actions, ver .github/workflows/ciclo-de-vida.yml). É seguro chamar várias vezes ou em
@@ -29,7 +30,15 @@ async function tratar(request: Request): Promise<Response> {
   }
   try {
     const resultado = await processarCicloDeVida();
-    return Response.json({ ok: true, ...resultado }, { headers: { "Cache-Control": "no-store" } });
+    // Avisos pelo WhatsApp na mesma rodada; uma falha aqui não derruba o resultado dos e-mails.
+    let whatsapp: ResultadoAvisosWhatsapp | { erro: string };
+    try {
+      whatsapp = await enviarAvisosWhatsapp();
+    } catch (erro) {
+      console.error("[cron/ciclo-de-vida] avisos do WhatsApp falharam:", erro instanceof Error ? erro.name : "erro");
+      whatsapp = { erro: "falha" };
+    }
+    return Response.json({ ok: true, ...resultado, whatsapp }, { headers: { "Cache-Control": "no-store" } });
   } catch (erro) {
     console.error("[cron/ciclo-de-vida] falha:", erro instanceof Error ? erro.name : "erro");
     return Response.json({ ok: false, erro: "Falha ao processar." }, { status: 500, headers: { "Cache-Control": "no-store" } });

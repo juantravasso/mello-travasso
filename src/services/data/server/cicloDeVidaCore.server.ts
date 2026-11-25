@@ -22,7 +22,9 @@ import {
   TOLERANCIA_CAMPANHA_MS,
 } from "@/lib/cicloDeVida/datas";
 import { ofertaDaEmpresa } from "./chamadaConfiguracaoCore.server";
+import { textoFimDoTeste } from "@/lib/whatsapp/avisos";
 import { registrarEvento } from "./eventosCore.server";
+import { agendarAvisoWhatsapp } from "./whatsappAvisosCore.server";
 
 // Ciclo de vida do cliente: avisos de fim do teste, campanhas de e-mail e encerramento. Quem dispara (GitHub Actions,
 // ver .github/workflows/ciclo-de-vida.yml) só chama processarCicloDeVida(): ela é idempotente e segura em paralelo.
@@ -194,7 +196,19 @@ async function avisarFimDoTeste(agora: Date, config: ConfigCicloDeVida, r: Resul
         });
         return true;
       });
-      if (criou) r.avisosNoApp++;
+      if (criou) {
+        r.avisosNoApp++;
+        // Mesmo marco também pelo WhatsApp (só para quem vinculou e deixou os avisos ligados). Vale até o fim do teste
+        // ou por 24 h, o que vier primeiro: "termina amanhã" não pode chegar depois de amanhã.
+        await agendarAvisoWhatsapp(prisma, {
+          empresaId: e.id,
+          tipo: "fim_do_teste",
+          chave: `wa:fim:${e.id}:${e.testeTerminaEm}:${d}`,
+          texto: textoFimDoTeste(d, e.testeTerminaEm, `${urlDoSite()}/planos`),
+          expiraEm: new Date(Math.min(fim.getTime(), agora.getTime() + DIA_MS)),
+          agora,
+        });
+      }
 
       if (!config.emails.ativos) continue;
       for (const dono of await donosAtivos(e.id)) {

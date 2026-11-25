@@ -333,6 +333,7 @@ model Empresa {
   compromissos                  Compromisso[]
   extensoesTeste                ExtensaoTeste[]
   emailsAgendados               EmailAgendado[]
+  avisosWhatsapp                AvisoWhatsapp[]
   assinaturasComerciais         AssinaturaComercial[]
   compras                       Compra[]
   vinculoProdutos               VinculoProduto[]
@@ -476,6 +477,7 @@ model Usuario {
   emailsAgendados     EmailAgendado[]
   progressoOnboarding ProgressoOnboarding?
   vinculoWhatsapp     VinculoWhatsapp?
+  avisosWhatsapp      AvisoWhatsapp[]
 
   compromissosCriados        Compromisso[]
   compromissosCompartilhados CompromissoParticipante[]
@@ -502,6 +504,35 @@ model VinculoWhatsapp {
   ultimaMensagemEm String?
   criadoEm         String
   atualizadoEm     String
+}
+
+/// Fila de avisos da conta pelo WhatsApp (fim do teste, renovação, suspensão). Só para quem vinculou o número e deixou
+/// os avisos ligados; isso é conferido de novo na hora de enviar. `chave` única impede o mesmo aviso duas vezes.
+model AvisoWhatsapp {
+  id                 String  @id @default(uuid())
+  empresaId          String
+  empresa            Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarioId          String
+  usuario            Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo               String
+  chave              String  @unique
+  texto              String
+  /// pendente | enviado | falhou | cancelado
+  status             String  @default("pendente")
+  tentativas         Int     @default(0)
+  proximaTentativaEm String
+  /// Depois disso o aviso perdeu o sentido (ex.: "seu teste termina amanhã") e é cancelado em vez de enviado.
+  expiraEm           String
+  reservadoAte       String?
+  enviadoEm          String?
+  ultimoErro         String?
+  criadoEm           String
+  atualizadoEm       String
+
+  @@index([status, proximaTentativaEm])
+  @@index([status, enviadoEm])
+  @@index([usuarioId])
+  @@index([empresaId])
 }
 
 /// Token de uso único enviado por e-mail (hoje só a confirmação de endereço).

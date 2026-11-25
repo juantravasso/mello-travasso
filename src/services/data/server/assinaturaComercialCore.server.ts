@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { enviarEmail } from "@/lib/email/enviar.server";
 import { fimDoPeriodoPago, somarMeses } from "@/lib/planos/periodo";
 import { urlDoSite } from "@/lib/rede/site";
+import { textoPlanoSuspenso, textoRenovacao } from "@/lib/whatsapp/avisos";
 import { registrarEvento } from "./eventosCore.server";
+import { agendarAvisoWhatsapp } from "./whatsappAvisosCore.server";
 import { contarOcupacao } from "./planosComerciaisCore.server";
 import { ErroDeNegocio } from "./resultado.server";
 
@@ -235,6 +237,15 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
       const novo = await registrarEvento(prisma, { tipo: "assinatura_renovacao_avisada", empresaId: a.empresaId, chave, dados: { plano: a.planoChave } });
       if (!novo) continue;
       const vencimento = a.proximaCobrancaEm.slice(0, 10);
+      // Também pelo WhatsApp, para os donos que vincularam (vale até o vencimento).
+      await agendarAvisoWhatsapp(prisma, {
+        empresaId: a.empresaId,
+        tipo: "renovacao_plano",
+        chave: `wa:${chave}`,
+        texto: textoRenovacao(u.rotulo, a.planoComercial.nome, a.proximaCobrancaEm, `${urlDoSite()}/planos`),
+        expiraEm: new Date(a.proximaCobrancaEm),
+        agora,
+      });
       for (const dono of await donosAtivos(a.empresaId)) {
         await enviarEmail({
           para: dono.email,
@@ -250,6 +261,7 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
 
   const vencidas = await prisma.assinaturaComercial.findMany({
     where: { status: "ativa", proximaCobrancaEm: { lt: agoraIso }, OR: [{ ciclo: "anual" }, { ciclo: "mensal", meio: "pix" }] },
+    include: { planoComercial: { select: { nome: true } } },
   });
   for (const a of vencidas) {
     const processou = await prisma.$transaction(async (tx) => {
@@ -260,7 +272,17 @@ export async function processarAssinaturasComerciais(agora: Date = new Date()): 
       await suspender(tx, a.empresaId, a.planoChave, agoraIso);
       return true;
     });
-    if (processou) resultado.suspensasPorVencimento++;
+    if (processou) {
+      resultado.suspensasPorVencimento++;
+      await agendarAvisoWhatsapp(prisma, {
+        empresaId: a.empresaId,
+        tipo: "plano_suspenso",
+        chave: `wa:assinatura:suspensao:${a.id}:${a.proximaCobrancaEm}`,
+        texto: textoPlanoSuspenso(a.planoComercial.nome, `${urlDoSite()}/planos`),
+        expiraEm: new Date(agora.getTime() + 2 * 86_400_000),
+        agora,
+      });
+    }
   }
 
   // Mensal cancelada: o acesso valeu até o fim do período pago; passou da data, suspende (somente leitura).

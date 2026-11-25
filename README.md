@@ -526,6 +526,19 @@ O Elo tem um número de WhatsApp (`WHATSAPP_NUMERO_ELO`), ligado a um WAHA hospe
 - **Sem configuração, desligado:** faltando qualquer `WAHA_*`/`WHATSAPP_NUMERO_ELO`, a tela esconde o recurso e nada é enviado.
 - Teste de integração (banco demo): `yarn testar:whatsapp`. Unitários: `src/lib/whatsapp/vinculo.test.ts`.
 
+### Foto da nota pelo WhatsApp (etapa 3)
+
+Quem tem o WhatsApp vinculado manda a foto da nota para o número do Elo e recebe de volta um **rascunho de compra**:
+
+1. O webhook responde na hora; a leitura roda depois da resposta (`after`, dentro dos 60 s da rota).
+2. Mesmas barreiras do site ([whatsappCompraCore.server.ts](src/services/data/server/whatsappCompraCore.server.ts)): plano com gestão, módulo de captura (ou dono), perfil publicado, fora do somente leitura, usuário e empresa não bloqueados, e o mesmo limite de 30 leituras por hora por empresa da leitura pelo site.
+3. A foto é baixada do provedor (uazapi pelo id da mensagem; WAHA pela URL do próprio servidor), lida pela mesma IA da captura e gravada pelo mesmo `salvarCompra`: origem "foto", destino **Depósito**, a foto fica como comprovante. Itens com nome igual a um produto do estoque (ou já vinculados ao fornecedor) saem identificados; os "parecidos" ficam para a pessoa.
+4. A resposta traz número, fornecedor, total, quantos itens faltam identificar e o link para conferir e **efetivar no app**. Pelo WhatsApp nada é efetivado: nada entra em contas ou estoque sem a pessoa revisar.
+5. Mensagem repetida (reenvio do webhook) é lida uma vez só (`EventoProduto` com chave por id da mensagem). Número **não vinculado** não recebe resposta do robô (pode ser suporte). Só foto JPG/PNG/WEBP até 8 MB; PDF e outros pedem para lançar pelo app.
+6. Teste de integração (banco demo, IA e WhatsApp falsos): `yarn testar:whatsapp-foto`.
+
+Pendente de confirmar no primeiro teste real com a uazapi: o valor exato de `messageType` para foto (a documentação só mostra o de texto) e o campo de `mimetype`.
+
 ## Rodando localmente
 
 ```bash

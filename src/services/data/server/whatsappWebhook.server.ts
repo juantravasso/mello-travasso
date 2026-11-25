@@ -1,6 +1,9 @@
 import "server-only";
-import { enviarTexto } from "@/lib/whatsapp/cliente.server";
+import { after } from "next/server";
+import { obterProvedorExtracaoIA } from "@/services/ai/provedor.server";
+import { baixarMidia, enviarTexto } from "@/lib/whatsapp/cliente.server";
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
+import { processarFotoRecebida } from "./whatsappCompraCore.server";
 import { tratarMensagemRecebida } from "./whatsappCore.server";
 
 // O que fazer com uma mensagem já autenticada e lida, seja qual for o provedor (WAHA ou uazapi). Só responde ao que o
@@ -14,6 +17,22 @@ const RESPOSTAS = {
 } as const;
 
 export async function responderMensagemRecebida(mensagem: MensagemRecebida, origem: string): Promise<void> {
+  if (mensagem.midia) {
+    // Ler a nota com IA leva segundos: o webhook responde já, e a leitura roda depois da resposta (after), dentro do
+    // maxDuration da rota. A pessoa recebe "Lendo a nota…" e depois o resumo do rascunho.
+    after(async () => {
+      try {
+        await processarFotoRecebida(mensagem, {
+          baixar: baixarMidia,
+          extrair: (s) => obterProvedorExtracaoIA().extrair(s),
+          responder: enviarTexto,
+        });
+      } catch (erro) {
+        console.error(`[webhooks/${origem}] foto não processada:`, erro instanceof Error ? erro.name : "erro");
+      }
+    });
+    return;
+  }
   const resultado = await tratarMensagemRecebida(mensagem);
   if (resultado.tipo === "ignorada") return;
   const texto = resultado.tipo === "vinculado" ? RESPOSTAS.vinculado(resultado.primeiroNome) : RESPOSTAS[resultado.tipo];

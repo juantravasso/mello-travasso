@@ -31,7 +31,7 @@ async function criarUsuario(sufixo: string, nome = "Maria Souza"): Promise<strin
   return u.id;
 }
 
-const msg = (texto: string, chatId = "5521999990000@c.us", numero: string | null = "5521999990000") => ({ chatId, texto, numero });
+const msg = (texto: string, chatId = "5521999990000@c.us", numero: string | null = "5521999990000") => ({ chatId, texto, numero, mensagemId: null, midia: null });
 
 async function main(): Promise<void> {
   await teste("1. o código gerado vincula o número; o banco guarda só o hash", async () => {

@@ -29,6 +29,8 @@ export const TIPOS_EVENTO = [
   "chamada_config_clicou",
   "chamada_config_agendada",
   "chamada_config_dispensada",
+  "whatsapp_foto_recebida",
+  "whatsapp_compra_rascunho",
 ] as const;
 
 export type TipoEvento = (typeof TIPOS_EVENTO)[number];

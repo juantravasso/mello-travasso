@@ -1,11 +1,12 @@
 import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { lerSessao, type SessaoValida } from "@/lib/auth/sessao";
-import { calcularStatusPlano, type StatusPlano } from "@/lib/auth/plano";
 import { temAlgumModulo, type ModuloChave } from "@/lib/auth/modulos";
-import { exigePublicarPerfil } from "@/lib/perfilObrigatorio";
+import { obterRecursosDaEmpresa, obterStatusPlano, perfilObrigatorioPendente } from "@/lib/auth/acessoEmpresa.server";
+
+export { obterRecursosDaEmpresa, obterStatusPlano, perfilObrigatorioPendente };
+export type { ChaveRecurso } from "@/lib/auth/acessoEmpresa.server";
 
 // DAL (Data Access Layer) de autenticação — única fonte de identidade no
 // servidor. Toda Server Action e toda página protegida chamam exigirSessao()
@@ -57,21 +58,6 @@ export async function exigirSessaoAction(opcoes?: { permitirTrocaPendente?: bool
   return sessao;
 }
 
-/**
- * Consulta plano + testeTerminaEm da empresa e calcula o status (RF-15/16).
- * cache() por request: chamado por toda action de escrita e pela faixa do
- * teste, sem duplicar a query dentro do mesmo request.
- */
-export const obterStatusPlano = cache(async (empresaId: string): Promise<StatusPlano> => {
-  const empresa = await prisma.empresa.findUnique({
-    where: { id: empresaId },
-    select: { plano: true, testeTerminaEm: true },
-  });
-  // Não deveria acontecer (empresaId vem de uma sessão válida), mas por
-  // segurança um registro sumido vira somente-leitura, nunca escrita liberada.
-  if (!empresa) return { plano: "suspenso", diasRestantes: null, somenteLeitura: true, dataFimFormatada: null };
-  return calcularStatusPlano(empresa);
-});
 
 /**
  * Igual a exigirSessaoAction(), e também bloqueia quando o teste já venceu
@@ -89,33 +75,6 @@ export async function exigirEscritaAction(): Promise<SessaoValida> {
   return sessao;
 }
 
-export type ChaveRecurso = "rede" | "gestao";
-
-/**
- * Recursos que o plano da empresa libera (tabela PlanoRecurso, configurável
- * pela administração). Falha fechada: plano sem linhas → nenhum recurso.
- * cache() por request, como obterStatusPlano.
- */
-export const obterRecursosDaEmpresa = cache(async (empresaId: string): Promise<ReadonlySet<string>> => {
-  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { plano: true } });
-  if (!empresa) return new Set();
-  const linhas = await prisma.planoRecurso.findMany({ where: { plano: empresa.plano }, select: { recursoChave: true } });
-  return new Set(linhas.map((l) => l.recursoChave));
-});
-
-/**
- * O responsável pela conta ainda precisa publicar o perfil no Elo Profissionais (obrigatório uma vez, depois do cadastro)?
- * cache() por request: lido pelo layout e por toda ação dos módulos de gestão.
- */
-export const perfilObrigatorioPendente = cache(async (empresaId: string, papel: "dono" | "membro", admin: boolean): Promise<boolean> => {
-  if (papel !== "dono" || admin) return false;
-  const [empresa, perfil, recursos] = await Promise.all([
-    prisma.empresa.findUnique({ where: { id: empresaId }, select: { primeiraPublicacaoEm: true } }),
-    prisma.perfilPublico.findUnique({ where: { empresaId }, select: { status: true } }),
-    obterRecursosDaEmpresa(empresaId),
-  ]);
-  return exigePublicarPerfil({ papel, admin, statusPerfil: perfil?.status ?? null, jaPublicou: empresa?.primeiraPublicacaoEm != null, temRede: recursos.has("rede") });
-});
 
 /**
  * Sessão + o plano da empresa precisa liberar os módulos de gestão (obras,

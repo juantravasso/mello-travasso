@@ -60,7 +60,7 @@ test("assinatura do webhook: confere o corpo bruto e recusa o resto", () => {
 
 test("lerMensagemWaha: só mensagem de outra pessoa, individual, da sessão certa", () => {
   const base = { event: "message", session: "default", payload: { from: "5521999990000@c.us", fromMe: false, body: "VINCULAR ABCD2345" } };
-  assert.deepEqual(lerMensagemWaha(base, "default"), { chatId: "5521999990000@c.us", texto: "VINCULAR ABCD2345", numero: "5521999990000" });
+  assert.deepEqual(lerMensagemWaha(base, "default"), { chatId: "5521999990000@c.us", texto: "VINCULAR ABCD2345", numero: "5521999990000", mensagemId: null, midia: null });
   assert.equal(lerMensagemWaha({ ...base, session: "outra" }, "default"), null);
   assert.equal(lerMensagemWaha({ ...base, event: "message.ack" }, "default"), null);
   assert.equal(lerMensagemWaha({ ...base, payload: { ...base.payload, fromMe: true } }, "default"), null, "mensagem do próprio Elo");
@@ -72,7 +72,15 @@ test("lerMensagemWaha: só mensagem de outra pessoa, individual, da sessão cert
 
 test("lerMensagemWaha: @lid vem sem telefone, a não ser que o WAHA o informe ao lado", () => {
   const lid = { event: "message", session: "default", payload: { from: "99887766@lid", body: "oi" } };
-  assert.deepEqual(lerMensagemWaha(lid, "default"), { chatId: "99887766@lid", texto: "oi", numero: null });
+  assert.deepEqual(lerMensagemWaha(lid, "default"), { chatId: "99887766@lid", texto: "oi", numero: null, mensagemId: null, midia: null });
   const comTelefone = { ...lid, payload: { ...lid.payload, _data: { key: { remoteJidAlt: "5521988887777@s.whatsapp.net" } } } };
   assert.equal(lerMensagemWaha(comTelefone, "default")?.numero, "5521988887777");
+});
+
+test("lerMensagemWaha reconhece foto e outros arquivos", () => {
+  const foto = { event: "message", session: "default", payload: { id: "m1", from: "5521999990000@c.us", body: "", hasMedia: true, media: { url: "https://waha.x/api/files/a.jpg", mimetype: "image/jpeg" } } };
+  assert.deepEqual(lerMensagemWaha(foto, "default")?.midia, { tipo: "imagem", url: "https://waha.x/api/files/a.jpg", mimetype: "image/jpeg" });
+  assert.equal(lerMensagemWaha(foto, "default")?.mensagemId, "m1");
+  const pdf = { ...foto, payload: { ...foto.payload, media: { url: "https://waha.x/f.pdf", mimetype: "application/pdf" } } };
+  assert.equal(lerMensagemWaha(pdf, "default")?.midia?.tipo, "outra");
 });

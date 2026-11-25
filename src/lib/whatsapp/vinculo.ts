@@ -68,11 +68,22 @@ export function assinaturaWahaConfere(corpoBruto: string, cabecalho: string | nu
   return recebido.length === esperado.length && timingSafeEqual(recebido, esperado);
 }
 
+export interface MidiaRecebida {
+  /** "imagem" (foto) ou "outra" (documento, áudio, vídeo...: o sistema só lê foto). */
+  tipo: "imagem" | "outra";
+  /** URL de download (WAHA). Na uazapi o download é pelo id da mensagem. */
+  url: string | null;
+  mimetype: string | null;
+}
+
 export interface MensagemRecebida {
   chatId: string;
   texto: string;
-  /** Telefone, quando o WAHA informa (nem sempre informa: `@lid`). */
+  /** Telefone, quando o provedor informa (nem sempre informa: `@lid`). */
   numero: string | null;
+  /** Id da mensagem no provedor: evita processar a mesma foto duas vezes e serve para baixar a mídia. */
+  mensagemId: string | null;
+  midia: MidiaRecebida | null;
 }
 
 /**
@@ -92,7 +103,14 @@ export function lerMensagemWaha(corpo: unknown, sessaoEsperada: string): Mensage
   if (!chatId || !ehChatIndividual(chatId)) return null;
   const texto = typeof m.body === "string" ? m.body : "";
   const numero = numeroDoChat(chatId) ?? numeroDoCampoAlternativo(m);
-  return { chatId, texto, numero };
+  return { chatId, texto, numero, mensagemId: typeof m.id === "string" ? m.id : null, midia: midiaWaha(m) };
+}
+
+function midiaWaha(m: Record<string, unknown>): MidiaRecebida | null {
+  if (m.hasMedia !== true) return null;
+  const media = m.media && typeof m.media === "object" ? (m.media as Record<string, unknown>) : {};
+  const mimetype = typeof media.mimetype === "string" ? media.mimetype : null;
+  return { tipo: mimetype?.startsWith("image/") ? "imagem" : "outra", url: typeof media.url === "string" ? media.url : null, mimetype };
 }
 
 /** O WAHA às vezes traz o telefone ao lado do `@lid` (campos do NOWEB/WEBJS). Só aceita se vier como telefone de verdade. */

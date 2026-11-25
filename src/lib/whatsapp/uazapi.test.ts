@@ -26,7 +26,7 @@ const exemplo = {
 const comMensagem = (m: Record<string, unknown>) => ({ ...exemplo, message: { ...exemplo.message, ...m } });
 
 test("lerMensagemUazapi lê a mensagem de texto do exemplo da documentação", () => {
-  assert.deepEqual(lerMensagemUazapi(exemplo), { chatId: "5511888888888@s.whatsapp.net", texto: "VINCULAR ABCD2345", numero: "5511888888888" });
+  assert.deepEqual(lerMensagemUazapi(exemplo), { chatId: "5511888888888@s.whatsapp.net", texto: "VINCULAR ABCD2345", numero: "5511888888888", mensagemId: "MSG_EXEMPLO", midia: null });
 });
 
 test("lerMensagemUazapi ignora o que não é mensagem de outra pessoa em conversa individual", () => {
@@ -42,13 +42,18 @@ test("lerMensagemUazapi ignora o que não é mensagem de outra pessoa em convers
 
 test("lerMensagemUazapi: @lid fica sem número, a não ser que venha sender_pn", () => {
   const lid = comMensagem({ chatid: "99887766@lid", sender: "99887766@lid" });
-  assert.deepEqual(lerMensagemUazapi(lid), { chatId: "99887766@lid", texto: "VINCULAR ABCD2345", numero: null });
+  assert.deepEqual(lerMensagemUazapi(lid), { chatId: "99887766@lid", texto: "VINCULAR ABCD2345", numero: null, mensagemId: "MSG_EXEMPLO", midia: null });
   const comPn = comMensagem({ chatid: "99887766@lid", sender_pn: "5521977776666@s.whatsapp.net" });
   assert.equal(lerMensagemUazapi(comPn)?.numero, "5521977776666");
 });
 
-test("mensagem sem texto (foto sem legenda) chega com texto vazio", () => {
-  assert.equal(lerMensagemUazapi(comMensagem({ text: undefined, messageType: "ImageMessage" }))?.texto, "");
+test("foto, documento e figurinha: a mídia é reconhecida pelo tipo da mensagem", () => {
+  const foto = lerMensagemUazapi(comMensagem({ text: undefined, messageType: "ImageMessage", content: { mimetype: "image/jpeg" } }));
+  assert.equal(foto?.texto, "");
+  assert.deepEqual(foto?.midia, { tipo: "imagem", url: null, mimetype: "image/jpeg" });
+  assert.equal(lerMensagemUazapi(comMensagem({ messageType: "DocumentMessage" }))?.midia?.tipo, "outra");
+  assert.equal(lerMensagemUazapi(comMensagem({ messageType: "StickerMessage" }))?.midia?.tipo, "outra", "figurinha não é nota");
+  assert.equal(lerMensagemUazapi(comMensagem({ messageType: "ExtendedTextMessage" }))?.midia, null);
 });
 
 test("token do corpo e segredo da URL conferem em tempo constante e nunca com vazio", () => {

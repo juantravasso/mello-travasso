@@ -10,7 +10,8 @@ import { responderMensagemRecebida } from "@/services/data/server/whatsappWebhoo
 // ignorado, porque o mesmo número também atende suporte por pessoas. Nada de conteúdo de mensagem vai para o log.
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+// 60 s: a leitura da foto pela IA roda depois da resposta (after) e conta neste limite.
+export const maxDuration = 60;
 
 const SEM_CACHE = { "Cache-Control": "no-store" };
 const TAMANHO_MAXIMO = 256 * 1024;

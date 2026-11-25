@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { ehChatIndividual, numeroDoChat, type MensagemRecebida } from "./vinculo";
+import { ehChatIndividual, numeroDoChat, type MensagemRecebida, type MidiaRecebida } from "./vinculo";
 
 // Leitura do webhook da uazapi. A uazapi NÃO assina o webhook: o corpo traz o token da instância, e a URL cadastrada
 // leva um segredo nosso no caminho. A rota exige os dois (ver src/app/api/webhooks/uazapi/[segredo]/route.ts).
@@ -36,5 +36,19 @@ export function lerMensagemUazapi(corpo: unknown): MensagemRecebida | null {
   if (!chatId || !ehChatIndividual(chatId)) return null;
   const texto = typeof m.text === "string" ? m.text : "";
   const alternativo = typeof m.sender_pn === "string" ? numeroDoChat(m.sender_pn) : null;
-  return { chatId, texto, numero: numeroDoChat(chatId) ?? alternativo };
+  const mensagemId = typeof m.messageid === "string" ? m.messageid : null;
+  return { chatId, texto, numero: numeroDoChat(chatId) ?? alternativo, mensagemId, midia: midiaUazapi(m) };
+}
+
+/**
+ * A documentação da uazapi só mostra o exemplo de texto ("Conversation"); o tipo de foto é inferido pelo nome
+ * ("ImageMessage", "image"...). Conferir no primeiro teste real.
+ */
+function midiaUazapi(m: Record<string, unknown>): MidiaRecebida | null {
+  const tipo = [m.messageType, m.mediaType].filter((v): v is string => typeof v === "string").join(" ").toLowerCase();
+  if (!tipo || /conversation|extendedtext|^text/.test(tipo)) return null;
+  if (!/image|video|audio|document|sticker|ptt/.test(tipo)) return null;
+  const content = m.content && typeof m.content === "object" ? (m.content as Record<string, unknown>) : {};
+  const mimetype = typeof content.mimetype === "string" ? content.mimetype : null;
+  return { tipo: /image/.test(tipo) && !/sticker/.test(tipo) ? "imagem" : "outra", url: null, mimetype };
 }

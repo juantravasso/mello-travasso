@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { exigirSessaoAction } from "@/lib/auth/dal";
-import { configWhatsapp } from "@/lib/whatsapp/waha.server";
+import { configWhatsapp } from "@/lib/whatsapp/cliente.server";
 import { linkDeVinculo, textoDeVinculo } from "@/lib/whatsapp/vinculo";
 import type { ResultadoAction } from "@/types";
 import { definirAvisos, desfazerVinculo, estadoDoVinculo, gerarCodigoDeVinculo, type EstadoVinculo } from "./whatsappCore.server";

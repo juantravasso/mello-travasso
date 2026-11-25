@@ -334,6 +334,7 @@ model Empresa {
   extensoesTeste                ExtensaoTeste[]
   emailsAgendados               EmailAgendado[]
   avisosWhatsapp                AvisoWhatsapp[]
+  pendenciasWhatsapp            PendenciaWhatsapp[]
   assinaturasComerciais         AssinaturaComercial[]
   compras                       Compra[]
   vinculoProdutos               VinculoProduto[]
@@ -478,6 +479,7 @@ model Usuario {
   progressoOnboarding ProgressoOnboarding?
   vinculoWhatsapp     VinculoWhatsapp?
   avisosWhatsapp      AvisoWhatsapp[]
+  pendenciaWhatsapp   PendenciaWhatsapp?
 
   compromissosCriados        Compromisso[]
   compromissosCompartilhados CompromissoParticipante[]
@@ -504,6 +506,26 @@ model VinculoWhatsapp {
   ultimaMensagemEm String?
   criadoEm         String
   atualizadoEm     String
+}
+
+/// Pergunta em aberto no WhatsApp: um comprovante (Pix, transferência) espera a pessoa dizer do que se trata e para qual
+/// projeto vai. Uma por usuário (um comprovante novo substitui o anterior). Some ao concluir, cancelar ou expirar.
+model PendenciaWhatsapp {
+  id           String  @id @default(uuid())
+  usuarioId    String  @unique
+  usuario      Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  /// "categoria" ou "projeto"
+  etapa        String
+  /// O que a IA leu e o que a pessoa já escolheu (valor, data, favorecido, categoria, opções de projeto).
+  dados        Json
+  fotoDataUrl  String  @db.Text
+  expiraEm     String
+  criadoEm     String
+  atualizadoEm String
+
+  @@index([empresaId])
 }
 
 /// Fila de avisos da conta pelo WhatsApp (fim do teste, renovação, suspensão). Só para quem vinculou o número e deixou

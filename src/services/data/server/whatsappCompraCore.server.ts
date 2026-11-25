@@ -1,18 +1,20 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { obterRecursosDaEmpresa, obterStatusPlano, perfilObrigatorioPendente } from "@/lib/auth/acessoEmpresa.server";
 import { verificarLimite } from "@/lib/auth/limite";
-import { ACESSO, normalizarModulos, temAlgumModulo, TODOS_OS_MODULOS } from "@/lib/auth/modulos";
 import { dataLocal } from "@/lib/calendario/tempo";
 import { formatarNumeroCompra } from "@/lib/compras";
 import { urlDoSite } from "@/lib/rede/site";
-import { MIMES_DE_FOTO, montarRascunhoDaFoto, RESPOSTAS_FOTO, TAMANHO_MAX_FOTO_BYTES, textoDoRascunho } from "@/lib/whatsapp/compraPorFoto";
+import { MIMES_DE_FOTO, montarRascunhoDaFoto, RESPOSTAS_FOTO, TAMANHO_MAX_FOTO_BYTES, textoDoRascunho, type ItemDoResumo } from "@/lib/whatsapp/compraPorFoto";
+import { FORNECEDOR_NAO_LIDO } from "@/lib/whatsapp/compraPorFoto";
 import type { MidiaBaixada } from "@/lib/whatsapp/cliente.server";
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
-import type { ResultadoExtracao, SolicitacaoExtracao } from "@/types";
+import type { EntradaCompra, ResultadoExtracao, SolicitacaoExtracao } from "@/types";
 import { salvarCompra, sugerirIdentificacao } from "./comprasCore.server";
 import { garantirDeposito } from "./depositoCore.server";
+import { resolverProdutoComTx } from "./estoqueCore.server";
 import { registrarEvento } from "./eventosCore.server";
+import { autorizarChat, type AutorWhatsapp } from "./whatsappAutor.server";
+import { iniciarComprovante } from "./whatsappComprovanteCore.server";
 
 // Foto da nota pelo WhatsApp → rascunho de compra no Depósito. Mesmas barreiras do site (plano com gestão, módulo de
 // captura, perfil publicado, fora do somente leitura, limite de leituras por hora) e a MESMA gravação (salvarCompra).
@@ -37,31 +39,8 @@ export type DesfechoFoto =
   | "formato"
   | "nao_leu"
   | "rascunho"
+  | "pergunta"
   | "falha";
-
-interface Autor {
-  usuarioId: string;
-  nome: string;
-  empresaId: string;
-  fusoHorario: string;
-}
-
-async function autorizar(chatId: string): Promise<Autor | Exclude<DesfechoFoto, "rascunho">> {
-  const vinculo = await prisma.vinculoWhatsapp.findUnique({
-    where: { chatId },
-    include: { usuario: { include: { empresa: { select: { bloqueadaEm: true, fusoHorario: true } } } } },
-  });
-  if (!vinculo?.verificadoEm) return "nao_vinculado";
-  const u = vinculo.usuario;
-  if (u.bloqueadoPlataformaEm || u.desativadoEm || u.empresa.bloqueadaEm || u.trocarSenha) return "sem_acesso";
-
-  const pessoa = { papel: u.papel, modulos: u.papel === "dono" ? TODOS_OS_MODULOS : normalizarModulos(u.modulos) };
-  const recursos = await obterRecursosDaEmpresa(u.empresaId);
-  if (!recursos.has("gestao") || !temAlgumModulo(pessoa, ACESSO.leituraDeComprovante)) return "sem_acesso";
-  if (await perfilObrigatorioPendente(u.empresaId, u.papel, u.papelPlataforma === "admin")) return "sem_acesso";
-  if ((await obterStatusPlano(u.empresaId)).somenteLeitura) return "somente_leitura";
-  return { usuarioId: u.id, nome: u.nome, empresaId: u.empresaId, fusoHorario: u.empresa.fusoHorario };
-}
 
 // Número não vinculado NÃO recebe resposta do robô: pode ser alguém falando com o suporte (que é feito por pessoas).
 const RESPOSTA_DO_DESFECHO: Partial<Record<DesfechoFoto, string>> = {
@@ -73,11 +52,36 @@ const RESPOSTA_DO_DESFECHO: Partial<Record<DesfechoFoto, string>> = {
   falha: RESPOSTAS_FOTO.falha,
 };
 
+/**
+ * Liga cada item a um produto do estoque: a memória do fornecedor, o nome igual ou o mais parecido; sem nenhum, cria o
+ * produto. Altera `entrada.itens` (produtoId) e devolve, para o resumo, como cada item foi identificado. O "parecido"
+ * pode errar (ex.: 50 kg × 25 kg): por isso o resumo pede para conferir, e nada entra no estoque antes de efetivar.
+ */
+async function identificarItens(autor: AutorWhatsapp, entrada: EntradaCompra): Promise<ItemDoResumo[]> {
+  const ctx = { empresaId: autor.empresaId, nome: autor.nome };
+  const sugestoes = await sugerirIdentificacao(ctx, { fornecedorNome: entrada.fornecedorNome, itens: entrada.itens.map((i) => ({ descricao: i.descricao })) });
+  const resumo: ItemDoResumo[] = [];
+  await prisma.$transaction(async (tx) => {
+    for (const [i, item] of entrada.itens.entries()) {
+      const s = sugestoes[i];
+      if (s) {
+        item.produtoId = s.produtoId;
+        resumo.push({ descricao: item.descricao, produto: s.produtoNome, como: s.motivo === "parecido" ? "parecido" : "existente" });
+        continue;
+      }
+      const criado = await resolverProdutoComTx(tx, autor.empresaId, item.descricao);
+      item.produtoId = criado.id;
+      resumo.push({ descricao: item.descricao, produto: item.descricao, como: "novo" });
+    }
+  });
+  return resumo;
+}
+
 /** Trata uma mensagem com mídia. Devolve o desfecho (para teste e log); a resposta à pessoa já foi enviada. */
 export async function processarFotoRecebida(mensagem: MensagemRecebida, deps: DependenciasFoto): Promise<DesfechoFoto> {
   const responder = (texto: string) => deps.responder(mensagem.chatId, texto).catch(() => console.error("[whatsapp/foto] resposta não enviada"));
 
-  const autor = await autorizar(mensagem.chatId);
+  const autor = await autorizarChat(mensagem.chatId);
   if (typeof autor === "string") {
     const texto = RESPOSTA_DO_DESFECHO[autor];
     if (texto) await responder(texto);
@@ -124,23 +128,39 @@ export async function processarFotoRecebida(mensagem: MensagemRecebida, deps: De
 
     await responder(RESPOSTAS_FOTO.lendo);
     const leitura = await deps.extrair({ imagemBase64: midia.base64, mimeType: midia.mimetype as SolicitacaoExtracao["mimeType"] });
+    const fotoDataUrl = `data:${midia.mimetype};base64,${midia.base64}`;
+    const lida = leitura.sucesso && leitura.dados && leitura.dados.confiancaExtracao > 0 ? leitura.dados : null;
+
+    // Comprovante (Pix, transferência): não tem itens; pergunta do que se trata e para qual projeto, depois lança a conta.
+    if (lida?.tipoDocumento === "comprovante") {
+      const pergunta = await iniciarComprovante(
+        autor,
+        {
+          valor: lida.valor ?? 0,
+          data: lida.data && /^\d{4}-\d{2}-\d{2}$/.test(lida.data) ? lida.data : dataLocal(new Date(), autor.fusoHorario),
+          favorecido: lida.favorecido?.trim() || FORNECEDOR_NAO_LIDO,
+          descricao: lida.descricao,
+        },
+        fotoDataUrl,
+      );
+      if (!pergunta) {
+        await responder(RESPOSTAS_FOTO.naoLeu);
+        return "nao_leu";
+      }
+      await responder(pergunta);
+      return "pergunta";
+    }
+
     const destinoId = await garantirDeposito(autor.empresaId);
     const entrada =
-      leitura.sucesso && leitura.dados && leitura.dados.confiancaExtracao > 0
-        ? montarRascunhoDaFoto(leitura.dados, { destinoId, hoje: dataLocal(new Date(), autor.fusoHorario), fotoDataUrl: `data:${midia.mimetype};base64,${midia.base64}` })
-        : null;
+      lida ? montarRascunhoDaFoto(lida, { destinoId, hoje: dataLocal(new Date(), autor.fusoHorario), fotoDataUrl }) : null;
     if (!entrada) {
       await responder(RESPOSTAS_FOTO.naoLeu);
       return "nao_leu";
     }
 
-    // Identifica só pelo que é seguro (memória do fornecedor ou nome igual); o "parecido" fica para a pessoa decidir.
     const ctx = { empresaId: autor.empresaId, nome: autor.nome };
-    const sugestoes = await sugerirIdentificacao(ctx, { fornecedorNome: entrada.fornecedorNome, itens: entrada.itens.map((i) => ({ descricao: i.descricao })) });
-    entrada.itens = entrada.itens.map((item, i) => {
-      const s = sugestoes[i];
-      return s && s.motivo !== "parecido" ? { ...item, produtoId: s.produtoId } : item;
-    });
+    const resumoItens = await identificarItens(autor, entrada);
 
     const compra = await salvarCompra(ctx, entrada);
     const total = Math.round(entrada.itens.reduce((soma, i) => soma + i.valorTotal, 0) * 100) / 100;
@@ -149,10 +169,9 @@ export async function processarFotoRecebida(mensagem: MensagemRecebida, deps: De
       textoDoRascunho({
         numero: formatarNumeroCompra(compra.numero),
         fornecedor: entrada.fornecedorNome,
-        qtdItens: entrada.itens.length,
         total,
         destino: "Depósito",
-        identificados: entrada.itens.filter((i) => i.produtoId).length,
+        itens: resumoItens,
         link: `${urlDoSite()}/compras/${compra.id}`,
       }),
     );

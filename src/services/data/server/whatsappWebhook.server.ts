@@ -4,6 +4,7 @@ import { obterProvedorExtracaoIA } from "@/services/ai/provedor.server";
 import { baixarMidia, enviarTexto } from "@/lib/whatsapp/cliente.server";
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
 import { processarFotoRecebida } from "./whatsappCompraCore.server";
+import { responderPendencia } from "./whatsappComprovanteCore.server";
 import { tratarMensagemRecebida } from "./whatsappCore.server";
 
 // O que fazer com uma mensagem já autenticada e lida, seja qual for o provedor (WAHA ou uazapi). Só responde ao que o
@@ -34,7 +35,11 @@ export async function responderMensagemRecebida(mensagem: MensagemRecebida, orig
     return;
   }
   const resultado = await tratarMensagemRecebida(mensagem);
-  if (resultado.tipo === "ignorada") return;
+  if (resultado.tipo === "ignorada") {
+    // Resposta a uma pergunta em aberto (comprovante: do que se trata, qual projeto). Sem pergunta, é conversa de suporte.
+    await responderPendencia(mensagem, enviarTexto);
+    return;
+  }
   const texto = resultado.tipo === "vinculado" ? RESPOSTAS.vinculado(resultado.primeiroNome) : RESPOSTAS[resultado.tipo];
   // A resposta é cortesia: se o provedor falhar, o vínculo já foi gravado e o webhook não precisa ser repetido.
   await enviarTexto(mensagem.chatId, texto).catch((e) => console.error(`[webhooks/${origem}] resposta não enviada:`, e instanceof Error ? e.name : "erro"));

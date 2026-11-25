@@ -56,27 +56,47 @@ export function montarRascunhoDaFoto(dados: DadosExtraidosComprovante, opcoes: {
 
 const real = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+export type ComoIdentificou = "existente" | "parecido" | "novo";
+
+export interface ItemDoResumo {
+  descricao: string;
+  produto: string;
+  como: ComoIdentificou;
+}
+
 export interface ResumoRascunho {
   numero: string;
   fornecedor: string;
-  qtdItens: number;
   total: number;
   destino: string;
-  identificados: number;
+  itens: ItemDoResumo[];
   link: string;
 }
 
+const MAX_ITENS_NO_RESUMO = 10;
+
+function linhaDoItem(i: ItemDoResumo): string {
+  const curta = (t: string) => (t.length > 40 ? `${t.slice(0, 39)}…` : t);
+  if (i.como === "novo") return `• ${curta(i.descricao)} → produto novo criado`;
+  return `• ${curta(i.descricao)} → ${curta(i.produto)}${i.como === "parecido" ? " (parecido, confira)" : ""}`;
+}
+
 export function textoDoRascunho(r: ResumoRascunho): string {
-  const faltam = r.qtdItens - r.identificados;
+  const parecidos = r.itens.filter((i) => i.como === "parecido").length;
+  const listados = r.itens.slice(0, MAX_ITENS_NO_RESUMO).map(linhaDoItem);
+  if (r.itens.length > MAX_ITENS_NO_RESUMO) listados.push(`• e mais ${r.itens.length - MAX_ITENS_NO_RESUMO} itens`);
   return [
     `Compra ${r.numero} lançada como rascunho.`,
     `Fornecedor: ${r.fornecedor}`,
-    `${r.qtdItens} ${r.qtdItens === 1 ? "item" : "itens"} · Total ${real(r.total)}`,
+    `${r.itens.length} ${r.itens.length === 1 ? "item" : "itens"} · Total ${real(r.total)}`,
     `Destino: ${r.destino}`,
     "",
-    faltam > 0
-      ? `Falta identificar ${faltam} ${faltam === 1 ? "item" : "itens"} no seu estoque. Confira e efetive aqui: ${r.link}`
-      : `Confira os valores e efetive aqui: ${r.link}`,
+    "Itens no estoque:",
+    ...listados,
+    "",
+    parecidos === 0
+      ? `Confira e efetive aqui: ${r.link}`
+      : `Confira ${parecidos === 1 ? "o item marcado" : `os ${parecidos} itens marcados`} como parecido e efetive aqui: ${r.link}`,
     "Nada entra nas contas nem no estoque até você efetivar.",
   ].join("\n");
 }

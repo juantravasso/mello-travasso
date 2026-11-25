@@ -59,11 +59,28 @@ test("valores negativos ou absurdos da IA não passam; data em formato estranho 
   assert.equal(r.dataEmissao, undefined);
 });
 
-test("o resumo diz o que falta e que nada entra antes de efetivar", () => {
-  const t = textoDoRascunho({ numero: "0012", fornecedor: "Casa do Construtor", qtdItens: 3, total: 1234.5, destino: "Depósito", identificados: 1, link: "https://x/compras/1" });
+test("o resumo lista como cada item ficou no estoque e pede para conferir os parecidos", () => {
+  const t = textoDoRascunho({
+    numero: "0012",
+    fornecedor: "Casa do Construtor",
+    total: 1234.5,
+    destino: "Depósito",
+    link: "https://x/compras/1",
+    itens: [
+      { descricao: "CIMENTO CP II 50KG", produto: "Cimento CP II 50kg", como: "existente" },
+      { descricao: "CIMENTO CP II 25KG", produto: "Cimento CP II 50kg", como: "parecido" },
+      { descricao: "TIJOLO 8 FUROS", produto: "TIJOLO 8 FUROS", como: "novo" },
+    ],
+  });
   assert.match(t, /Compra 0012 lançada como rascunho/);
-  assert.match(t, /R\$\s?1\.234,50/);
-  assert.match(t, /Falta identificar 2 itens/);
+  assert.match(t, /3 itens · Total R\$\s?1\.234,50/);
+  assert.match(t, /CIMENTO CP II 50KG → Cimento CP II 50kg\n/);
+  assert.match(t, /CIMENTO CP II 25KG → Cimento CP II 50kg \(parecido, confira\)/);
+  assert.match(t, /TIJOLO 8 FUROS → produto novo criado/);
+  assert.ok(t.includes("Confira o item marcado como parecido e efetive aqui: https://x/compras/1"));
   assert.match(t, /Nada entra nas contas nem no estoque até você efetivar/);
-  assert.match(textoDoRascunho({ numero: "1", fornecedor: "X", qtdItens: 1, total: 1, destino: "Depósito", identificados: 1, link: "l" }), /Confira os valores e efetive/);
+  const semParecido = textoDoRascunho({ numero: "1", fornecedor: "X", total: 1, destino: "Depósito", link: "l", itens: [{ descricao: "A", produto: "A", como: "novo" }] });
+  assert.match(semParecido, /Confira e efetive aqui: l/);
+  const muitos = textoDoRascunho({ numero: "1", fornecedor: "X", total: 1, destino: "Depósito", link: "l", itens: Array.from({ length: 13 }, (_, i) => ({ descricao: `Item ${i}`, produto: "P", como: "existente" as const })) });
+  assert.match(muitos, /e mais 3 itens/);
 });

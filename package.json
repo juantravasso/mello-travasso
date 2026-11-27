@@ -24,6 +24,7 @@
     "demo:migrar": "node scripts/demo/comando.mjs migrar",
     "testar:onboarding": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-onboarding.ts",
     "testar:deposito": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-deposito.ts",
+    "testar:contas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-contas.ts",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.mjs",

@@ -515,6 +515,16 @@ sistema faz hoje, sem prometer resultado (há teste contra absolutos como "garan
 - **Testar sem cobrar:** com a credencial de teste e a conta de teste de comprador (o e-mail do pagador tem de ser o de uma conta de teste, no formato `test_user_<número>@testuser.com`). Em produção, o único teste de ponta a ponta é um pagamento real de valor baixo, depois reembolsado.
 - **Ainda manual:** reembolso de 7 dias, emissão de nota fiscal e a homologação do Mercado Pago.
 
+## Contas: uma regra para o site e para o WhatsApp
+
+A regra de contas a pagar e a receber (listar, calendário, criar, editar, dar baixa, baixa em lote, cancelar) fica em
+`src/services/data/server/contasCore.server.ts` e recebe quem age (`ContextoContas`: empresa, nome, papel e módulos).
+`contasActions.ts` só confere a sessão, o plano e o somente leitura e chama o núcleo; o assistente do WhatsApp chama o
+mesmo núcleo a partir do número vinculado. O acesso por tipo (pagar/receber) é conferido dentro do núcleo.
+
+**Testes.** `yarn testar:contas` (integração; use o banco de demonstração): isolamento entre empresas, permissão por
+tipo, edição e baixa, cancelamento concorrente, baixa em lote e contas no calendário.
+
 ## WhatsApp: vínculo do número (etapa 1)
 
 O Elo tem um número de WhatsApp (`WHATSAPP_NUMERO_ELO`), ligado a um WAHA hospedado por nós (fora da Vercel; precisa ficar sempre no ar). Em **Configurações → WhatsApp** a pessoa vincula o próprio número:

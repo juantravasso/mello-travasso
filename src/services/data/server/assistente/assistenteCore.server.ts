@@ -14,6 +14,9 @@ import {
   MEMORIA_POR_MS,
   pedeAssistente,
   pedeAtendente,
+  CONFIRMACAO_POR_MS,
+  ehNao,
+  ehSim,
   refsRecentes,
   semAnotacoesInternas,
   TEXTOS_ASSISTENTE,
@@ -23,8 +26,9 @@ import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
 import type { ModeloAssistente } from "@/services/ai/assistente.server";
 import { registrarEvento } from "../eventosCore.server";
 import { autorizarChat } from "../whatsappAutor.server";
-import { definicaoParaIA, ferramentasDaPessoa, type ContaCitada, type ContextoFerramenta, type Ferramenta } from "./ferramentas.server";
+import { definicaoParaIA, PedidoIncompleto, type ContaCitada, type ContextoFerramenta, type Ferramenta, type Proposta } from "./ferramentas.server";
 import { INSTRUCOES_ASSISTENTE } from "./instrucoes";
+import { ferramentasDaPessoa } from "./registro.server";
 
 // Assistente do WhatsApp: a pessoa conversa em linguagem natural; a IA escolhe ferramentas da aplicação (só as que a
 // pessoa pode usar), a aplicação valida e executa, e a IA escreve a resposta com o que o sistema devolveu.
@@ -49,6 +53,9 @@ export type DesfechoAssistente =
   | "longa"
   | "sem_ia"
   | "respondida"
+  | "executada"
+  | "cancelada"
+  | "expirada"
   | "falha";
 
 const MAX_RODADAS = 5;
@@ -106,12 +113,13 @@ export async function conversarComAssistente(mensagem: MensagemRecebida, deps: D
   // Consultas valem mesmo com a conta em somente leitura (teste vencido); lançamentos (etapa 3) não.
   const autor = await autorizarChat(mensagem.chatId, { modulos: MODULOS_DE_GESTAO, permitirSomenteLeitura: true });
   if (typeof autor === "string") {
-    if (autor !== "nao_vinculado") await responder(TEXTOS_ASSISTENTE.semAcesso);
+    if (autor !== "nao_vinculado") await responder(autor === "suspensa" ? TEXTOS_ASSISTENTE.suspensa : TEXTOS_ASSISTENTE.semAcesso);
     return autor === "nao_vinculado" ? "nao_vinculado" : "negado";
   }
   const ctx: ContextoFerramenta = {
     contas: { empresaId: autor.empresaId, nome: autor.nome, papel: autor.pessoa.papel, modulos: autor.pessoa.modulos },
     hoje: agoraNoFuso(agora, autor.fusoHorario).hoje,
+    somenteLeitura: autor.somenteLeitura,
   };
   const ferramentas = ferramentasDaPessoa(ctx.contas);
   if (ferramentas.length === 0) {
@@ -122,22 +130,64 @@ export async function conversarComAssistente(mensagem: MensagemRecebida, deps: D
     await responder(TEXTOS_ASSISTENTE.longo);
     return "longa";
   }
+  const memoria = lerMemoria(conversa?.mensagens, agora);
+  const lembrar = (resposta: string, citadas: ContaCitada[] = []) =>
+    gravarMemoria(
+      autor.usuarioId,
+      autor.empresaId,
+      acrescentarNaMemoria(memoria, [
+        { papel: "usuario", texto, em: agora.toISOString() },
+        { papel: "assistente", texto: resposta, em: new Date().toISOString(), ...(citadas.length > 0 ? { refs: citadas.slice(0, 15).map((c) => `ref ${c.ref}: ${c.rotulo}`) } : {}) },
+      ]),
+      agora,
+    );
+
+  // Operação proposta esperando o SIM: a resposta curta decide sem passar pela IA; qualquer outra coisa descarta a
+  // proposta (e a IA fica sabendo, para refazer se a pessoa estiver corrigindo um dado).
+  let descartada: string | null = null;
+  const pendente = await prisma.acaoAssistente.findFirst({ where: { usuarioId: autor.usuarioId, status: "aguardando_confirmacao" }, orderBy: { criadoEm: "desc" } });
+  if (pendente) {
+    const vencida = pendente.criadoEm < new Date(agora.getTime() - CONFIRMACAO_POR_MS).toISOString();
+    const sim = ehSim(texto);
+    const nao = ehNao(texto);
+    const novoStatus = vencida ? "expirada" : nao ? "cancelada" : sim ? "confirmada" : "cancelada";
+    // Consome a proposta antes de agir: dois SIM ao mesmo tempo executam uma vez só.
+    const consumida = await prisma.acaoAssistente.updateMany({
+      where: { id: pendente.id, status: "aguardando_confirmacao" },
+      data: { status: novoStatus, ...(novoStatus === "cancelada" && !nao ? { detalhe: `${pendente.detalhe ?? ""}\n[descartada: a pessoa respondeu outra coisa]`.trim() } : {}) },
+    });
+    if (consumida.count === 1) {
+      if (vencida && (sim || nao)) {
+        await responder(TEXTOS_ASSISTENTE.confirmacaoVencida);
+        await lembrar(TEXTOS_ASSISTENTE.confirmacaoVencida);
+        return "expirada";
+      }
+      if (!vencida && nao) {
+        await responder(TEXTOS_ASSISTENTE.descartada);
+        await lembrar(TEXTOS_ASSISTENTE.descartada);
+        return "cancelada";
+      }
+      if (!vencida && sim) {
+        const resposta = await confirmarProposta(pendente, mensagem.chatId, ctx);
+        await responder(resposta);
+        await lembrar(resposta);
+        return "executada";
+      }
+      if (!vencida) descartada = pendente.detalhe;
+    }
+  }
+
   if (!deps.modelo) {
     console.error("[whatsapp/assistente] ANTHROPIC_API_KEY ausente: assistente desligado.");
     await responder(TEXTOS_ASSISTENTE.falha);
     return "sem_ia";
   }
 
-  const memoria = lerMemoria(conversa?.mensagens, agora);
   const auditoria = { empresaId: autor.empresaId, usuarioId: autor.usuarioId, mensagemId: mensagem.mensagemId, resumoPedido: texto.slice(0, 200) };
   try {
-    const { resposta, citadas } = await rodarConversa(deps.modelo, ferramentas, ctx, memoria, texto, agoraNoFuso(agora, autor.fusoHorario).extenso, auditoria);
+    const { resposta, citadas } = await rodarConversa(deps.modelo, ferramentas, ctx, memoria, texto, agoraNoFuso(agora, autor.fusoHorario).extenso, auditoria, descartada);
     await responder(resposta);
-    const novas: MensagemDaConversa[] = [
-      { papel: "usuario", texto, em: agora.toISOString() },
-      { papel: "assistente", texto: resposta, em: new Date().toISOString(), ...(citadas.length > 0 ? { refs: citadas.slice(0, 15).map((c) => `ref ${c.ref}: ${c.rotulo}`) } : {}) },
-    ];
-    await gravarMemoria(autor.usuarioId, autor.empresaId, acrescentarNaMemoria(memoria, novas), agora);
+    await lembrar(resposta, citadas);
     return "respondida";
   } catch (erro) {
     console.error("[whatsapp/assistente] falha:", erro instanceof Error ? erro.name : "erro");
@@ -161,14 +211,21 @@ async function rodarConversa(
   texto: string,
   agoraExtenso: string,
   auditoria: Auditoria,
+  propostaDescartada: string | null,
 ): Promise<{ resposta: string; citadas: ContaCitada[] }> {
   const tools = ferramentas.map(definicaoParaIA);
   const messages: Anthropic.Beta.BetaMessageParam[] = paraMensagensDaIA(memoria);
   // A data de agora e as contas citadas antes vão na mensagem da pessoa: não nas instruções (quebraria o cache das
   // instruções e ferramentas) nem nas respostas antigas (a IA passava a imitar a anotação ao responder).
   const refs = refsRecentes(memoria);
-  const contexto = `[Agora: ${agoraExtenso}. Hoje = ${ctx.hoje}]${refs.length > 0 ? `\n[Contas citadas antes nesta conversa: ${refs.join("; ")}]` : ""}`;
-  messages.push({ role: "user", content: `${contexto}\n${texto}` });
+  const anotacoes = [
+    `[Agora: ${agoraExtenso}. Hoje = ${ctx.hoje}]`,
+    ...(refs.length > 0 ? [`[Contas citadas antes nesta conversa: ${refs.join("; ")}]`] : []),
+    ...(propostaDescartada
+      ? [`[Operação descartada porque o usuário respondeu outra coisa em vez de SIM/NÃO; nada foi gravado. Se ele estiver corrigindo algum dado, proponha de novo com a correção. Era: ${propostaDescartada.replace(/\s*Responda \*SIM\*[\s\S]*$/, "").replace(/\n+/g, " ")}]`]
+      : []),
+  ];
+  messages.push({ role: "user", content: `${anotacoes.join("\n")}\n${texto}` });
   const citadas = new Map<string, ContaCitada>();
 
   for (let rodada = 0; rodada < MAX_RODADAS; rodada++) {
@@ -186,8 +243,13 @@ async function rodarConversa(
       );
       return { resposta: resposta || TEXTOS_ASSISTENTE.falha, citadas: [...citadas.values()] };
     }
-    const resultados = await Promise.all(pedidos.map((p) => executarFerramenta(ferramentas, ctx, p, auditoria)));
+    // Uma de cada vez: no máximo UMA operação de escrita é proposta por mensagem.
+    const estado = { proposta: null as Proposta | null };
+    const resultados = [];
+    for (const p of pedidos) resultados.push(await executarFerramenta(ferramentas, ctx, p, auditoria, estado));
     for (const r2 of resultados) for (const c of r2.citadas) citadas.set(c.ref, c);
+    // Operação proposta: a resposta é o resumo montado pelo SISTEMA (não o texto da IA), pedindo SIM ou NÃO.
+    if (estado.proposta) return { resposta: estado.proposta.resumo, citadas: [...citadas.values()] };
     // Todos os resultados numa mensagem só (assim a IA continua pedindo ferramentas em paralelo).
     messages.push({ role: "user", content: resultados.map((x) => x.bloco) });
   }
@@ -199,6 +261,7 @@ async function executarFerramenta(
   ctx: ContextoFerramenta,
   pedido: Anthropic.Beta.BetaToolUseBlock,
   auditoria: Auditoria,
+  estado: { proposta: Proposta | null },
 ): Promise<{ bloco: Anthropic.Beta.BetaToolResultBlockParam; citadas: ContaCitada[] }> {
   const erro = (mensagem: string) => ({ bloco: { type: "tool_result" as const, tool_use_id: pedido.id, is_error: true, content: mensagem }, citadas: [] });
   const ferramenta = ferramentas.find((f) => f.nome === pedido.name);
@@ -212,14 +275,67 @@ async function executarFerramenta(
     await auditar(auditoria, ferramenta.nome, argumentos, "invalida", lidos.error.issues[0]?.message ?? "argumentos inválidos");
     return erro(`Argumentos inválidos: ${lidos.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`);
   }
+  if (ferramenta.efetivar && estado.proposta) {
+    await auditar(auditoria, ferramenta.nome, argumentos, "negada", "segunda operação na mesma mensagem");
+    return erro("Uma operação por vez: espere o usuário confirmar a primeira.");
+  }
   try {
     const r = await ferramenta.executar(ctx, lidos.data);
+    if (r.proposta) {
+      // Uma proposta por pessoa: a nova substitui qualquer outra que ainda esperava o SIM.
+      await prisma.acaoAssistente.updateMany({ where: { usuarioId: auditoria.usuarioId, status: "aguardando_confirmacao" }, data: { status: "cancelada" } });
+      await auditar(auditoria, ferramenta.nome, { pedido: argumentos, dados: r.proposta.dados as Prisma.InputJsonValue }, "aguardando_confirmacao", r.proposta.resumo);
+      estado.proposta = r.proposta;
+      return { bloco: { type: "tool_result", tool_use_id: pedido.id, content: "Proposta enviada ao usuário; aguardando SIM." }, citadas: r.citadas ?? [] };
+    }
     await auditar(auditoria, ferramenta.nome, argumentos, "executada");
     return { bloco: { type: "tool_result", tool_use_id: pedido.id, content: JSON.stringify(r.dados) }, citadas: r.citadas ?? [] };
   } catch (e) {
+    if (e instanceof PedidoIncompleto) {
+      await auditar(auditoria, ferramenta.nome, argumentos, "incompleta", e.message.slice(0, 300));
+      return erro(e.message);
+    }
     const semAcesso = e instanceof Error && e.message === "SEM_ACESSO_MODULO";
     await auditar(auditoria, ferramenta.nome, argumentos, semAcesso ? "negada" : "erro", e instanceof Error ? e.message.slice(0, 200) : "erro");
     return erro(semAcesso ? "Esta pessoa não tem acesso a esse tipo de conta." : "O sistema não conseguiu consultar agora.");
+  }
+}
+
+/**
+ * A pessoa disse SIM: confere de novo QUEM é e se pode ESCREVER agora (a permissão ou o plano podem ter mudado desde a
+ * proposta), grava pelo núcleo da aplicação e devolve o texto do resultado. A proposta já foi marcada "confirmada".
+ */
+async function confirmarProposta(proposta: { id: string; ferramenta: string; argumentos: Prisma.JsonValue }, chatId: string, ctxDaConversa: ContextoFerramenta): Promise<string> {
+  const fim = (status: string, detalhe?: string, registroId?: string) =>
+    prisma.acaoAssistente.update({ where: { id: proposta.id }, data: { status, ...(detalhe ? { detalhe } : {}), ...(registroId ? { registroId } : {}) } });
+  const autor = await autorizarChat(chatId, { modulos: MODULOS_DE_GESTAO });
+  if (typeof autor === "string") {
+    await fim("negada", `autorização na confirmação: ${autor}`);
+    return autor === "somente_leitura" ? TEXTOS_ASSISTENTE.somenteLeituraEscrita : autor === "suspensa" ? TEXTOS_ASSISTENTE.suspensa : TEXTOS_ASSISTENTE.semAcesso;
+  }
+  const ctx: ContextoFerramenta = {
+    contas: { empresaId: autor.empresaId, nome: autor.nome, papel: autor.pessoa.papel, modulos: autor.pessoa.modulos },
+    hoje: ctxDaConversa.hoje,
+    somenteLeitura: false,
+  };
+  const ferramenta = ferramentasDaPessoa(ctx.contas).find((f) => f.nome === proposta.ferramenta && f.efetivar);
+  if (!ferramenta?.efetivar) {
+    await fim("negada", "ferramenta indisponível na confirmação");
+    return TEXTOS_ASSISTENTE.semAcesso;
+  }
+  const dados = proposta.argumentos && typeof proposta.argumentos === "object" && !Array.isArray(proposta.argumentos) ? (proposta.argumentos as Record<string, unknown>).dados : undefined;
+  try {
+    const r = await ferramenta.efetivar(ctx, dados);
+    await fim("executada", undefined, r.registroId);
+    return r.texto;
+  } catch (e) {
+    const mensagem = e instanceof Error ? e.message : "erro";
+    await fim("erro", mensagem.slice(0, 300));
+    if (mensagem === "SEM_ACESSO_MODULO") return TEXTOS_ASSISTENTE.semAcesso;
+    // Erros de regra do núcleo já vêm em português para a pessoa ("Só é possível editar lançamentos em aberto.").
+    if (/\s/.test(mensagem) && !/prisma|invalid|unique|constraint|zod/i.test(mensagem)) return TEXTOS_ASSISTENTE.naoConcluiu(mensagem);
+    console.error("[whatsapp/assistente] falha ao efetivar:", e instanceof Error ? e.name : "erro");
+    return TEXTOS_ASSISTENTE.falha;
   }
 }
 

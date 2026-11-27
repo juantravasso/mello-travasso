@@ -81,7 +81,9 @@ async function identificarItens(autor: AutorWhatsapp, entrada: EntradaCompra): P
 export async function processarFotoRecebida(mensagem: MensagemRecebida, deps: DependenciasFoto): Promise<DesfechoFoto> {
   const responder = (texto: string) => deps.responder(mensagem.chatId, texto).catch(() => console.error("[whatsapp/foto] resposta não enviada"));
 
-  const autor = await autorizarChat(mensagem.chatId);
+  const autorizado = await autorizarChat(mensagem.chatId);
+  // Sem permitirSomenteLeitura, empresa suspensa já chega como "somente_leitura".
+  const autor = autorizado === "suspensa" ? "somente_leitura" : autorizado;
   if (typeof autor === "string") {
     const texto = RESPOSTA_DO_DESFECHO[autor];
     if (texto) await responder(texto);

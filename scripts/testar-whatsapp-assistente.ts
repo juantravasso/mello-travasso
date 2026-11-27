@@ -227,7 +227,7 @@ async function main(): Promise<void> {
     assert.equal(r2.is_error, true);
     const a = await acoes(c.usuarioId);
     assert.deepEqual(a.map((x) => [x.ferramenta, x.status]).sort(), [["apagar_tudo", "negada"], ["listar_contas", "invalida"]]);
-    assert.ok(f.pedidos[0].tools.every((t) => ["listar_contas", "resumo_financeiro", "detalhar_conta"].includes(t.name)), "só ferramentas de leitura nesta etapa");
+    assert.deepEqual(f.pedidos[0].tools.map((t) => t.name), ["listar_contas", "resumo_financeiro", "detalhar_conta", "lancar_conta", "dar_baixa", "alterar_conta", "cancelar_conta"]);
   });
 
   await teste("7. falar com atendente: robô fica quieto; ASSISTENTE devolve; resposta do atendente no aparelho renova", async () => {
@@ -272,7 +272,7 @@ async function main(): Promise<void> {
     assert.equal(f3.pedidos.length, 5);
   });
 
-  await teste("10. somente leitura (teste vencido, suspensa) ainda consulta, como no site; sem módulo de gestão não", async () => {
+  await teste("10. teste vencido ainda consulta; assinatura suspensa e quem não tem módulo de gestão não", async () => {
     const vencida = await criarConta({ vencido: true });
     const f = falsos([{ texto: "ok" }]);
     assert.equal(await conversarComAssistente(msg(vencida.chatId, "resumo"), f), "respondida");
@@ -281,10 +281,12 @@ async function main(): Promise<void> {
     assert.equal(await conversarComAssistente(msg(soRede.chatId, "resumo"), f2), "negado");
     assert.equal(f2.pedidos.length, 0);
     assert.match(f2.enviadas[0], /não tem acesso/);
-    // Igual ao site: assinatura suspensa fica em somente leitura e continua consultando os próprios dados.
+    // Assinatura suspensa: o assistente (IA paga) fica pausado até regularizar; os dados seguem no app.
     const suspensa = await criarConta({ plano: "suspenso" });
     const f3 = falsos([{ texto: "ok" }]);
-    assert.equal(await conversarComAssistente(msg(suspensa.chatId, "resumo"), f3), "respondida");
+    assert.equal(await conversarComAssistente(msg(suspensa.chatId, "resumo"), f3), "negado");
+    assert.equal(f3.pedidos.length, 0);
+    assert.match(f3.enviadas[0], /suspensa/);
   });
 
   await teste("11. sem chave da IA o assistente avisa; mensagem longa demais pede resumo", async () => {
@@ -306,6 +308,191 @@ async function main(): Promise<void> {
     await limparMemoriasVencidas(amanha);
     assert.equal(await prisma.conversaWhatsapp.count({ where: { usuarioId: parada.usuarioId } }), 0);
     assert.equal(await prisma.conversaWhatsapp.count({ where: { usuarioId: humano.usuarioId } }), 1);
+  });
+  // ---------------- Etapa 3: escrita com confirmação ----------------
+  const LANCAR = (extra: Record<string, unknown> = {}) => ({ nome: "lancar_conta", args: { tipo: "pagar", valor: 150, favorecido: "Vivo Fibra", descricao: "Internet do escritório", vencimento: "2026-12-10", ...extra } });
+  const contasDe = (empresaId: string) => prisma.contaFinanceira.findMany({ where: { empresaId } });
+
+  await teste("13. lançar: a IA só propõe; o resumo é do sistema; nada grava até o SIM; o SIM grava sem chamar a IA", async () => {
+    const c = await criarConta();
+    const f = falsos([{ ferramentas: [LANCAR()] }, { texto: "Lancei!" }]);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "Adiciona a internet de 150 para dia 10"), f), "respondida");
+    const proposta = f.enviadas[0];
+    assert.match(proposta, /Vou lançar uma conta a pagar/);
+    assert.match(proposta, /R\$\s?150,00/);
+    assert.match(proposta, /10\/12\/2026/);
+    assert.match(proposta, /Projeto: Casa Barra/);
+    assert.match(proposta, /Responda \*SIM\*/);
+    assert.ok(!f.enviadas.includes("Lancei!"), "o texto da IA não substitui o resumo do sistema");
+    assert.equal(f.pedidos.length, 1, "a IA não é chamada de novo depois da proposta");
+    assert.equal((await contasDe(c.empresaId)).length, 0, "nada gravado antes do SIM");
+    assert.equal((await acoes(c.usuarioId)).at(-1)?.status, "aguardando_confirmacao");
+
+    assert.equal(await conversarComAssistente(msg(c.chatId, "Sim!"), f), "executada");
+    assert.equal(f.pedidos.length, 1, "o SIM não passa pela IA");
+    const [conta] = await contasDe(c.empresaId);
+    assert.equal(conta.valor, 150);
+    assert.equal(conta.dataVencimento, "2026-12-10");
+    assert.equal(conta.status, "em_aberto");
+    assert.equal((conta.historico as { usuario: string }[])[0].usuario, "Maria Obras", "histórico com quem pediu, igual ao site");
+    assert.match(f.enviadas.at(-1)!, /Pronto! Conta a pagar lançada/);
+    assert.ok(f.enviadas.at(-1)!.includes(`/contas-a-pagar/${conta.id}`));
+    const ultima = (await acoes(c.usuarioId)).at(-1)!;
+    assert.equal(ultima.status, "executada");
+    assert.equal(ultima.registroId, conta.id);
+    // Um segundo SIM não lança de novo.
+    const f2 = falsos([{ texto: "De nada!" }]);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "sim"), f2), "respondida");
+    assert.equal((await contasDe(c.empresaId)).length, 1);
+  });
+
+  await teste("14. NÃO cancela; resposta diferente descarta e a IA fica sabendo para refazer", async () => {
+    const c = await criarConta();
+    const f = falsos([{ ferramentas: [LANCAR()] }]);
+    await conversarComAssistente(msg(c.chatId, "lança a internet"), f);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "não"), f), "cancelada");
+    assert.equal(f.enviadas.at(-1), "Ok, não fiz nada.");
+    assert.equal((await contasDe(c.empresaId)).length, 0);
+
+    const f2 = falsos([{ ferramentas: [LANCAR()] }, { ferramentas: [LANCAR({ valor: 160 })] }]);
+    await conversarComAssistente(msg(c.chatId, "lança a internet"), f2);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "na verdade é 160"), f2), "respondida");
+    assert.match(JSON.stringify(f2.pedidos[1].messages.at(-1)), /Operação descartada/);
+    assert.match(f2.enviadas.at(-1)!, /R\$\s?160,00/);
+    const status = (await acoes(c.usuarioId)).filter((a) => a.ferramenta === "lancar_conta").map((a) => a.status);
+    assert.deepEqual(status, ["cancelada", "cancelada", "aguardando_confirmacao"]);
+    await conversarComAssistente(msg(c.chatId, "pode"), f2);
+    const contas = await contasDe(c.empresaId);
+    assert.deepEqual(contas.map((x) => x.valor), [160]);
+  });
+
+  await teste("15. dois SIM ao mesmo tempo lançam uma conta só; SIM depois de 15 min não lança", async () => {
+    const c = await criarConta();
+    const f = falsos(() => ({ ferramentas: [LANCAR()] }));
+    await conversarComAssistente(msg(c.chatId, "lança"), f);
+    await Promise.all([conversarComAssistente(msg(c.chatId, "sim"), f), conversarComAssistente(msg(c.chatId, "sim"), f)]);
+    assert.equal((await contasDe(c.empresaId)).length, 1);
+
+    const d = await criarConta();
+    await conversarComAssistente(msg(d.chatId, "lança"), f);
+    await prisma.acaoAssistente.updateMany({ where: { usuarioId: d.usuarioId, status: "aguardando_confirmacao" }, data: { criadoEm: new Date(Date.now() - 16 * 60_000).toISOString() } });
+    assert.equal(await conversarComAssistente(msg(d.chatId, "sim"), f), "expirada");
+    assert.match(f.enviadas.at(-1)!, /expirou/);
+    assert.equal((await contasDe(d.empresaId)).length, 0);
+  });
+
+  await teste("16. dar baixa pela ref; conta de outra empresa ou já paga não vira proposta", async () => {
+    const c = await criarConta();
+    const conta = await lancar(c, { valor: 230, favorecido: "Light" });
+    const f = falsos([{ ferramentas: [{ nome: "dar_baixa", args: { ref: conta.id.slice(0, 8) } }] }]);
+    await conversarComAssistente(msg(c.chatId, "paguei a luz"), f);
+    assert.match(f.enviadas[0], /Vou marcar como paga em/);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "sim"), f), "executada");
+    const paga = await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: conta.id } });
+    assert.equal(paga.status, "baixada");
+    assert.equal(paga.dataBaixa, hoje());
+
+    const f2 = falsos([{ ferramentas: [{ nome: "dar_baixa", args: { ref: conta.id.slice(0, 8) } }] }, { texto: "Essa já está paga." }]);
+    await conversarComAssistente(msg(c.chatId, "paguei a luz de novo"), f2);
+    assert.match(conteudo(f2.resultados()[0]), /já está paga/);
+    assert.deepEqual(f2.enviadas, ["Essa já está paga."]);
+
+    const outra = await criarConta();
+    const alheia = await lancar(outra, { valor: 50, favorecido: "Segredo" });
+    const f3 = falsos([{ ferramentas: [{ nome: "dar_baixa", args: { ref: alheia.id.slice(0, 8) } }] }, { texto: "não achei" }]);
+    await conversarComAssistente(msg(c.chatId, "paguei"), f3);
+    assert.match(conteudo(f3.resultados()[0]), /não encontrada/);
+    assert.equal((await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: alheia.id } })).status, "em_aberto");
+    assert.equal(await prisma.acaoAssistente.count({ where: { usuarioId: c.usuarioId, status: "aguardando_confirmacao" } }), 0);
+  });
+
+  await teste("17. sem permissão de escrita no tipo, ou com o teste vencido: a IA recebe o motivo e nada é proposto", async () => {
+    const membro = await criarConta({ papel: "membro", modulos: ["contas_pagar"] });
+    const f = falsos([{ ferramentas: [LANCAR({ tipo: "receber" })] }, { texto: "sem permissão" }]);
+    await conversarComAssistente(msg(membro.chatId, "lança uma entrada"), f);
+    assert.match(conteudo(f.resultados()[0]), /não tem permissão/);
+    const vencida = await criarConta({ vencido: true });
+    const f2 = falsos([{ ferramentas: [LANCAR()] }, { texto: "somente leitura" }]);
+    await conversarComAssistente(msg(vencida.chatId, "lança"), f2);
+    assert.match(conteudo(f2.resultados()[0]), /somente leitura/);
+    for (const x of [membro, vencida]) assert.equal(await prisma.acaoAssistente.count({ where: { usuarioId: x.usuarioId, status: "aguardando_confirmacao" } }), 0);
+  });
+
+  await teste("18. acesso perdido entre a proposta e o SIM: nada é gravado", async () => {
+    const c = await criarConta({ papel: "membro", modulos: ["contas_pagar"] });
+    const f = falsos(() => ({ ferramentas: [LANCAR()] }));
+    await conversarComAssistente(msg(c.chatId, "lança"), f);
+    await prisma.usuario.update({ where: { id: c.usuarioId }, data: { modulos: ["calendario"] } });
+    // Sem nenhum módulo de contas, a pessoa é barrada antes mesmo de a proposta ser lida.
+    assert.equal(await conversarComAssistente(msg(c.chatId, "sim"), f), "negado");
+    assert.match(f.enviadas.at(-1)!, /não tem acesso/);
+    assert.equal((await contasDe(c.empresaId)).length, 0);
+
+    const d = await criarConta();
+    await conversarComAssistente(msg(d.chatId, "lança"), f);
+    await prisma.empresa.update({ where: { id: d.empresaId }, data: { plano: "suspenso" } });
+    await conversarComAssistente(msg(d.chatId, "sim"), f);
+    assert.equal((await contasDe(d.empresaId)).length, 0, "empresa suspensa no meio do caminho");
+  });
+
+  await teste("19. projeto: com vários pergunta as opções; pelo nome acha; falta vencimento ou data inexistente vira pergunta", async () => {
+    const c = await criarConta();
+    const tijuca = await prisma.obra.create({ data: { empresaId: c.empresaId, nome: "Reforma Tijuca", cliente: "X", status: "em_andamento", dataInicio: "2026-11-01", criadoEm: iso(), atualizadoEm: iso() } });
+    const f = falsos([{ ferramentas: [LANCAR()] }, { texto: "Em qual projeto?" }]);
+    await conversarComAssistente(msg(c.chatId, "lança a internet"), f);
+    const r = conteudo(f.resultados()[0]);
+    assert.match(r, /em qual projeto/i);
+    assert.match(r, /Reforma Tijuca/);
+    assert.match(r, /Casa Barra/);
+    const f2 = falsos([{ ferramentas: [LANCAR({ projeto: "tijuca" })] }]);
+    await conversarComAssistente(msg(c.chatId, "na tijuca"), f2);
+    assert.match(f2.enviadas[0], /Projeto: Reforma Tijuca/);
+    await conversarComAssistente(msg(c.chatId, "sim"), f2);
+    assert.equal((await contasDe(c.empresaId))[0].obraId, tijuca.id);
+
+    const f3 = falsos([{ ferramentas: [LANCAR({ vencimento: undefined })] }, { texto: "Qual o vencimento?" }]);
+    await conversarComAssistente(msg(c.chatId, "lança a internet de 150"), f3);
+    assert.match(conteudo(f3.resultados()[0]), /vencimento/);
+    const f4 = falsos([{ ferramentas: [LANCAR({ vencimento: "2026-02-31" })] }, { texto: "data?" }]);
+    await conversarComAssistente(msg(c.chatId, "dia 31/02"), f4);
+    assert.equal(f4.resultados()[0].is_error, true, "data que não existe é recusada");
+  });
+
+  await teste("20. alterar vencimento e cancelar, sempre com SIM; duas operações na mesma mensagem: só a primeira", async () => {
+    const c = await criarConta();
+    const conta = await lancar(c, { valor: 300, favorecido: "Imobiliária", vencimento: "2026-12-05" });
+    const ref = conta.id.slice(0, 8);
+    const f = falsos([{ ferramentas: [{ nome: "alterar_conta", args: { ref, vencimento: "2026-12-12" } }, { nome: "cancelar_conta", args: { ref } }] }]);
+    await conversarComAssistente(msg(c.chatId, "muda o vencimento para sexta e cancela"), f);
+    assert.match(f.enviadas[0], /Vencimento: 05\/12\/2026 → 12\/12\/2026/);
+    assert.ok((await acoes(c.usuarioId)).some((a) => a.ferramenta === "cancelar_conta" && a.status === "negada"));
+    await conversarComAssistente(msg(c.chatId, "ok"), f);
+    assert.equal((await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: conta.id } })).dataVencimento, "2026-12-12");
+
+    const f2 = falsos([{ ferramentas: [{ nome: "cancelar_conta", args: { ref, motivo: "lançada em dobro" } }] }]);
+    await conversarComAssistente(msg(c.chatId, "cancela essa"), f2);
+    assert.match(f2.enviadas[0], /Vou cancelar esta conta/);
+    await conversarComAssistente(msg(c.chatId, "sim"), f2);
+    const cancelada = await prisma.contaFinanceira.findUniqueOrThrow({ where: { id: conta.id } });
+    assert.equal(cancelada.status, "cancelada");
+    assert.equal(cancelada.motivoCancelamento, "lançada em dobro");
+  });
+
+  await teste("21. lançar já pago e aviso de duplicidade no resumo", async () => {
+    const c = await criarConta();
+    await lancar(c, { valor: 80, favorecido: "Oficina", vencimento: hoje() });
+    const f = falsos([{ ferramentas: [{ nome: "lancar_conta", args: { tipo: "pagar", valor: 80, favorecido: "Oficina Zé", descricao: "Manutenção", ja_pago: true } }] }]);
+    await conversarComAssistente(msg(c.chatId, "paguei 80 de manutenção"), f);
+    assert.match(f.enviadas[0], /já paga em/);
+    assert.match(f.enviadas[0], /Atenção: já existe uma conta com o mesmo valor/);
+    await conversarComAssistente(msg(c.chatId, "sim"), f);
+    const nova = (await contasDe(c.empresaId)).find((x) => x.favorecidoOuCliente === "Oficina Zé")!;
+    assert.equal(nova.status, "baixada");
+    assert.equal(nova.dataBaixa, hoje());
+    // Mesmo valor e data, mas outro favorecido: sem aviso (não é a mesma conta).
+    const f2 = falsos([{ ferramentas: [{ nome: "lancar_conta", args: { tipo: "pagar", valor: 80, favorecido: "Padaria", descricao: "Café", ja_pago: true } }] }]);
+    await conversarComAssistente(msg(c.chatId, "paguei 80 de café"), f2);
+    assert.ok(!/Atenção/.test(f2.enviadas[0]), f2.enviadas[0]);
   });
 }
 

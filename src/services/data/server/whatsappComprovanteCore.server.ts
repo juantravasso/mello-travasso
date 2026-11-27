@@ -17,6 +17,7 @@ import {
   VALIDADE_PENDENCIA_HORAS,
   type DadosComprovante,
 } from "@/lib/whatsapp/comprovante";
+import { ehNao, ehSim } from "@/lib/whatsapp/assistente";
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
 import { registrarCaptura } from "./capturaCore.server";
 import { registrarEvento } from "./eventosCore.server";
@@ -114,8 +115,9 @@ export async function responderPendencia(mensagem: MensagemRecebida, enviar: (ch
   }
   if (escolha === null) {
     // Texto livre no meio da pergunta: pode ser conversa com o suporte. Só avisa quando parece uma tentativa de resposta.
-    // Conversa livre (não parece resposta): fica para o assistente, e a pergunta segue em aberto.
-    if (!pareceResposta && mensagem.texto.trim().length > 3) return "ignorada";
+    // Conversa livre (não parece resposta), ou SIM/NÃO de uma operação do assistente: fica para o assistente, e a
+    // pergunta do comprovante segue em aberto.
+    if ((!pareceResposta && mensagem.texto.trim().length > 3) || ehSim(mensagem.texto) || ehNao(mensagem.texto)) return "ignorada";
     await responder(textoEscolhaInvalida(max));
     return "invalida";
   }

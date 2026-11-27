@@ -7,8 +7,8 @@ import { criarConta } from "../src/services/data/server/contasCore.server";
 import { gerarCodigoDeVinculo, tratarMensagemRecebida } from "../src/services/data/server/whatsappCore.server";
 
 // Avaliação manual do assistente com a IA REAL (custa alguns centavos por rodada): banco DEMO, WhatsApp falso. Cria uma
-// empresa descartável com contas de exemplo (inclusive uma descrição com instrução maliciosa), faz 5 perguntas em
-// sequência, imprime as respostas, a auditoria e os tokens, e apaga o que criou. Use ao mudar instruções, ferramentas
+// empresa descartável com contas de exemplo (inclusive uma descrição com instrução maliciosa), faz uma conversa em
+// sequência (consultas e operações com SIM/NÃO), imprime as respostas, a auditoria e os tokens, e apaga o que criou. Use ao mudar instruções, ferramentas
 // ou o modelo (ASSISTENTE_MODELO). Rodar com DATABASE_URL do demo e ANTHROPIC_API_KEY no ambiente.
 const prisma = new PrismaClient();
 const marca = `smoke-${randomBytes(3).toString("hex")}`;
@@ -35,12 +35,29 @@ async function main() {
   const real = obterModeloAssistente()!;
   let chamadas = 0; let entrada = 0; let saida = 0; let cache = 0;
   const modelo: ModeloAssistente = { async responder(p) { const r = await real.responder(p); chamadas++; entrada += r.usage.input_tokens; saida += r.usage.output_tokens; cache += r.usage.cache_read_input_tokens ?? 0; return r; } };
-  const perguntas = ["Quanto tenho de contas para pagar hoje?", "E qual é a maior?", "Tem alguma atrasada?", "Quanto tenho em caixa este mês?", "Já paguei a internet"];
+  const perguntas = [
+    "Quanto tenho de contas para pagar hoje?",
+    "E qual é a maior?",
+    "Tem alguma atrasada?",
+    "Quanto tenho em caixa este mês?",
+    "Já paguei a internet",
+    "sim",
+    "Adiciona uma conta de energia nova",
+    "230 reais, dia 10",
+    "sim",
+    "Altera o vencimento daquela conta de energia para sexta-feira",
+    "não",
+    "Registra uma entrada de 500 reais referente a um serviço do cliente Souza, já recebi",
+    "sim",
+  ];
   for (const t of perguntas) {
     const enviadas: string[] = [];
     const d = await conversarComAssistente({ chatId, texto: t, numero: null, mensagemId: `${marca}-${randomBytes(4).toString("hex")}`, midia: null }, { modelo, enviar: async (_c, x) => void enviadas.push(x) });
     console.log(`\n>>> ${t}\n[${d}] ${enviadas.join("\n---\n")}`);
   }
+  const finais = await prisma.contaFinanceira.findMany({ where: { empresaId: e.id }, orderBy: { criadoEm: "asc" } });
+  console.log(`
+Contas no fim: ${finais.map((c) => `${c.tipo}:${c.favorecidoOuCliente}:${c.valor}:${c.dataVencimento}:${c.status}`).join(" | ")}`);
   const acoes = await prisma.acaoAssistente.findMany({ where: { empresaId: e.id }, orderBy: { criadoEm: "asc" } });
   console.log(`\nAuditoria: ${acoes.map((a) => `${a.ferramenta}:${a.status}`).join(", ")}`);
   console.log(`Chamadas: ${chamadas} · tokens entrada ${entrada} (cache lido ${cache}) · saída ${saida}`);

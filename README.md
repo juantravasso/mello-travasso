@@ -562,7 +562,7 @@ Quem tem o WhatsApp vinculado manda a foto da nota para o número do Elo e receb
 
 Pendente de confirmar no primeiro teste real com a uazapi: o valor exato de `messageType` para foto (a documentação só mostra o de texto) e o campo de `mimetype`.
 
-## WhatsApp: assistente (consultas)
+## WhatsApp: assistente (consultas e lançamentos com SIM)
 
 Texto livre de um número vinculado vai para o assistente: a pessoa pergunta em linguagem natural ("quanto tenho para
 pagar hoje?", "e a maior?", "tem atrasada?", "quanto faturei este mês?") e recebe a resposta com os dados reais.
@@ -570,8 +570,16 @@ pagar hoje?", "e a maior?", "tem atrasada?", "quanto faturei este mês?") e rece
 **Como funciona.** `services/data/server/assistente/`: a IA (`services/ai/assistente.server.ts`, API de Mensagens da
 Anthropic) só escolhe ferramentas; cada ferramenta (`ferramentas.server.ts`) valida os argumentos com zod, confere o
 módulo da pessoa e chama o núcleo da aplicação (`contasCore.server.ts`). A empresa sai sempre do número vinculado, nunca
-da IA. Ferramentas desta etapa, todas de leitura: `listar_contas`, `resumo_financeiro`, `detalhar_conta`. Para levar
-um módulo novo ao assistente, acrescente uma ferramenta.
+da IA. Leitura: `listar_contas`, `resumo_financeiro`, `detalhar_conta`. Escrita (`escrita.server.ts`): `lancar_conta`,
+`dar_baixa`, `alterar_conta`, `cancelar_conta`. Para levar um módulo novo ao assistente, acrescente a ferramenta e
+registre em `registro.server.ts`.
+
+**Escrita só com SIM, conferido pelo sistema.** A ferramenta de escrita não grava: valida (acesso por tipo, projeto,
+conta em aberto, data real, aviso de duplicidade) e devolve um resumo montado pela aplicação, que é o que a pessoa
+recebe (o texto da IA é descartado). A proposta fica em `AcaoAssistente` como `aguardando_confirmacao` por 15 min.
+SIM (sim, pode, ok, 👍…) grava sem passar pela IA, depois de conferir de novo o acesso de escrita; NÃO descarta;
+qualquer outra resposta descarta e a IA é avisada para refazer com a correção. Dois SIM ao mesmo tempo gravam uma vez.
+Uma operação por mensagem. Teste vencido consulta mas não lança; assinatura suspensa deixa o assistente pausado.
 
 **Barreiras, nesta ordem:** número sem vínculo não recebe nada (é suporte) → atendimento humano em curso → mensagem
 repetida → limite (40 por hora por pessoa; `WHATSAPP_ASSISTENTE_DIA` por empresa em 24 h, padrão 300) → acesso igual ao
@@ -586,11 +594,12 @@ pedido, argumentos, status, detalhe). A memória da conversa (`ConversaWhatsapp`
 referências das contas citadas, e é apagada pelo cron depois de 24 h sem conversa.
 
 **Configuração.** Usa a mesma `ANTHROPIC_API_KEY` da leitura de notas. Opcionais: `ASSISTENTE_MODELO` (padrão
-`claude-opus-5-5`), `ASSISTENTE_ESFORCO` (`low` padrão, `medium`, `high`), `WHATSAPP_ASSISTENTE_DIA`.
+`claude-haiku-5-5`; avaliado com o script abaixo), `ASSISTENTE_ESFORCO` (`low` padrão, `medium`, `high`), `WHATSAPP_ASSISTENTE_DIA`.
 
-**Testes.** `yarn testar:whatsapp-assistente` (integração, banco demo, IA e WhatsApp falsos, 12 cenários: vínculo,
+**Testes.** `yarn testar:whatsapp-assistente` (integração, banco demo, IA e WhatsApp falsos, 21 cenários: vínculo,
 isolamento, permissão por tipo, argumentos inválidos, ferramenta inventada, atendente, repetição, falha da IA, laço
-sem fim, somente leitura, retenção). Com a IA real (custa centavos): `node --conditions=react-server --import tsx
+sem fim, somente leitura, suspensa, retenção, proposta e SIM/NÃO, SIM duplo, expiração, acesso perdido antes do SIM,
+projeto ambíguo, data inexistente, duplicidade). Com a IA real (custa centavos): `node --conditions=react-server --import tsx
 scripts/avaliar-assistente-ia.ts` com o banco demo no ambiente.
 
 ## Rodando localmente

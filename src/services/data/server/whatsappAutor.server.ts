@@ -21,11 +21,14 @@ export interface AutorWhatsapp {
 export interface OpcoesAutorizacao {
   /** Módulos que liberam (basta um). Padrão: os de lançar comprovante. */
   modulos?: readonly ModuloChave[];
-  /** Consultas valem mesmo com a conta em somente leitura (teste vencido): devolve o autor com `somenteLeitura`. */
+  /**
+   * Consultas valem mesmo com o teste vencido (somente leitura): devolve o autor com `somenteLeitura`. Assinatura
+   * SUSPENSA não: o assistente usa IA paga e fica fora até regularizar ("suspensa").
+   */
   permitirSomenteLeitura?: boolean;
 }
 
-export type NegadoWhatsapp = "nao_vinculado" | "sem_acesso" | "somente_leitura";
+export type NegadoWhatsapp = "nao_vinculado" | "sem_acesso" | "somente_leitura" | "suspensa";
 
 export async function autorizarChat(chatId: string, opcoes: OpcoesAutorizacao = {}): Promise<AutorWhatsapp | NegadoWhatsapp> {
   const vinculo = await prisma.vinculoWhatsapp.findUnique({
@@ -40,7 +43,9 @@ export async function autorizarChat(chatId: string, opcoes: OpcoesAutorizacao = 
   const recursos = await obterRecursosDaEmpresa(u.empresaId);
   if (!recursos.has("gestao") || !temAlgumModulo(pessoa, opcoes.modulos ?? ACESSO.leituraDeComprovante)) return "sem_acesso";
   if (await perfilObrigatorioPendente(u.empresaId, u.papel, u.papelPlataforma === "admin")) return "sem_acesso";
-  const somenteLeitura = (await obterStatusPlano(u.empresaId)).somenteLeitura;
+  const status = await obterStatusPlano(u.empresaId);
+  const somenteLeitura = status.somenteLeitura;
   if (somenteLeitura && !opcoes.permitirSomenteLeitura) return "somente_leitura";
+  if (opcoes.permitirSomenteLeitura && status.plano === "suspenso") return "suspensa";
   return { usuarioId: u.id, nome: u.nome, empresaId: u.empresaId, fusoHorario: u.empresa.fusoHorario, pessoa, somenteLeitura };
 }

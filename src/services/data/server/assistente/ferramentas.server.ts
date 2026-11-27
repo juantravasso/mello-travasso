@@ -2,19 +2,21 @@ import "server-only";
 import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
-import { ACESSO, temAlgumModulo, type ModuloChave } from "@/lib/auth/modulos";
+import { ACESSO, type ModuloChave } from "@/lib/auth/modulos";
 import type { ContaFinanceira } from "@/types";
 import * as contas from "../contasCore.server";
 import type { ContextoContas } from "../contasCore.server";
 
 // Ferramentas que a IA do assistente pode pedir. Cada uma: argumentos validados (zod), módulo exigido (o mesmo do site)
 // e execução pelo núcleo da aplicação. A empresa NUNCA vem da IA: sai do número vinculado (ContextoFerramenta).
-// Para um módulo novo no assistente, basta acrescentar uma ferramenta aqui.
+// Para um módulo novo no assistente, acrescente a ferramenta e registre em registro.server.ts.
 
 export interface ContextoFerramenta {
   contas: ContextoContas;
   /** aaaa-mm-dd no fuso da empresa */
   hoje: string;
+  /** Teste vencido: consulta sim, lançamento não (a proposta já avisa; a confirmação confere de novo). */
+  somenteLeitura: boolean;
 }
 
 export interface Ferramenta<E extends z.ZodType = z.ZodType> {
@@ -23,13 +25,32 @@ export interface Ferramenta<E extends z.ZodType = z.ZodType> {
   entrada: E;
   /** Basta um destes módulos para usar. */
   modulos: readonly ModuloChave[];
-  /** Grava algo? (etapa 3: escrita sempre passa por confirmação do sistema, nunca direto). */
-  escrita: boolean;
+  /**
+   * Leitura: devolve os dados. Escrita: NÃO grava; valida tudo e devolve uma `proposta` (texto montado pelo sistema)
+   * que a pessoa confirma com SIM. Dado faltando ou ambíguo: lança PedidoIncompleto com a pergunta a fazer.
+   */
   executar(ctx: ContextoFerramenta, args: z.infer<E>): Promise<ResultadoFerramenta>;
+  /** Só nas de escrita: grava a proposta já confirmada (dados lidos de volta da auditoria e validados de novo). */
+  efetivar?(ctx: ContextoFerramenta, dados: unknown): Promise<ResultadoEfetivacao>;
 }
 
+export interface Proposta {
+  /** Texto exato que a pessoa confirma (gerado pelo sistema, nunca pela IA). */
+  resumo: string;
+  dados: Record<string, unknown>;
+}
+
+export interface ResultadoEfetivacao {
+  texto: string;
+  registroId?: string;
+}
+
+/** Falta algo ou há ambiguidade: a mensagem vai para a IA, que pergunta à pessoa. Nada é gravado. */
+export class PedidoIncompleto extends Error {}
+
 export interface ResultadoFerramenta {
-  dados: unknown;
+  dados?: unknown;
+  proposta?: Proposta;
   /** Contas citadas, para lembrar "aquela conta" na próxima mensagem (só a referência curta e um rótulo). */
   citadas?: ContaCitada[];
 }
@@ -40,16 +61,20 @@ export interface ContaCitada {
 }
 
 /** Só para inferir os tipos dos argumentos a partir do esquema zod. */
-const ferramenta = <E extends z.ZodType>(f: Ferramenta<E>): Ferramenta<E> => f;
+export const ferramenta = <E extends z.ZodType>(f: Ferramenta<E>): Ferramenta<E> => f;
 
-const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "use aaaa-mm-dd");
+/** aaaa-mm-dd que existe no calendário (31/02 não passa). */
+export const data = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "use aaaa-mm-dd")
+  .refine((d) => !Number.isNaN(Date.parse(`${d}T12:00:00Z`)) && new Date(`${d}T12:00:00Z`).toISOString().startsWith(d), "data inexistente");
 const LER_CONTAS = [...ACESSO.contasPagarLer, ...ACESSO.contasReceberLer] as const;
 const MAX_NA_RESPOSTA = 15;
 
 /** Referência curta da conta (8 primeiros caracteres do id): estável, sem expor nada além da própria empresa. */
 export const refDaConta = (id: string) => id.slice(0, 8);
 
-const real = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const real = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function resumoDaConta(c: ContaFinanceira, hoje: string) {
   return {
@@ -66,7 +91,7 @@ function resumoDaConta(c: ContaFinanceira, hoje: string) {
   };
 }
 
-const citar = (c: ContaFinanceira): ContaCitada => ({ ref: refDaConta(c.id), rotulo: `${c.favorecidoOuCliente} · ${real(c.valor)} · vence ${c.dataVencimento}` });
+export const citar = (c: ContaFinanceira): ContaCitada => ({ ref: refDaConta(c.id), rotulo: `${c.favorecidoOuCliente} · ${real(c.valor)} · vence ${c.dataVencimento}` });
 
 const listarContas = ferramenta({
   nome: "listar_contas",
@@ -84,7 +109,6 @@ const listarContas = ferramenta({
     })
     .strict(),
   modulos: LER_CONTAS,
-  escrita: false,
   async executar(ctx, a) {
     const status = a.situacao === "pagas" ? "baixada" : a.situacao === "canceladas" ? "cancelada" : a.situacao === "todas" ? undefined : "em_aberto";
     let ate = a.ate;
@@ -125,7 +149,6 @@ const resumoFinanceiro = ferramenta({
     "Use para: quanto gastei, quanto faturei, resumo do dia/semana/mês, comparar meses (chame uma vez por mês). O Elo não tem saldo bancário: 'caixa' aqui é recebido − pago no período.",
   entrada: z.object({ de: data, ate: data }).strict(),
   modulos: LER_CONTAS,
-  escrita: false,
   async executar(ctx, a) {
     const r = await contas.resumoFinanceiro(ctx.contas, a.de, a.ate, ctx.hoje);
     const resultado = r.pago && r.recebido ? Math.round((r.recebido.total - r.pago.total) * 100) / 100 : null;
@@ -138,7 +161,6 @@ const detalharConta = ferramenta({
   descricao: "Detalhes de uma conta já citada na conversa, pela referência curta (ref) devolvida por listar_contas.",
   entrada: z.object({ ref: z.string().trim().regex(/^[0-9a-f]{8}$/i, "ref de 8 caracteres") }).strict(),
   modulos: LER_CONTAS,
-  escrita: false,
   async executar(ctx, a) {
     const conta = await contaPelaRef(ctx.contas, a.ref);
     if (!conta) return { dados: { erro: "Conta não encontrada com essa referência." } };
@@ -156,12 +178,7 @@ export async function contaPelaRef(ctx: ContextoContas, ref: string): Promise<Co
   return contas.obterContaPorId(ctx, achadas[0].id);
 }
 
-export const FERRAMENTAS: readonly Ferramenta[] = [listarContas, resumoFinanceiro, detalharConta] as readonly Ferramenta[];
-
-/** Só as ferramentas que a pessoa pode usar vão para a IA (quem não vê contas nem fica sabendo que elas existem). */
-export function ferramentasDaPessoa(ctx: ContextoContas): Ferramenta[] {
-  return FERRAMENTAS.filter((f) => temAlgumModulo(ctx, f.modulos));
-}
+export const FERRAMENTAS_DE_LEITURA: readonly Ferramenta[] = [listarContas, resumoFinanceiro, detalharConta] as readonly Ferramenta[];
 
 export function definicaoParaIA(f: Ferramenta): Anthropic.Beta.BetaTool {
   const esquema = z.toJSONSchema(f.entrada, { io: "input" }) as Record<string, unknown>;

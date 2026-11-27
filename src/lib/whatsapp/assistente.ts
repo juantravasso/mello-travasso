@@ -32,6 +32,23 @@ export function pedeAssistente(texto: string): boolean {
   return /^(assistente|voltar( (ao|para o|pro))? assistente|robo)$/.test(t);
 }
 
+/** Quanto tempo uma operação proposta espera o SIM. Depois disso, é preciso pedir de novo. */
+export const CONFIRMACAO_POR_MS = 15 * 60 * 1000;
+
+const limpo = (texto: string) => semAcento(texto).replace(/[!.,;:]+/g, "").replace(/\s+/g, " ").trim();
+
+/** "sim", "pode", "confirmo", "ok", "isso", 👍… Só a resposta curta: "sim, mas muda o valor" não confirma. */
+export function ehSim(texto: string): boolean {
+  const t = limpo(texto);
+  return /^(sim|s|ss|sim sim|confirmo|confirmar|confirma|confirmado|pode|pode sim|pode ser|pode lancar|pode fazer|ok|okay|blz|beleza|isso|isso mesmo|certo|correto|claro|manda|manda ver|fechado|\u{1F44D}[\u{1F3FB}-\u{1F3FF}]?)$/u.test(t);
+}
+
+/** "não", "cancela", "esquece"… */
+export function ehNao(texto: string): boolean {
+  const t = limpo(texto);
+  return /^(nao|n|nao nao|cancela|cancelar|cancelado|esquece|deixa|deixa pra la|negativo|nem|nao quero|nao lanca|para)$/.test(t);
+}
+
 export function emAtendimentoHumano(humanoAte: string | null | undefined, agora: Date): boolean {
   return Boolean(humanoAte && humanoAte > agora.toISOString());
 }
@@ -59,7 +76,7 @@ export function refsRecentes(memoria: MensagemDaConversa[]): string[] {
 
 /** Rede de segurança: anotação interna nunca vai para o WhatsApp, mesmo que a IA a copie. */
 export function semAnotacoesInternas(texto: string): string {
-  return texto.replace(/\[(?:Contexto interno|Contas citadas|Agora:)[^\]]*\]/gi, "").replace(/\n{3,}/g, "\n\n").trim();
+  return texto.replace(/\[(?:Contexto interno|Contas citadas|Agora:|Operação descartada)[^\]]*\]/gi, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 export function acrescentarNaMemoria(memoria: MensagemDaConversa[], novas: MensagemDaConversa[]): MensagemDaConversa[] {
@@ -80,5 +97,10 @@ export const TEXTOS_ASSISTENTE = {
   limiteEmpresa: "O assistente atingiu o limite de mensagens de hoje da sua empresa. Amanhã ele volta; até lá, use o app.",
   falha: "Não consegui responder agora. Tente de novo em alguns minutos ou abra o app.",
   semAcesso: "Sua conta não tem acesso a essas informações pelo WhatsApp. Fale com o responsável pela empresa.",
+  suspensa: "A assinatura da sua empresa está suspensa, então o assistente fica pausado. Seus dados continuam no app; ao regularizar a assinatura, ele volta na hora.",
   longo: "Essa mensagem ficou longa demais para mim. Pode resumir o que precisa?",
+  descartada: "Ok, não fiz nada.",
+  confirmacaoVencida: "Essa confirmação expirou (vale 15 minutos). Me peça de novo que eu refaço o resumo.",
+  somenteLeituraEscrita: "Sua empresa está em modo somente leitura (o teste acabou), então não lancei nada. As consultas continuam valendo.",
+  naoConcluiu: (motivo: string) => `Não consegui concluir: ${motivo}`,
 } as const;

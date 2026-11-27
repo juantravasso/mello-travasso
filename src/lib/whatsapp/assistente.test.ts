@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { acrescentarNaMemoria, agoraNoFuso, emAtendimentoHumano, lerMemoria, MAX_MENSAGENS_NA_MEMORIA, pedeAssistente, pedeAtendente, refsRecentes, semAnotacoesInternas } from "./assistente";
+import { acrescentarNaMemoria, agoraNoFuso, emAtendimentoHumano, lerMemoria, MAX_MENSAGENS_NA_MEMORIA, pedeAssistente, pedeAtendente, refsRecentes, semAnotacoesInternas, ehSim, ehNao } from "./assistente";
 
 test("pedeAtendente reconhece os jeitos comuns de pedir uma pessoa", () => {
   for (const t of ["falar com atendente", "Quero falar com um atendente!", "atendente", "preciso falar com alguém", "posso conversar com uma pessoa?", "SUPORTE", "chamar atendimento humano"]) {
@@ -65,4 +65,11 @@ test("refs recentes: as da última resposta primeiro, sem repetir", () => {
     { papel: "assistente", texto: "b", em, refs: ["ref 2: B"] },
   ]);
   assert.deepEqual(r, ["ref 2: B", "ref 1: A"]);
+});
+
+test("confirmação: só a resposta curta conta como SIM ou NÃO", () => {
+  for (const t of ["sim", "Sim!", "SIM", "s", "pode", "Pode lançar", "confirmo", "ok", "isso mesmo", "👍", "👍🏽"]) assert.equal(ehSim(t), true, t);
+  for (const t of ["sim, mas o valor é 160", "simples", "não", "pode ser amanhã?", "ok mas muda a data"]) assert.equal(ehSim(t), false, t);
+  for (const t of ["não", "Nao", "n", "cancela", "esquece", "Não quero."]) assert.equal(ehNao(t), true, t);
+  for (const t of ["não, o valor é 160", "sim", "nada"]) assert.equal(ehNao(t), false, t);
 });

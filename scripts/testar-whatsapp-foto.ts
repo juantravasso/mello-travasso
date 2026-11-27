@@ -270,7 +270,7 @@ async function main(): Promise<void> {
     const f = falsos(PIX);
     await processarFotoRecebida(foto(c.chatId), f.deps);
     const antes = f.enviadas.length;
-    assert.equal(await responderPendencia(texto(c.chatId, "bom dia, tudo bem com o pedido?"), f.responder), "invalida");
+    assert.equal(await responderPendencia(texto(c.chatId, "bom dia, tudo bem com o pedido?"), f.responder), "ignorada", "texto livre vai para o assistente");
     assert.equal(f.enviadas.length, antes, "texto livre (pode ser suporte) não recebe resposta do robô");
     assert.equal(await responderPendencia(texto(c.chatId, "9"), f.responder), "invalida");
     assert.match(f.enviadas.at(-1)!, /de 1 a 5/);

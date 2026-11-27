@@ -41,6 +41,21 @@ export function lerMensagemUazapi(corpo: unknown): MensagemRecebida | null {
 }
 
 /**
+ * Mensagem que um ATENDENTE digitou no próprio aparelho, numa conversa individual (fromMe, mas não enviada pela API).
+ * Devolve o chat, para o assistente ficar quieto nele por 2 h. O webhook é cadastrado sem as mensagens da API
+ * (excludeMessages: wasSentByApi); a conferência de wasSentByApi aqui é a segunda barreira.
+ */
+export function chatRespondidoPeloAtendente(corpo: unknown): string | null {
+  if (!corpo || typeof corpo !== "object") return null;
+  const c = corpo as Record<string, unknown>;
+  if (c.EventType !== "messages" || !c.message || typeof c.message !== "object") return null;
+  const m = c.message as Record<string, unknown>;
+  if (m.fromMe !== true || m.wasSentByApi === true || m.isGroup === true) return null;
+  const chatId = typeof m.chatid === "string" ? m.chatid : null;
+  return chatId && ehChatIndividual(chatId) ? chatId : null;
+}
+
+/**
  * A documentação da uazapi só mostra o exemplo de texto ("Conversation"); o tipo de foto é inferido pelo nome
  * ("ImageMessage", "image"...). Conferir no primeiro teste real.
  */

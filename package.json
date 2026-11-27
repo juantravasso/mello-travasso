@@ -18,6 +18,7 @@
     "testar:whatsapp": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-whatsapp.ts",
     "testar:whatsapp-avisos": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-whatsapp-avisos.ts",
     "testar:whatsapp-foto": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-whatsapp-foto.ts",
+    "testar:whatsapp-assistente": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-whatsapp-assistente.ts",
     "testar:assinaturas": "node --conditions=react-server --import tsx --env-file=.env.local scripts/testar-assinatura-comercial.ts",
     "demo:semear": "node --conditions=react-server --import tsx scripts/demo/semear-demo.ts",
     "demo:dev": "node scripts/demo/comando.mjs dev",

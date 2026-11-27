@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { limparMemoriasVencidas } from "@/services/data/server/assistente/assistenteCore.server";
 import { processarCicloDeVida } from "@/services/data/server/cicloDeVidaCore.server";
 import { enviarAvisosWhatsapp, type ResultadoAvisosWhatsapp } from "@/services/data/server/whatsappAvisosCore.server";
 
@@ -38,7 +39,12 @@ async function tratar(request: Request): Promise<Response> {
       console.error("[cron/ciclo-de-vida] avisos do WhatsApp falharam:", erro instanceof Error ? erro.name : "erro");
       whatsapp = { erro: "falha" };
     }
-    return Response.json({ ok: true, ...resultado, whatsapp }, { headers: { "Cache-Control": "no-store" } });
+    // Retenção da memória do assistente (24 h sem conversa). Falha aqui não derruba a rodada.
+    const memoriasApagadas = await limparMemoriasVencidas().catch(() => {
+      console.error("[cron/ciclo-de-vida] limpeza da memória do assistente falhou");
+      return null;
+    });
+    return Response.json({ ok: true, ...resultado, whatsapp, memoriasApagadas }, { headers: { "Cache-Control": "no-store" } });
   } catch (erro) {
     console.error("[cron/ciclo-de-vida] falha:", erro instanceof Error ? erro.name : "erro");
     return Response.json({ ok: false, erro: "Falha ao processar." }, { status: 500, headers: { "Cache-Control": "no-store" } });

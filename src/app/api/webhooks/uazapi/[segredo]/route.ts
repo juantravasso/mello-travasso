@@ -1,4 +1,5 @@
-import { lerMensagemUazapi, segredoConfere, tokenDoWebhookUazapi } from "@/lib/whatsapp/uazapi";
+import { chatRespondidoPeloAtendente, lerMensagemUazapi, segredoConfere, tokenDoWebhookUazapi } from "@/lib/whatsapp/uazapi";
+import { atendenteRespondeu } from "@/services/data/server/assistente/assistenteCore.server";
 import { responderMensagemRecebida } from "@/services/data/server/whatsappWebhook.server";
 
 // Recebe as mensagens do WhatsApp pela uazapi. A uazapi não assina o webhook, então a rota exige DUAS provas:
@@ -40,6 +41,13 @@ export async function POST(request: Request, contexto: { params: Promise<{ segre
   }
   if (!segredoConfere(tokenDoWebhookUazapi(corpo), tokenEsperado)) {
     return Response.json({ ok: false, erro: "Não autorizado." }, { status: 401, headers: SEM_CACHE });
+  }
+
+  // Atendente respondeu pelo aparelho: o assistente fica quieto nesta conversa por 2 h.
+  const atendido = chatRespondidoPeloAtendente(corpo);
+  if (atendido) {
+    await atendenteRespondeu(atendido).catch(() => console.error("[webhooks/uazapi] atendimento humano não registrado"));
+    return Response.json({ ok: true }, { headers: SEM_CACHE });
   }
 
   const mensagem = lerMensagemUazapi(corpo);

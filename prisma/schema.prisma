@@ -335,6 +335,8 @@ model Empresa {
   emailsAgendados               EmailAgendado[]
   avisosWhatsapp                AvisoWhatsapp[]
   pendenciasWhatsapp            PendenciaWhatsapp[]
+  conversasWhatsapp             ConversaWhatsapp[]
+  acoesAssistente               AcaoAssistente[]
   assinaturasComerciais         AssinaturaComercial[]
   compras                       Compra[]
   vinculoProdutos               VinculoProduto[]
@@ -480,6 +482,8 @@ model Usuario {
   vinculoWhatsapp     VinculoWhatsapp?
   avisosWhatsapp      AvisoWhatsapp[]
   pendenciaWhatsapp   PendenciaWhatsapp?
+  conversaWhatsapp    ConversaWhatsapp?
+  acoesAssistente     AcaoAssistente[]
 
   compromissosCriados        Compromisso[]
   compromissosCompartilhados CompromissoParticipante[]
@@ -526,6 +530,47 @@ model PendenciaWhatsapp {
   atualizadoEm String
 
   @@index([empresaId])
+}
+
+/// Memória curta do assistente do WhatsApp: as últimas mensagens trocadas com a pessoa (para entender "aquela conta",
+/// "a maior"), apagadas depois de 24 h sem conversa. `humanoAte`: um atendente assumiu a conversa e o robô fica quieto.
+model ConversaWhatsapp {
+  id           String  @id @default(uuid())
+  usuarioId    String  @unique
+  usuario      Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  /// [{ papel: "usuario" | "assistente", texto, em }]
+  mensagens    Json
+  humanoAte    String?
+  atualizadoEm String
+  criadoEm     String
+
+  @@index([atualizadoEm])
+}
+
+/// Auditoria do assistente do WhatsApp: cada ferramenta que a IA pediu, com os argumentos, quem pediu (pela mensagem de
+/// origem), se precisou de confirmação e o que o sistema respondeu. A IA só interpreta; a aplicação valida e executa.
+model AcaoAssistente {
+  id           String  @id @default(uuid())
+  empresaId    String
+  empresa      Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  usuarioId    String
+  usuario      Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  mensagemId   String?
+  /// Início da mensagem da pessoa (até 200 caracteres), para entender o pedido sem guardar a conversa inteira.
+  resumoPedido String
+  ferramenta   String
+  argumentos   Json
+  /// executada | negada | invalida | erro | aguardando_confirmacao | confirmada | cancelada
+  status       String
+  /// Registro criado ou alterado (id da conta, do lembrete), quando houver.
+  registroId   String?
+  detalhe      String?
+  criadoEm     String
+
+  @@index([empresaId, criadoEm])
+  @@index([usuarioId, criadoEm])
 }
 
 /// Fila de avisos da conta pelo WhatsApp (fim do teste, renovação, suspensão). Só para quem vinculou o número e deixou

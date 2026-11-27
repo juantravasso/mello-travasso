@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { lerConfigWhatsapp } from "./config";
-import { lerMensagemUazapi, segredoConfere, tokenDoWebhookUazapi } from "./uazapi";
+import { chatRespondidoPeloAtendente, lerMensagemUazapi, segredoConfere, tokenDoWebhookUazapi } from "./uazapi";
 
 // Exemplo de webhook da documentação da uazapi (identificadores fictícios).
 const exemplo = {
@@ -80,4 +80,13 @@ test("lerConfigWhatsapp escolhe o provedor e desliga quando falta algo", () => {
   assert.equal(lerConfigWhatsapp({ ...numero, WHATSAPP_PROVEDOR: "outro", UAZAPI_URL: "https://x", UAZAPI_TOKEN: "t" }), null, "provedor desconhecido");
   assert.equal(lerConfigWhatsapp({ ...numero, WHATSAPP_PROVEDOR: "uazapi", UAZAPI_URL: "ftp://x", UAZAPI_TOKEN: "t" }), null, "URL inválida");
   assert.equal(lerConfigWhatsapp({ ...numero, WAHA_URL: "https://waha.x", WAHA_API_KEY: "k" })?.provedor, "waha", "padrão continua WAHA");
+});
+
+test("chatRespondidoPeloAtendente: só mensagem digitada no aparelho, em conversa individual", () => {
+  assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: true })), "5511888888888@s.whatsapp.net");
+  assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: true, wasSentByApi: true })), null, "resposta do próprio robô não conta");
+  assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: false })), null);
+  assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: true, isGroup: true })), null);
+  assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: true, chatid: "120363000000000000@g.us" })), null);
+  assert.equal(chatRespondidoPeloAtendente({ EventType: "connection" }), null);
 });

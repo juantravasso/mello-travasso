@@ -78,10 +78,14 @@ function evento(tipo: EventoHistorico["tipo"], usuario: string, detalhes?: strin
   return { id: crypto.randomUUID(), tipo, usuario, data: new Date().toISOString(), detalhes };
 }
 
-function paraWhere(
-  empresaId: string,
-  filtros?: FiltrosContaFinanceira & { tipo?: TipoConta },
-): Prisma.ContaFinanceiraWhereInput {
+/** Filtros da lista. `porData: "baixa"` filtra o período pela data do pagamento/recebimento em vez do vencimento. */
+export interface FiltrosListaContas extends FiltrosContaFinanceira {
+  tipo?: TipoConta;
+  porData?: "vencimento" | "baixa";
+  limite?: number;
+}
+
+function paraWhere(empresaId: string, filtros?: FiltrosListaContas): Prisma.ContaFinanceiraWhereInput {
   const where: Prisma.ContaFinanceiraWhereInput = { empresaId };
   if (!filtros) return where;
   if (filtros.tipo) where.tipo = filtros.tipo;
@@ -94,10 +98,9 @@ function paraWhere(
     where.precisaCompletarCadastro = filtros.precisaCompletarCadastro;
   }
   if (filtros.dataInicio || filtros.dataFim) {
-    where.dataVencimento = {
-      ...(filtros.dataInicio ? { gte: filtros.dataInicio } : {}),
-      ...(filtros.dataFim ? { lte: filtros.dataFim } : {}),
-    };
+    const faixa = { ...(filtros.dataInicio ? { gte: filtros.dataInicio } : {}), ...(filtros.dataFim ? { lte: filtros.dataFim } : {}) };
+    if (filtros.porData === "baixa") where.dataBaixa = faixa;
+    else where.dataVencimento = faixa;
   }
   if (filtros.busca) {
     where.OR = [
@@ -133,8 +136,7 @@ function exigirTipo(pessoa: AcessoDaPessoa, tipo: TipoConta, regra: Record<TipoC
   if (!temAlgumModulo(pessoa, regra[tipo])) throw new Error("SEM_ACESSO_MODULO");
 }
 
-export async function listarContas(ctx: ContextoContas, filtros?: FiltrosContaFinanceira & { tipo?: TipoConta },
-): Promise<ContaFinanceira[]> {
+export async function listarContas(ctx: ContextoContas, filtros?: FiltrosListaContas): Promise<ContaFinanceira[]> {
   const tipos = tiposLiberados(ctx);
   if (filtros?.tipo && !tipos.includes(filtros.tipo)) throw new Error("SEM_ACESSO_MODULO");
   const where = paraWhere(ctx.empresaId, filtros);
@@ -143,8 +145,77 @@ export async function listarContas(ctx: ContextoContas, filtros?: FiltrosContaFi
     where,
     orderBy: { dataVencimento: "desc" },
     include: comRateios,
+    ...(filtros?.limite ? { take: Math.min(Math.max(1, Math.trunc(filtros.limite)), 500) } : {}),
   });
   return registros.map(paraConta);
+}
+
+export interface TotalContas {
+  total: number;
+  quantidade: number;
+}
+
+export interface ResumoFinanceiro {
+  de: string;
+  ate: string;
+  /** null = a pessoa não tem acesso a esse tipo de conta. */
+  pago: TotalContas | null;
+  recebido: TotalContas | null;
+  aPagarNoPeriodo: TotalContas | null;
+  aReceberNoPeriodo: TotalContas | null;
+  pagarAtrasado: TotalContas | null;
+  receberAtrasado: TotalContas | null;
+  /** Pago no período por categoria, do maior para o menor (até 10). */
+  pagoPorCategoria: { categoria: string; total: number; quantidade: number }[];
+}
+
+const arred2 = (v: number) => Math.round(v * 100) / 100;
+
+/**
+ * Totais do período para respostas rápidas (painel, assistente): pago e recebido pela data da baixa, o que vence no
+ * período e segue em aberto, e o que já está atrasado (vencido antes de `hoje`, em qualquer data). Canceladas não
+ * entram. Só os tipos que a pessoa pode ver.
+ */
+export async function resumoFinanceiro(ctx: ContextoContas, de: string, ate: string, hoje: string): Promise<ResumoFinanceiro> {
+  const data = /^\d{4}-\d{2}-\d{2}$/;
+  if (!data.test(de) || !data.test(ate) || !data.test(hoje)) throw new Error("Dados inválidos.");
+  const tipos = tiposLiberados(ctx);
+  if (tipos.length === 0) throw new Error("SEM_ACESSO_MODULO");
+  const base = { empresaId: ctx.empresaId, tipo: { in: tipos } };
+  const somar = (where: Prisma.ContaFinanceiraWhereInput) =>
+    prisma.contaFinanceira.groupBy({ by: ["tipo"], where: { ...base, ...where }, _sum: { valor: true }, _count: { _all: true } });
+  const [baixadas, previstas, atrasadas, categorias] = await Promise.all([
+    somar({ status: "baixada", dataBaixa: { gte: de, lte: ate } }),
+    somar({ status: "em_aberto", dataVencimento: { gte: de, lte: ate } }),
+    somar({ status: "em_aberto", dataVencimento: { lt: hoje } }),
+    tipos.includes("pagar")
+      ? prisma.contaFinanceira.groupBy({
+          by: ["categoria"],
+          where: { empresaId: ctx.empresaId, tipo: "pagar", status: "baixada", dataBaixa: { gte: de, lte: ate } },
+          _sum: { valor: true },
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const de_ = (linhas: typeof baixadas, tipo: TipoConta): TotalContas | null => {
+    if (!tipos.includes(tipo)) return null;
+    const l = linhas.find((x) => x.tipo === tipo);
+    return { total: arred2(l?._sum.valor ?? 0), quantidade: l?._count._all ?? 0 };
+  };
+  return {
+    de,
+    ate,
+    pago: de_(baixadas, "pagar"),
+    recebido: de_(baixadas, "receber"),
+    aPagarNoPeriodo: de_(previstas, "pagar"),
+    aReceberNoPeriodo: de_(previstas, "receber"),
+    pagarAtrasado: de_(atrasadas, "pagar"),
+    receberAtrasado: de_(atrasadas, "receber"),
+    pagoPorCategoria: categorias
+      .map((c) => ({ categoria: c.categoria ?? "sem_categoria", total: arred2(c._sum.valor ?? 0), quantidade: c._count._all }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10),
+  };
 }
 
 /**

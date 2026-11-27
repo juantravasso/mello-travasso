@@ -28,7 +28,7 @@ import { autorizarChat, type AutorWhatsapp } from "./whatsappAutor.server";
 
 type Responder = (texto: string) => Promise<unknown>;
 
-export type DesfechoPendencia = "sem_pendencia" | "cancelado" | "pergunta" | "invalida" | "expirado" | "lancado" | "negado" | "sem_projeto" | "falha";
+export type DesfechoPendencia = "sem_pendencia" | "ignorada" | "cancelado" | "pergunta" | "invalida" | "expirado" | "lancado" | "negado" | "sem_projeto" | "falha";
 
 function lerDados(json: Prisma.JsonValue): DadosComprovante {
   return json as unknown as DadosComprovante;
@@ -87,7 +87,7 @@ const NEGADO: Record<string, string> = { sem_acesso: RESPOSTAS_FOTO.semAcesso, s
 
 /**
  * Trata uma mensagem de texto de quem tem pergunta em aberto. Sem pendência, não faz nada (a conversa é do suporte). Com
- * pendência, só reage a número, a CANCELAR, ou avisa que não entendeu.
+ * pendência, reage a número e a CANCELAR; texto livre devolve "ignorada" (vai para o assistente).
  */
 export async function responderPendencia(mensagem: MensagemRecebida, enviar: (chatId: string, texto: string) => Promise<void>, agora: Date = new Date()): Promise<DesfechoPendencia> {
   const responder: Responder = (texto) => enviar(mensagem.chatId, texto).catch(() => console.error("[whatsapp/comprovante] resposta não enviada"));
@@ -114,7 +114,9 @@ export async function responderPendencia(mensagem: MensagemRecebida, enviar: (ch
   }
   if (escolha === null) {
     // Texto livre no meio da pergunta: pode ser conversa com o suporte. Só avisa quando parece uma tentativa de resposta.
-    if (pareceResposta || mensagem.texto.trim().length <= 3) await responder(textoEscolhaInvalida(max));
+    // Conversa livre (não parece resposta): fica para o assistente, e a pergunta segue em aberto.
+    if (!pareceResposta && mensagem.texto.trim().length > 3) return "ignorada";
+    await responder(textoEscolhaInvalida(max));
     return "invalida";
   }
 

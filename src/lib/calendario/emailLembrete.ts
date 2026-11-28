@@ -48,6 +48,7 @@ export function quandoTexto(d: Pick<DadosLembrete, "data" | "diaInteiro" | "hora
 const ROTULO_TIPO: Record<TipoLembrete, { assunto: string; chamada: string }> = {
   vespera: { assunto: "amanhã", chamada: "Lembrete: é amanhã" },
   dia: { assunto: "hoje", chamada: "Lembrete: é hoje" },
+  antes: { assunto: "está chegando", chamada: "Lembrete" },
 };
 
 /** E-mail do lembrete: texto simples e HTML em tabelas com estilos inline (compatível com clientes de e-mail). */
@@ -87,8 +88,18 @@ export function montarEmailLembrete(d: DadosEmailLembrete): MensagemLembrete {
 
 /** Título e texto da notificação dentro do app. */
 export function textoNotificacao(d: DadosLembrete): { titulo: string; texto: string } {
-  const prefixo = d.tipo === "vespera" ? "Amanhã" : "Hoje";
   const quando = d.diaInteiro ? "dia inteiro" : `às ${d.horaInicio ?? ""}`;
   const origem = d.compartilhado ? ` Compartilhado por ${d.criadoPorNome}.` : "";
+  if (d.tipo === "antes") {
+    const dia = `${d.data.slice(8, 10)}/${d.data.slice(5, 7)}`;
+    return { titulo: `Lembrete: ${d.titulo}`, texto: `${dia}, ${quando}.${origem}` };
+  }
+  const prefixo = d.tipo === "vespera" ? "Amanhã" : "Hoje";
   return { titulo: `${prefixo}: ${d.titulo}`, texto: `${prefixo}, ${quando}.${origem}` };
+}
+
+/** Lembrete pelo WhatsApp: curto, com o link do compromisso no app. */
+export function textoWhatsappLembrete(d: DadosLembrete & { link: string }): string {
+  const n = textoNotificacao(d);
+  return [`*${n.titulo}*`, n.texto, ...(d.descricao ? [d.descricao.slice(0, 300)] : []), `Ver no app: ${d.link}`].join("\n");
 }

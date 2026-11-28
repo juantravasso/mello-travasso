@@ -49,6 +49,10 @@ async function main() {
     "não",
     "Registra uma entrada de 500 reais referente a um serviço do cliente Souza, já recebi",
     "sim",
+    "Me lembra amanhã às 9h de pagar a internet",
+    "Cria uma reunião com o cliente Souza na sexta às 15h e me avisa 30 minutos antes",
+    "Quais são meus lembretes até sexta?",
+    "Cancela aquele lembrete da internet",
   ];
   for (const t of perguntas) {
     const enviadas: string[] = [];
@@ -65,6 +69,10 @@ Contas no fim: ${finais.map((c) => `${c.tipo}:${c.favorecidoOuCliente}:${c.valor
   await prisma.acaoAssistente.deleteMany({ where: { empresaId: e.id } });
   await prisma.conversaWhatsapp.deleteMany({ where: { empresaId: e.id } });
   await prisma.eventoProduto.deleteMany({ where: { empresaId: e.id } });
+  const compromissos = await prisma.compromisso.findMany({ where: { empresaId: e.id }, include: { lembretes: true } });
+  console.log(`Compromissos: ${compromissos.map((c) => `${c.titulo}:${c.data} ${c.horaInicio}:${c.status}:aviso=${c.avisoMinutosAntes}:padrao=${c.lembretesPadrao}:[${c.lembretes.map((l) => `${l.tipo}/${l.status}`).join(",")}]`).join(" | ")}`);
+  await prisma.notificacao.deleteMany({ where: { empresaId: e.id } });
+  await prisma.compromisso.deleteMany({ where: { empresaId: e.id } });
   await prisma.contaFinanceira.deleteMany({ where: { empresaId: e.id } });
   await prisma.obra.deleteMany({ where: { empresaId: e.id } });
   await prisma.vinculoWhatsapp.deleteMany({ where: { usuarioId: u.id } });

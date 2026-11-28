@@ -65,5 +65,6 @@ function midiaUazapi(m: Record<string, unknown>): MidiaRecebida | null {
   if (!/image|video|audio|document|sticker|ptt/.test(tipo)) return null;
   const content = m.content && typeof m.content === "object" ? (m.content as Record<string, unknown>) : {};
   const mimetype = typeof content.mimetype === "string" ? content.mimetype : null;
-  return { tipo: /image/.test(tipo) && !/sticker/.test(tipo) ? "imagem" : "outra", url: null, mimetype };
+  const ehAudio = /audio|ptt/.test(tipo) || Boolean(mimetype?.startsWith("audio/"));
+  return { tipo: /image/.test(tipo) && !/sticker/.test(tipo) ? "imagem" : ehAudio ? "audio" : "outra", url: null, mimetype };
 }

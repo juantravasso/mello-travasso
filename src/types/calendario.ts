@@ -24,6 +24,8 @@ export interface CompromissoItem {
   participantes: PessoaResumo[];
   /** O usuário que consulta é o responsável: só ele edita, exclui e compartilha. */
   souCriador: boolean;
+  /** Aviso extra X minutos antes (pedido pelo assistente do WhatsApp). */
+  avisoMinutosAntes?: number;
   /** Presente quando o item é uma conta a pagar ou a receber em aberto (aparece no calendário no dia do vencimento). */
   conta?: { tipo: "pagar" | "receber"; href: string; valor: number; atrasada: boolean };
 }

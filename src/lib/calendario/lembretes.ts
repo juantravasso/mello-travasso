@@ -4,8 +4,10 @@ import { adicionarDias, instanteLocal } from "./tempo";
 // Cálculo e reagendamento dos lembretes de um compromisso. Tudo aqui é puro (sem banco, sem relógio próprio):
 // quem chama passa "agora", o que torna as regras verificáveis em teste.
 
-export type TipoLembrete = "vespera" | "dia";
-export const TIPOS_LEMBRETE: readonly TipoLembrete[] = ["vespera", "dia"];
+export type TipoLembrete = "vespera" | "dia" | "antes";
+export const TIPOS_LEMBRETE: readonly TipoLembrete[] = ["vespera", "dia", "antes"];
+/** Maior antecedência aceita para o aviso extra: 7 dias. */
+export const MAX_AVISO_MINUTOS = 7 * 24 * 60;
 
 const MS_MINUTO = 60_000;
 const MS_DIA = 24 * 60 * MS_MINUTO;
@@ -16,6 +18,10 @@ export interface CompromissoParaLembretes {
   horaInicio?: string | null;
   fuso: string;
   inicioEm: string;
+  /** Aviso extra X minutos antes do início (0 = na hora). null/ausente = sem aviso extra. */
+  avisoMinutosAntes?: number | null;
+  /** Véspera e dia. Ausente = ligados (compromissos do app). */
+  lembretesPadrao?: boolean;
 }
 
 export interface Disparo {
@@ -33,19 +39,31 @@ function hora(h: number): string {
  * - Com horário: a véspera sai 24 h antes do início. O lembrete do dia sai na hora configurada (padrão 8h) do
  *   dia do compromisso, mas nunca a menos de 60 min do início e nunca antes da meia-noite local.
  * - Dia inteiro: véspera e dia saem na hora padrão configurada (padrão 9h), no dia anterior e no próprio dia.
+ * - Aviso extra ("antes"): X minutos antes do início; em dia inteiro, antes da hora padrão do dia. Só existe quando
+ *   pedido (avisoMinutosAntes), e a véspera/dia somem quando lembretesPadrao é false (lembrete simples do assistente).
  */
-export function calcularDisparos(c: CompromissoParaLembretes, config: ConfigLembretes = configLembretes()): Record<TipoLembrete, Date> {
+export function calcularDisparos(c: CompromissoParaLembretes, config: ConfigLembretes = configLembretes()): Partial<Record<TipoLembrete, Date>> {
+  const padrao = c.lembretesPadrao !== false;
+  const aviso = typeof c.avisoMinutosAntes === "number" && c.avisoMinutosAntes >= 0 ? Math.min(c.avisoMinutosAntes, MAX_AVISO_MINUTOS) : null;
+  const disparos: Partial<Record<TipoLembrete, Date>> = {};
   if (c.diaInteiro) {
-    return {
-      vespera: instanteLocal(adicionarDias(c.data, -1), hora(config.horaDiaInteiro), c.fuso),
-      dia: instanteLocal(c.data, hora(config.horaDiaInteiro), c.fuso),
-    };
+    const horaDoDia = instanteLocal(c.data, hora(config.horaDiaInteiro), c.fuso);
+    if (padrao) {
+      disparos.vespera = instanteLocal(adicionarDias(c.data, -1), hora(config.horaDiaInteiro), c.fuso);
+      disparos.dia = horaDoDia;
+    }
+    if (aviso !== null) disparos.antes = new Date(horaDoDia.getTime() - aviso * MS_MINUTO);
+    return disparos;
   }
   const inicio = new Date(c.inicioEm).getTime();
-  const meiaNoite = instanteLocal(c.data, "00:00", c.fuso).getTime();
-  const horaPadrao = instanteLocal(c.data, hora(config.horaDoDia), c.fuso).getTime();
-  const dia = Math.max(meiaNoite, Math.min(horaPadrao, inicio - config.antecedenciaDoDiaMin * MS_MINUTO));
-  return { vespera: new Date(inicio - MS_DIA), dia: new Date(dia) };
+  if (padrao) {
+    const meiaNoite = instanteLocal(c.data, "00:00", c.fuso).getTime();
+    const horaPadrao = instanteLocal(c.data, hora(config.horaDoDia), c.fuso).getTime();
+    disparos.vespera = new Date(inicio - MS_DIA);
+    disparos.dia = new Date(Math.max(meiaNoite, Math.min(horaPadrao, inicio - config.antecedenciaDoDiaMin * MS_MINUTO)));
+  }
+  if (aviso !== null) disparos.antes = new Date(inicio - aviso * MS_MINUTO);
+  return disparos;
 }
 
 /**
@@ -54,15 +72,24 @@ export function calcularDisparos(c: CompromissoParaLembretes, config: ConfigLemb
  */
 export function agendarLembretes(c: CompromissoParaLembretes, agora: Date, config?: ConfigLembretes): Disparo[] {
   const disparos = calcularDisparos(c, config);
-  return TIPOS_LEMBRETE.filter((tipo) => disparos[tipo].getTime() > agora.getTime()).map((tipo) => ({
-    tipo,
-    disparoEm: disparos[tipo].toISOString(),
-  }));
+  return TIPOS_LEMBRETE.flatMap((tipo) => {
+    const quando = disparos[tipo];
+    return quando && quando.getTime() > agora.getTime() ? [{ tipo, disparoEm: quando.toISOString() }] : [];
+  });
 }
 
+/**
+ * Compromisso pontual (sem horário de término: início = fim, como o "me lembra às 9h") ainda merece o aviso nestes
+ * minutos depois do horário: o agendador pode atrasar uns minutos, e sem a folga o aviso "na hora" nunca sairia.
+ */
+export const FOLGA_PONTUAL_MIN = 30;
+
 /** O compromisso ainda justifica um aviso? Só se estiver agendado e não tiver terminado. */
-export function aindaFazSentidoAvisar(c: { status: string; fimEm: string }, agora: Date): boolean {
-  return c.status === "agendado" && agora.getTime() <= new Date(c.fimEm).getTime();
+export function aindaFazSentidoAvisar(c: { status: string; fimEm: string; inicioEm?: string }, agora: Date): boolean {
+  if (c.status !== "agendado") return false;
+  const fim = new Date(c.fimEm).getTime();
+  const pontual = c.inicioEm !== undefined && c.inicioEm === c.fimEm;
+  return agora.getTime() <= fim + (pontual ? FOLGA_PONTUAL_MIN * MS_MINUTO : 0);
 }
 
 export interface LembreteExistente {

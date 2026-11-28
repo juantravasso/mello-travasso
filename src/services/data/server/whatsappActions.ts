@@ -5,7 +5,7 @@ import { exigirSessaoAction } from "@/lib/auth/dal";
 import { configWhatsapp } from "@/lib/whatsapp/cliente.server";
 import { linkDeVinculo, textoDeVinculo } from "@/lib/whatsapp/vinculo";
 import type { ResultadoAction } from "@/types";
-import { definirAvisos, desfazerVinculo, estadoDoVinculo, gerarCodigoDeVinculo, type EstadoVinculo } from "./whatsappCore.server";
+import { definirAvisos, definirLembretes, desfazerVinculo, estadoDoVinculo, gerarCodigoDeVinculo, type EstadoVinculo } from "./whatsappCore.server";
 import { ErroDeNegocio, executar } from "./resultado.server";
 
 // Cada usuário cuida só do próprio vínculo: nenhuma ação recebe usuarioId do navegador (vem da sessão).
@@ -47,6 +47,16 @@ export async function alternarAvisosWhatsapp(ativosEntrada: unknown): Promise<Re
     const ativos = z.boolean().safeParse(ativosEntrada);
     if (!ativos.success) throw new ErroDeNegocio("Valor inválido.");
     await definirAvisos(sessao.usuarioId, ativos.data);
+    return null;
+  });
+}
+
+export async function alternarLembretesWhatsapp(ativosEntrada: unknown): Promise<ResultadoAction<null>> {
+  const sessao = await exigirSessaoAction();
+  return executar(async () => {
+    const ativos = z.boolean().safeParse(ativosEntrada);
+    if (!ativos.success) throw new ErroDeNegocio("Valor inválido.");
+    await definirLembretes(sessao.usuarioId, ativos.data);
     return null;
   });
 }

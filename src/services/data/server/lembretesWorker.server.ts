@@ -5,9 +5,10 @@ import { enviarEmail, type MensagemEmail } from "@/lib/email/enviar.server";
 import { enviarPush as enviarPushReal, pushConfigurado, type Inscricao, type ResultadoPush } from "@/lib/push/enviar.server";
 import { montarPayloadPush, type PayloadPush } from "@/lib/push/payload";
 import { ESPERA_ENTRE_TENTATIVAS_MIN, MAX_TENTATIVAS } from "@/lib/calendario/config";
-import { montarEmailLembrete, textoNotificacao, type DadosLembrete } from "@/lib/calendario/emailLembrete";
-import { aindaFazSentidoAvisar } from "@/lib/calendario/lembretes";
+import { montarEmailLembrete, textoNotificacao, textoWhatsappLembrete, type DadosLembrete } from "@/lib/calendario/emailLembrete";
+import { aindaFazSentidoAvisar, type TipoLembrete } from "@/lib/calendario/lembretes";
 import { urlDoSite } from "@/lib/rede/site";
+import { configWhatsapp, enviarTexto } from "@/lib/whatsapp/cliente.server";
 
 // Processamento dos lembretes agendados. Quem dispara (GitHub Actions, cron) só chama processarLembretes(): ela
 // é idempotente e segura para rodar em paralelo.
@@ -26,6 +27,7 @@ const MS_MINUTO = 60_000;
 
 export type EnviadorEmail = (mensagem: MensagemEmail) => Promise<boolean>;
 export type EnviadorPush = (inscricao: Inscricao, payload: PayloadPush) => Promise<ResultadoPush>;
+export type EnviadorWhatsapp = (chatId: string, texto: string) => Promise<void>;
 
 export interface OpcoesProcessamento {
   agora?: Date;
@@ -33,6 +35,8 @@ export interface OpcoesProcessamento {
   enviar?: EnviadorEmail;
   /** Substituível em teste; em produção é o envio real (Web Push). */
   enviarPush?: EnviadorPush;
+  /** Substituível em teste; em produção é o provedor de WhatsApp configurado (null = canal desligado). */
+  enviarWhatsapp?: EnviadorWhatsapp | null;
   limiteLembretes?: number;
   limiteEntregas?: number;
   /** Restringe a estas empresas. Só os testes usam (relógio simulado não pode tocar em dados reais). */
@@ -59,6 +63,7 @@ const selecaoUsuario = {
   papel: true,
   modulos: true,
   inscricoesPush: { select: { id: true, endpoint: true, p256dh: true, auth: true } },
+  vinculoWhatsapp: { select: { chatId: true, verificadoEm: true, lembretesAtivos: true } },
 } satisfies Prisma.UsuarioSelect;
 
 const incluirParaEntrega = {
@@ -75,7 +80,13 @@ function ativo(u: UsuarioDestino): boolean {
   return u.desativadoEm === null && u.bloqueadoPlataformaEm === null && (u.papel === "dono" || u.modulos.includes("calendario"));
 }
 
-function dadosDoLembrete(c: CompromissoCompleto, tipo: "vespera" | "dia", destino: UsuarioDestino): DadosLembrete {
+/** Número vinculado e com os lembretes pelo WhatsApp ligados. */
+function chatParaLembrete(u: UsuarioDestino): string | null {
+  const v = u.vinculoWhatsapp;
+  return v?.verificadoEm && v.chatId && v.lembretesAtivos ? v.chatId : null;
+}
+
+function dadosDoLembrete(c: CompromissoCompleto, tipo: TipoLembrete, destino: UsuarioDestino): DadosLembrete {
   return {
     tipo,
     titulo: c.titulo,
@@ -95,7 +106,7 @@ function maisMinutos(base: Date, minutos: number): string {
 
 // --- Fase 1: lembretes vencidos viram entregas ---------------------------------
 
-async function materializarLembretes(agora: Date, limite: number, r: ResultadoProcessamento, empresas?: string[]): Promise<void> {
+async function materializarLembretes(agora: Date, limite: number, r: ResultadoProcessamento, whatsapp: boolean, empresas?: string[]): Promise<void> {
   const iso = agora.toISOString();
   const devidos = await prisma.lembreteCompromisso.findMany({
     where: {
@@ -136,6 +147,7 @@ async function materializarLembretes(agora: Date, limite: number, r: ResultadoPr
       if (u.lembretesPorEmail) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "email", criadoEm: iso, atualizadoEm: iso });
       // Push vale por aparelho: quem ligou em algum aparelho tem inscrição; sem inscrição, sem entrega.
       if (u.inscricoesPush.length > 0 && pushConfigurado()) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "push", criadoEm: iso, atualizadoEm: iso });
+      if (whatsapp && chatParaLembrete(u)) entregas.push({ lembreteId: devido.id, versao: devido.versao, usuarioId: u.id, canal: "whatsapp", criadoEm: iso, atualizadoEm: iso });
     }
     // skipDuplicates + unicidade: repetir esta etapa não cria nada de novo.
     if (entregas.length > 0) await prisma.entregaLembrete.createMany({ data: entregas, skipDuplicates: true });
@@ -173,7 +185,15 @@ async function registrarFalha(entrega: { id: string; tentativas: number }, agora
   r.entregasReagendadas++;
 }
 
-async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail, enviarPush: EnviadorPush, r: ResultadoProcessamento, empresas?: string[]): Promise<void> {
+async function enviarEntregas(
+  agora: Date,
+  limite: number,
+  enviar: EnviadorEmail,
+  enviarPush: EnviadorPush,
+  enviarWhatsapp: EnviadorWhatsapp | null,
+  r: ResultadoProcessamento,
+  empresas?: string[],
+): Promise<void> {
   const iso = agora.toISOString();
   const candidatas = await prisma.entregaLembrete.findMany({
     where: {
@@ -196,7 +216,15 @@ async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail
     try {
       const c = await prisma.compromisso.findUnique({ where: { id: entrega.lembrete.compromissoId }, include: incluirParaEntrega });
       const destino = c ? [c.criadoPor, ...c.participantes.map((p) => p.usuario)].find((u) => u.id === entrega.usuarioId) : undefined;
-      const preferencia = destino ? (entrega.canal === "email" ? destino.lembretesPorEmail : entrega.canal === "push" ? destino.inscricoesPush.length > 0 : destino.lembretesNoApp) : false;
+      const preferencia = destino
+        ? entrega.canal === "email"
+          ? destino.lembretesPorEmail
+          : entrega.canal === "push"
+            ? destino.inscricoesPush.length > 0
+            : entrega.canal === "whatsapp"
+              ? Boolean(chatParaLembrete(destino) && enviarWhatsapp)
+              : destino.lembretesNoApp
+        : false;
       // Versão antiga (compromisso remarcado), cancelado, concluído, encerrado, ou destinatário que saiu/desligou o canal.
       if (!c || !destino || !ativo(destino) || !preferencia || c.empresa.bloqueadaEm || entrega.versao !== entrega.lembrete.versao || !aindaFazSentidoAvisar(c, agora)) {
         await ignorarEntrega(entrega.id, iso, r);
@@ -229,6 +257,23 @@ async function enviarEntregas(agora: Date, limite: number, enviar: EnviadorEmail
           return true;
         });
         if (gravou) r.entregasEnviadas++;
+        continue;
+      }
+
+      if (entrega.canal === "whatsapp") {
+        const chatId = chatParaLembrete(destino);
+        try {
+          if (!chatId || !enviarWhatsapp) throw new Error("sem chat");
+          await enviarWhatsapp(chatId, textoWhatsappLembrete({ ...dados, link }));
+        } catch {
+          await registrarFalha(entrega, agora, "WhatsApp recusou ou está indisponível", r);
+          continue;
+        }
+        const marcada = await prisma.entregaLembrete.updateMany({
+          where: { id: entrega.id, status: "pendente" },
+          data: { status: "enviada", enviadoEm: iso, travadoAte: null, proximaTentativaEm: null, ultimoErro: null, atualizadoEm: iso },
+        });
+        if (marcada.count === 1) r.entregasEnviadas++;
         continue;
       }
 
@@ -290,7 +335,9 @@ export async function processarLembretes(opcoes: OpcoesProcessamento = {}): Prom
     entregasFalhas: 0,
     entregasIgnoradas: 0,
   };
-  await materializarLembretes(agora, opcoes.limiteLembretes ?? 100, r, opcoes.apenasEmpresas);
-  await enviarEntregas(agora, opcoes.limiteEntregas ?? 40, opcoes.enviar ?? enviarEmail, opcoes.enviarPush ?? enviarPushReal, r, opcoes.apenasEmpresas);
+  // WhatsApp só entra se houver provedor configurado (ou um falso, em teste).
+  const enviarWhatsapp = opcoes.enviarWhatsapp !== undefined ? opcoes.enviarWhatsapp : configWhatsapp() ? enviarTexto : null;
+  await materializarLembretes(agora, opcoes.limiteLembretes ?? 100, r, Boolean(enviarWhatsapp), opcoes.apenasEmpresas);
+  await enviarEntregas(agora, opcoes.limiteEntregas ?? 40, opcoes.enviar ?? enviarEmail, opcoes.enviarPush ?? enviarPushReal, enviarWhatsapp, r, opcoes.apenasEmpresas);
   return r;
 }

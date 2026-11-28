@@ -90,3 +90,8 @@ test("chatRespondidoPeloAtendente: só mensagem digitada no aparelho, em convers
   assert.equal(chatRespondidoPeloAtendente(comMensagem({ fromMe: true, chatid: "120363000000000000@g.us" })), null);
   assert.equal(chatRespondidoPeloAtendente({ EventType: "connection" }), null);
 });
+
+test("mensagem de voz é reconhecida como áudio (vai para o assistente, não para a leitura de nota)", () => {
+  assert.equal(lerMensagemUazapi(comMensagem({ text: undefined, messageType: "AudioMessage", content: { mimetype: "audio/ogg; codecs=opus" } }))?.midia?.tipo, "audio");
+  assert.equal(lerMensagemUazapi(comMensagem({ text: undefined, messageType: "media", mediaType: "ptt" }))?.midia?.tipo, "audio");
+});

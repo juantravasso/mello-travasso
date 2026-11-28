@@ -25,6 +25,7 @@ import {
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
 import type { ModeloAssistente } from "@/services/ai/assistente.server";
 import { registrarEvento } from "../eventosCore.server";
+import { ErroDeNegocio } from "../resultado.server";
 import { autorizarChat } from "../whatsappAutor.server";
 import { definicaoParaIA, PedidoIncompleto, type ContaCitada, type ContextoFerramenta, type Ferramenta, type Proposta } from "./ferramentas.server";
 import { INSTRUCOES_ASSISTENTE } from "./instrucoes";
@@ -117,6 +118,7 @@ export async function conversarComAssistente(mensagem: MensagemRecebida, deps: D
     return autor === "nao_vinculado" ? "nao_vinculado" : "negado";
   }
   const ctx: ContextoFerramenta = {
+    usuarioId: autor.usuarioId,
     contas: { empresaId: autor.empresaId, nome: autor.nome, papel: autor.pessoa.papel, modulos: autor.pessoa.modulos },
     hoje: agoraNoFuso(agora, autor.fusoHorario).hoje,
     somenteLeitura: autor.somenteLeitura,
@@ -288,10 +290,10 @@ async function executarFerramenta(
       estado.proposta = r.proposta;
       return { bloco: { type: "tool_result", tool_use_id: pedido.id, content: "Proposta enviada ao usuário; aguardando SIM." }, citadas: r.citadas ?? [] };
     }
-    await auditar(auditoria, ferramenta.nome, argumentos, "executada");
+    await auditar(auditoria, ferramenta.nome, argumentos, "executada", undefined, r.registroId);
     return { bloco: { type: "tool_result", tool_use_id: pedido.id, content: JSON.stringify(r.dados) }, citadas: r.citadas ?? [] };
   } catch (e) {
-    if (e instanceof PedidoIncompleto) {
+    if (e instanceof PedidoIncompleto || e instanceof ErroDeNegocio) {
       await auditar(auditoria, ferramenta.nome, argumentos, "incompleta", e.message.slice(0, 300));
       return erro(e.message);
     }
@@ -314,6 +316,7 @@ async function confirmarProposta(proposta: { id: string; ferramenta: string; arg
     return autor === "somente_leitura" ? TEXTOS_ASSISTENTE.somenteLeituraEscrita : autor === "suspensa" ? TEXTOS_ASSISTENTE.suspensa : TEXTOS_ASSISTENTE.semAcesso;
   }
   const ctx: ContextoFerramenta = {
+    usuarioId: autor.usuarioId,
     contas: { empresaId: autor.empresaId, nome: autor.nome, papel: autor.pessoa.papel, modulos: autor.pessoa.modulos },
     hoje: ctxDaConversa.hoje,
     somenteLeitura: false,
@@ -339,9 +342,9 @@ async function confirmarProposta(proposta: { id: string; ferramenta: string; arg
   }
 }
 
-async function auditar(a: Auditoria, ferramenta: string, argumentos: Prisma.InputJsonValue, status: string, detalhe?: string): Promise<void> {
+async function auditar(a: Auditoria, ferramenta: string, argumentos: Prisma.InputJsonValue, status: string, detalhe?: string, registroId?: string): Promise<void> {
   await prisma.acaoAssistente.create({
-    data: { ...a, ferramenta: ferramenta.slice(0, 80), argumentos, status, detalhe: detalhe ?? null, criadoEm: new Date().toISOString() },
+    data: { ...a, ferramenta: ferramenta.slice(0, 80), argumentos, status, detalhe: detalhe ?? null, registroId: registroId ?? null, criadoEm: new Date().toISOString() },
   });
 }
 

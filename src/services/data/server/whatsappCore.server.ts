@@ -81,6 +81,7 @@ export async function tratarMensagemRecebida(msg: MensagemRecebida): Promise<Res
 export interface EstadoVinculo {
   vinculado: boolean;
   avisosAtivos: boolean;
+  lembretesAtivos: boolean;
   /** Telefone mascarado para mostrar na tela; nulo quando o WhatsApp não informou o número (@lid). */
   numeroMascarado: string | null;
   /** Há um código gerado e ainda válido, aguardando a mensagem. */
@@ -100,6 +101,7 @@ export async function estadoDoVinculo(usuarioId: string): Promise<EstadoVinculo>
   return {
     vinculado,
     avisosAtivos: vinculado && v.avisosAtivos,
+    lembretesAtivos: vinculado && v.lembretesAtivos,
     numeroMascarado: vinculado ? mascararNumero(v.numero) : null,
     aguardando: !vinculado && !!v?.codigoExpiraEm && v.codigoExpiraEm > new Date().toISOString(),
   };
@@ -107,6 +109,11 @@ export async function estadoDoVinculo(usuarioId: string): Promise<EstadoVinculo>
 
 export async function definirAvisos(usuarioId: string, ativos: boolean): Promise<void> {
   await prisma.vinculoWhatsapp.updateMany({ where: { usuarioId, verificadoEm: { not: null } }, data: { avisosAtivos: ativos, atualizadoEm: new Date().toISOString() } });
+}
+
+/** Lembretes do calendário também pelo WhatsApp (só vale com o número vinculado). */
+export async function definirLembretes(usuarioId: string, ativos: boolean): Promise<void> {
+  await prisma.vinculoWhatsapp.updateMany({ where: { usuarioId, verificadoEm: { not: null } }, data: { lembretesAtivos: ativos, atualizadoEm: new Date().toISOString() } });
 }
 
 /** A pessoa desfaz o próprio vínculo: some o número e o identificador do chat. */

@@ -69,8 +69,8 @@ export function assinaturaWahaConfere(corpoBruto: string, cabecalho: string | nu
 }
 
 export interface MidiaRecebida {
-  /** "imagem" (foto) ou "outra" (documento, áudio, vídeo...: o sistema só lê foto). */
-  tipo: "imagem" | "outra";
+  /** "imagem" (foto da nota), "audio" (mensagem de voz, vai para o assistente) ou "outra" (documento, vídeo...). */
+  tipo: "imagem" | "audio" | "outra";
   /** URL de download (WAHA). Na uazapi o download é pelo id da mensagem. */
   url: string | null;
   mimetype: string | null;
@@ -110,7 +110,7 @@ function midiaWaha(m: Record<string, unknown>): MidiaRecebida | null {
   if (m.hasMedia !== true) return null;
   const media = m.media && typeof m.media === "object" ? (m.media as Record<string, unknown>) : {};
   const mimetype = typeof media.mimetype === "string" ? media.mimetype : null;
-  return { tipo: mimetype?.startsWith("image/") ? "imagem" : "outra", url: typeof media.url === "string" ? media.url : null, mimetype };
+  return { tipo: mimetype?.startsWith("image/") ? "imagem" : mimetype?.startsWith("audio/") ? "audio" : "outra", url: typeof media.url === "string" ? media.url : null, mimetype };
 }
 
 /** O WAHA às vezes traz o telefone ao lado do `@lid` (campos do NOWEB/WEBJS). Só aceita se vier como telefone de verdade. */

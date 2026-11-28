@@ -40,6 +40,7 @@ function paraItem(c: CompromissoComRelacoes, ctx: Contexto): CompromissoItem {
     criadoPor: { id: c.criadoPor.id, nome: c.criadoPor.nome },
     participantes: c.participantes.map((p) => ({ id: p.usuario.id, nome: p.usuario.nome })),
     souCriador: c.criadoPorId === ctx.usuarioId,
+    ...(c.avisoMinutosAntes !== null ? { avisoMinutosAntes: c.avisoMinutosAntes } : {}),
   };
 }
 
@@ -126,7 +127,7 @@ function validarEntrada(entrada: unknown) {
 /** Cria, atualiza ou ignora os lembretes conforme o estado atual do compromisso. Rodar dentro da transação. */
 export async function sincronizarLembretes(
   tx: Tx,
-  c: { id: string; data: string; diaInteiro: boolean; horaInicio: string | null; fuso: string; inicioEm: string; status: string },
+  c: { id: string; data: string; diaInteiro: boolean; horaInicio: string | null; fuso: string; inicioEm: string; status: string; avisoMinutosAntes?: number | null; lembretesPadrao?: boolean },
   agora: Date,
 ): Promise<void> {
   const existentes = await tx.lembreteCompromisso.findMany({ where: { compromissoId: c.id } });
@@ -194,6 +195,8 @@ export async function criar(ctx: Contexto, entrada: EntradaCompromisso | unknown
         fuso,
         inicioEm: periodo.inicioEm,
         fimEm: periodo.fimEm,
+        avisoMinutosAntes: dados.avisoMinutosAntes ?? null,
+        lembretesPadrao: dados.lembretesPadrao ?? true,
         criadoEm: iso,
         atualizadoEm: iso,
         participantes: { create: participantes.map((usuarioId) => ({ usuarioId, criadoEm: iso })) },
@@ -244,6 +247,9 @@ export async function atualizar(ctx: Contexto, id: string, entrada: EntradaCompr
         fuso,
         inicioEm: periodo.inicioEm,
         fimEm: periodo.fimEm,
+        // O formulário do app não manda estes campos: ausentes, ficam como estavam (aviso pedido pelo WhatsApp não some).
+        ...(dados.avisoMinutosAntes !== undefined ? { avisoMinutosAntes: dados.avisoMinutosAntes } : {}),
+        ...(dados.lembretesPadrao !== undefined ? { lembretesPadrao: dados.lembretesPadrao } : {}),
         atualizadoEm: iso,
       },
     });

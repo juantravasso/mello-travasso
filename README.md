@@ -593,13 +593,30 @@ conversa; ASSISTENTE devolve antes. Na uazapi, um atendente respondendo pelo pr�
 pedido, argumentos, status, detalhe). A memória da conversa (`ConversaWhatsapp`) guarda as últimas 20 mensagens e as
 referências das contas citadas, e é apagada pelo cron depois de 24 h sem conversa.
 
+**Lembretes e agenda** (`assistente/calendario.server.ts`, pelo mesmo `calendarioCore` do app): `criar_lembrete`
+("me lembra amanhã às 9h de pagar a internet" vira um compromisso com só o aviso na hora; "reunião sexta às 15h" vira
+compromisso normal), `listar_compromissos`, `avisar_antes` ("me avisa 30 min antes") e `cancelar_compromisso`
+(fica cancelado, não apaga). Gravam direto, sem SIM (são da própria pessoa e reversíveis no app). O motor de lembretes
+ganhou o tipo `antes` (`Compromisso.avisoMinutosAntes`; `lembretesPadrao` desliga véspera/dia) e o canal `whatsapp`
+(`VinculoWhatsapp.lembretesAtivos`, com liga/desliga em Configurações). Editar o compromisso pelo app mantém o aviso.
+Compromisso pontual (sem término) ainda avisa até 30 min depois do horário, porque o agendador pode atrasar.
+
+**Áudio** (`assistente/audio.server.ts`): mensagem de voz é baixada (até ~600 KB, uns 2 minutos), transcrita e segue
+para o assistente como texto, com as mesmas barreiras; a resposta começa com _Ouvi: "…"_. Antes de pagar a transcrição,
+confere vínculo, atendimento humano, repetição e limite (20 áudios por hora por pessoa). O áudio não é guardado.
+Transcrição em `services/ai/transcricao.server.ts`, no formato que Groq e OpenAI aceitam: `TRANSCRICAO_API_KEY`
+(sem ela, o assistente responde que ainda não ouve áudio), `TRANSCRICAO_URL` (padrão Groq,
+`https://api.groq.com/openai/v1`) e `TRANSCRICAO_MODELO` (padrão `whisper-large-v3-turbo`; na OpenAI,
+`gpt-4o-mini-transcribe`).
+
 **Configuração.** Usa a mesma `ANTHROPIC_API_KEY` da leitura de notas. Opcionais: `ASSISTENTE_MODELO` (padrão
 `claude-haiku-5-5`; avaliado com o script abaixo), `ASSISTENTE_ESFORCO` (`low` padrão, `medium`, `high`), `WHATSAPP_ASSISTENTE_DIA`.
 
-**Testes.** `yarn testar:whatsapp-assistente` (integração, banco demo, IA e WhatsApp falsos, 21 cenários: vínculo,
+**Testes.** `yarn testar:whatsapp-assistente` (integração, banco demo, IA e WhatsApp falsos, 27 cenários: vínculo,
 isolamento, permissão por tipo, argumentos inválidos, ferramenta inventada, atendente, repetição, falha da IA, laço
 sem fim, somente leitura, suspensa, retenção, proposta e SIM/NÃO, SIM duplo, expiração, acesso perdido antes do SIM,
-projeto ambíguo, data inexistente, duplicidade). Com a IA real (custa centavos): `node --conditions=react-server --import tsx
+projeto ambíguo, data inexistente, duplicidade, lembrete criado e entregue pelo WhatsApp, aviso antes, cancelamento,
+áudio transcrito, áudio repetido, SIM falado). Com a IA real (custa centavos): `node --conditions=react-server --import tsx
 scripts/avaliar-assistente-ia.ts` com o banco demo no ambiente.
 
 ## Rodando localmente

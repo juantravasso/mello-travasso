@@ -12,6 +12,7 @@ import type { ContextoContas } from "../contasCore.server";
 // Para um módulo novo no assistente, acrescente a ferramenta e registre em registro.server.ts.
 
 export interface ContextoFerramenta {
+  usuarioId: string;
   contas: ContextoContas;
   /** aaaa-mm-dd no fuso da empresa */
   hoje: string;
@@ -51,6 +52,8 @@ export class PedidoIncompleto extends Error {}
 export interface ResultadoFerramenta {
   dados?: unknown;
   proposta?: Proposta;
+  /** Registro gravado direto (lembrete), para a auditoria. */
+  registroId?: string;
   /** Contas citadas, para lembrar "aquela conta" na próxima mensagem (só a referência curta e um rótulo). */
   citadas?: ContaCitada[];
 }

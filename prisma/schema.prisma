@@ -507,6 +507,8 @@ model VinculoWhatsapp {
   verificadoEm     String?
   /// Avisos da conta (fim do teste, cobrança, perfil). Ligado ao vincular; a pessoa desliga quando quiser.
   avisosAtivos     Boolean @default(true)
+  /// Lembretes do calendário também pelo WhatsApp. Ligado ao vincular; a pessoa desliga quando quiser.
+  lembretesAtivos  Boolean @default(true)
   ultimaMensagemEm String?
   criadoEm         String
   atualizadoEm     String
@@ -1263,27 +1265,31 @@ enum StatusCompromissoDb {
 }
 
 model Compromisso {
-  id           String                 @id @default(uuid())
-  empresaId    String
-  empresa      Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  id                String                 @id @default(uuid())
+  empresaId         String
+  empresa           Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   /// Responsável: único que edita, exclui e compartilha.
-  criadoPorId  String
-  criadoPor    Usuario                @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
-  titulo       String
-  descricao    String?                @db.Text
-  categoria    CategoriaCompromissoDb @default(outro)
-  status       StatusCompromissoDb    @default(agendado)
+  criadoPorId       String
+  criadoPor         Usuario                @relation(fields: [criadoPorId], references: [id], onDelete: Cascade)
+  titulo            String
+  descricao         String?                @db.Text
+  categoria         CategoriaCompromissoDb @default(outro)
+  status            StatusCompromissoDb    @default(agendado)
   /// "AAAA-MM-DD" no fuso do compromisso.
-  data         String
-  diaInteiro   Boolean                @default(false)
+  data              String
+  diaInteiro        Boolean                @default(false)
   /// "HH:mm" locais; nulos em dia inteiro.
-  horaInicio   String?
-  horaFim      String?
-  fuso         String
-  inicioEm     String
-  fimEm        String
-  criadoEm     String
-  atualizadoEm String
+  horaInicio        String?
+  horaFim           String?
+  fuso              String
+  inicioEm          String
+  fimEm             String
+  /// Aviso extra X minutos antes do início (pedido pelo assistente: "me avisa 30 min antes"). null = sem aviso extra.
+  avisoMinutosAntes Int?
+  /// Lembretes padrão (véspera e no dia). Lembrete simples criado pelo assistente ("me lembra às 9h") desliga.
+  lembretesPadrao   Boolean                @default(true)
+  criadoEm          String
+  atualizadoEm      String
 
   participantes CompromissoParticipante[]
   lembretes     LembreteCompromisso[]
@@ -1308,6 +1314,8 @@ model CompromissoParticipante {
 enum TipoLembreteDb {
   vespera
   dia
+  /// Aviso X minutos antes do início (Compromisso.avisoMinutosAntes); 0 = na hora (o "me lembra às 9h").
+  antes
 }
 
 enum StatusLembreteDb {
@@ -1347,6 +1355,7 @@ enum CanalLembreteDb {
   email
   app
   push
+  whatsapp
 }
 
 enum StatusEntregaDb {

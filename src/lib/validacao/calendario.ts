@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CATEGORIAS, STATUS_COMPROMISSO } from "@/lib/calendario/categorias";
+import { MAX_AVISO_MINUTOS } from "@/lib/calendario/lembretes";
 import { diferencaEmDias, ehDataValida, ehHoraValida } from "@/lib/calendario/tempo";
 
 export const MAX_PARTICIPANTES = 25;
@@ -20,6 +21,10 @@ export const compromissoSchema = z
     horaFim: hora.optional(),
     status: z.enum(STATUS_COMPROMISSO).default("agendado"),
     participantesIds: z.array(z.uuid("Participante inválido")).max(MAX_PARTICIPANTES, `No máximo ${MAX_PARTICIPANTES} participantes`).default([]),
+    /** Aviso extra X minutos antes (0 = na hora; null tira). Ausente = mantém o que já estava. */
+    avisoMinutosAntes: z.number().int().min(0).max(MAX_AVISO_MINUTOS, "Aviso de no máximo 7 dias antes").nullable().optional(),
+    /** Véspera e no dia. Ausente = mantém (novo compromisso: ligados). */
+    lembretesPadrao: z.boolean().optional(),
   })
   .strict()
   .superRefine((c, ctx) => {

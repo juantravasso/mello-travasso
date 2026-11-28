@@ -2,15 +2,17 @@ import "server-only";
 import { after } from "next/server";
 import { obterModeloAssistente } from "@/services/ai/assistente.server";
 import { obterProvedorExtracaoIA } from "@/services/ai/provedor.server";
+import { obterTranscritor } from "@/services/ai/transcricao.server";
 import { baixarMidia, enviarTexto } from "@/lib/whatsapp/cliente.server";
 import type { MensagemRecebida } from "@/lib/whatsapp/vinculo";
 import { conversarComAssistente } from "./assistente/assistenteCore.server";
+import { processarAudioRecebido } from "./assistente/audio.server";
 import { processarFotoRecebida } from "./whatsappCompraCore.server";
 import { responderPendencia } from "./whatsappComprovanteCore.server";
 import { tratarMensagemRecebida } from "./whatsappCore.server";
 
 // O que fazer com uma mensagem já autenticada e lida, seja qual for o provedor (WAHA ou uazapi), nesta ordem:
-// foto → leitura da nota; VINCULAR → vínculo; resposta a uma pergunta em aberto (comprovante); o resto → assistente.
+// áudio → transcrição e assistente; foto → leitura da nota; VINCULAR → vínculo; resposta a uma pergunta em aberto (comprovante); o resto → assistente.
 // Número sem vínculo não recebe nada do robô (é conversa de suporte, feita por pessoas no próprio aparelho), e quem
 // pede "falar com atendente" deixa o robô quieto por 2 h.
 
@@ -22,6 +24,17 @@ const RESPOSTAS = {
 } as const;
 
 export async function responderMensagemRecebida(mensagem: MensagemRecebida, origem: string): Promise<void> {
+  if (mensagem.midia?.tipo === "audio") {
+    // Transcrever + IA levam segundos: responde o webhook já e processa depois (after), dentro do maxDuration da rota.
+    after(async () => {
+      try {
+        await processarAudioRecebido(mensagem, { modelo: obterModeloAssistente(), enviar: enviarTexto, transcritor: obterTranscritor(), baixar: baixarMidia });
+      } catch (erro) {
+        console.error(`[webhooks/${origem}] áudio não processado:`, erro instanceof Error ? erro.name : "erro");
+      }
+    });
+    return;
+  }
   if (mensagem.midia) {
     // Ler a nota com IA leva segundos: o webhook responde já, e a leitura roda depois da resposta (after), dentro do
     // maxDuration da rota. A pessoa recebe "Lendo a nota…" e depois o resumo do rascunho.

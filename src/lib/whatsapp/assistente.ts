@@ -6,7 +6,8 @@ export const HUMANO_POR_MS = 2 * 60 * 60 * 1000;
 /** A memória da conversa guarda só as últimas trocas, e some depois de 24 h sem conversa (LGPD: o mínimo necessário). */
 export const MAX_MENSAGENS_NA_MEMORIA = 20;
 export const MEMORIA_POR_MS = 24 * 60 * 60 * 1000;
-export const MAX_TEXTO_RECEBIDO = 1500;
+/** Uns 2 minutos de fala transcrita cabem aqui. */
+export const MAX_TEXTO_RECEBIDO = 2000;
 
 export interface MensagemDaConversa {
   papel: "usuario" | "assistente";
@@ -100,6 +101,11 @@ export const TEXTOS_ASSISTENTE = {
   suspensa: "A assinatura da sua empresa está suspensa, então o assistente fica pausado. Seus dados continuam no app; ao regularizar a assinatura, ele volta na hora.",
   longo: "Essa mensagem ficou longa demais para mim. Pode resumir o que precisa?",
   descartada: "Ok, não fiz nada.",
+  semAudio: "Ainda não consigo ouvir áudio por aqui. Pode mandar por texto?",
+  audioGrande: "Esse áudio ficou longo demais para mim (até uns 2 minutos). Pode mandar um mais curto ou por texto?",
+  audioFalhou: "Não consegui ouvir esse áudio agora. Tente de novo ou mande por texto.",
+  audioVazio: "Não entendi o áudio. Pode repetir, mais perto do microfone, ou mandar por texto?",
+  ouvi: (texto: string) => `_Ouvi: "${texto.length > 160 ? `${texto.slice(0, 157)}…` : texto}"_`,
   confirmacaoVencida: "Essa confirmação expirou (vale 15 minutos). Me peça de novo que eu refaço o resumo.",
   somenteLeituraEscrita: "Sua empresa está em modo somente leitura (o teste acabou), então não lancei nada. As consultas continuam valendo.",
   naoConcluiu: (motivo: string) => `Não consegui concluir: ${motivo}`,

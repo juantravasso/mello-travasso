@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { dataPorExtenso, montarEmailLembrete, quandoTexto, textoNotificacao, type DadosEmailLembrete } from "./emailLembrete";
+import { dataPorExtenso, montarEmailLembrete, quandoTexto, textoNotificacao, textoWhatsappLembrete, type DadosEmailLembrete } from "./emailLembrete";
 
 const base: DadosEmailLembrete = {
   tipo: "vespera",
@@ -57,4 +57,17 @@ describe("texto da notificação no app", () => {
     assert.equal(textoNotificacao({ ...base, tipo: "dia" }).titulo, "Hoje: Reunião com o cliente");
   });
   it("cita quem compartilhou", () => assert.match(textoNotificacao({ ...base, compartilhado: true }).texto, /Compartilhado por Ana Souza/));
+});
+
+describe("lembrete pelo WhatsApp", () => {
+  it("aviso 'antes': título, dia e hora, descrição e link", () => {
+    const t = textoWhatsappLembrete({ ...base, tipo: "antes", titulo: "Pagar a internet" });
+    assert.match(t, /^\*Lembrete: Pagar a internet\*/);
+    assert.match(t, /20\/10, às 14:00\./);
+    assert.match(t, /Levar a planilha de custos/);
+    assert.match(t, /Ver no app: https:\/\/exemplo\.test\/calendario\?evento=abc$/);
+  });
+  it("véspera mantém o 'Amanhã'", () => {
+    assert.match(textoWhatsappLembrete(base), /^\*Amanhã: Reunião com o cliente\*/);
+  });
 });

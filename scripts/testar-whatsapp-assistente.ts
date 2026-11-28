@@ -7,6 +7,10 @@ import type { ModeloAssistente, PedidoAoModelo } from "../src/services/ai/assist
 import { atendenteRespondeu, conversarComAssistente, limparMemoriasVencidas } from "../src/services/data/server/assistente/assistenteCore.server";
 import { criarConta as criarContaFinanceira, type ContextoContas } from "../src/services/data/server/contasCore.server";
 import { gerarCodigoDeVinculo, tratarMensagemRecebida } from "../src/services/data/server/whatsappCore.server";
+import { processarAudioRecebido } from "../src/services/data/server/assistente/audio.server";
+import * as calendario from "../src/services/data/server/calendarioCore.server";
+import { processarLembretes } from "../src/services/data/server/lembretesWorker.server";
+import { ErroWhatsapp } from "../src/lib/whatsapp/cliente.server";
 
 // Teste de integração do assistente do WhatsApp contra o banco, com WhatsApp e IA FALSOS (nada sai para fora). A IA
 // falsa segue um roteiro: pede ferramentas e responde com o que o sistema devolveu, para conferir as barreiras
@@ -227,7 +231,7 @@ async function main(): Promise<void> {
     assert.equal(r2.is_error, true);
     const a = await acoes(c.usuarioId);
     assert.deepEqual(a.map((x) => [x.ferramenta, x.status]).sort(), [["apagar_tudo", "negada"], ["listar_contas", "invalida"]]);
-    assert.deepEqual(f.pedidos[0].tools.map((t) => t.name), ["listar_contas", "resumo_financeiro", "detalhar_conta", "lancar_conta", "dar_baixa", "alterar_conta", "cancelar_conta"]);
+    assert.deepEqual(f.pedidos[0].tools.map((t) => t.name), ["listar_contas", "resumo_financeiro", "detalhar_conta", "lancar_conta", "dar_baixa", "alterar_conta", "cancelar_conta", "listar_compromissos", "criar_lembrete", "avisar_antes", "cancelar_compromisso"]);
   });
 
   await teste("7. falar com atendente: robô fica quieto; ASSISTENTE devolve; resposta do atendente no aparelho renova", async () => {
@@ -293,7 +297,7 @@ async function main(): Promise<void> {
     const c = await criarConta();
     const f = falsos([{ texto: "ok" }]);
     assert.equal(await conversarComAssistente(msg(c.chatId, "oi"), { ...f, modelo: null }), "sem_ia");
-    assert.equal(await conversarComAssistente(msg(c.chatId, "a".repeat(1600)), f), "longa");
+    assert.equal(await conversarComAssistente(msg(c.chatId, "a".repeat(2100)), f), "longa");
     assert.equal(f.pedidos.length, 0);
   });
 
@@ -423,10 +427,11 @@ async function main(): Promise<void> {
     const f = falsos(() => ({ ferramentas: [LANCAR()] }));
     await conversarComAssistente(msg(c.chatId, "lança"), f);
     await prisma.usuario.update({ where: { id: c.usuarioId }, data: { modulos: ["calendario"] } });
-    // Sem nenhum módulo de contas, a pessoa é barrada antes mesmo de a proposta ser lida.
-    assert.equal(await conversarComAssistente(msg(c.chatId, "sim"), f), "negado");
+    // Ainda usa o assistente (tem o calendário), mas perdeu as contas: o SIM é conferido de novo e nada é gravado.
+    assert.equal(await conversarComAssistente(msg(c.chatId, "sim"), f), "executada");
     assert.match(f.enviadas.at(-1)!, /não tem acesso/);
     assert.equal((await contasDe(c.empresaId)).length, 0);
+    assert.equal((await acoes(c.usuarioId)).at(-1)?.status, "negada");
 
     const d = await criarConta();
     await conversarComAssistente(msg(d.chatId, "lança"), f);
@@ -494,6 +499,141 @@ async function main(): Promise<void> {
     await conversarComAssistente(msg(c.chatId, "paguei 80 de café"), f2);
     assert.ok(!/Atenção/.test(f2.enviadas[0]), f2.enviadas[0]);
   });
+  // ---------------- Etapa 4: lembretes e áudio ----------------
+  const amanha = () => {
+    const d = new Date(`${hoje()}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  };
+  const rodarLembretes = async (empresaId: string, agora: Date) => {
+    const whatsapp: { chatId: string; texto: string }[] = [];
+    const r = await processarLembretes({
+      agora,
+      apenasEmpresas: [empresaId],
+      enviar: async () => true,
+      enviarPush: async () => "ok",
+      enviarWhatsapp: async (chatId, texto) => void whatsapp.push({ chatId, texto }),
+    });
+    return { r, whatsapp };
+  };
+
+  await teste("22. 'me lembra amanhã às 9h': cria o lembrete simples e às 9h ele chega pelo WhatsApp", async () => {
+    const c = await criarConta();
+    const f = falsos([{ ferramentas: [{ nome: "criar_lembrete", args: { titulo: "Pagar a internet", data: amanha(), hora: "09:00", categoria: "financeiro" } }] }, { texto: "Combinado! Amanhã às 9h te lembro." }]);
+    assert.equal(await conversarComAssistente(msg(c.chatId, "me lembra amanhã às 9h de pagar a internet"), f), "respondida");
+    const comp = await prisma.compromisso.findFirstOrThrow({ where: { empresaId: c.empresaId } });
+    assert.equal(comp.titulo, "Pagar a internet");
+    assert.equal(comp.horaInicio, "09:00");
+    assert.equal(comp.avisoMinutosAntes, 0);
+    assert.equal(comp.lembretesPadrao, false);
+    const lembretes = await prisma.lembreteCompromisso.findMany({ where: { compromissoId: comp.id } });
+    assert.deepEqual(lembretes.map((l) => l.tipo), ["antes"], "só o aviso pedido, sem véspera nem dia");
+    assert.equal(lembretes[0].disparoEm, comp.inicioEm);
+    assert.equal((await acoes(c.usuarioId)).at(-1)?.registroId, comp.id);
+
+    const antes = await rodarLembretes(c.empresaId, new Date(Date.parse(comp.inicioEm) - 60_000));
+    assert.equal(antes.whatsapp.length, 0, "um minuto antes, nada");
+    // O agendador costuma atrasar uns minutos: o aviso "na hora" ainda sai.
+    const na = await rodarLembretes(c.empresaId, new Date(Date.parse(comp.inicioEm) + 7 * 60_000));
+    assert.equal(na.whatsapp.length, 1, JSON.stringify(na.r));
+    assert.equal(na.whatsapp[0].chatId, c.chatId);
+    assert.match(na.whatsapp[0].texto, /\*Lembrete: Pagar a internet\*/);
+    assert.match(na.whatsapp[0].texto, /às 09:00/);
+    const de_novo = await rodarLembretes(c.empresaId, new Date(Date.parse(comp.inicioEm) + 120_000));
+    assert.equal(de_novo.whatsapp.length, 0, "rodar de novo não reenvia");
+  });
+
+  await teste("23. lembretes pelo WhatsApp desligados: nada sai por lá (os outros canais seguem)", async () => {
+    const c = await criarConta();
+    await prisma.vinculoWhatsapp.update({ where: { usuarioId: c.usuarioId }, data: { lembretesAtivos: false } });
+    const f = falsos([{ ferramentas: [{ nome: "criar_lembrete", args: { titulo: "Ligar para o fornecedor", data: amanha(), hora: "10:00" } }] }, { texto: "ok" }]);
+    await conversarComAssistente(msg(c.chatId, "me lembra amanhã às 10h de ligar pro fornecedor"), f);
+    const comp = await prisma.compromisso.findFirstOrThrow({ where: { empresaId: c.empresaId } });
+    const r = await rodarLembretes(c.empresaId, new Date(Date.parse(comp.inicioEm) + 60_000));
+    assert.equal(r.whatsapp.length, 0, JSON.stringify(r.r));
+    assert.ok((await prisma.entregaLembrete.count({ where: { usuarioId: c.usuarioId, canal: "app" } })) === 1, "no app continua");
+  });
+
+  await teste("24. 'me avisa 30 minutos antes' num compromisso do app; editar pelo app mantém o aviso", async () => {
+    const c = await criarConta();
+    const ctxCal = { usuarioId: c.usuarioId, empresaId: c.empresaId };
+    const depoisDeAmanha = (() => {
+      const d = new Date(`${amanha()}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      return d.toISOString().slice(0, 10);
+    })();
+    const reuniao = await calendario.criar(ctxCal, { titulo: "Reunião com o Souza", categoria: "reuniao", data: depoisDeAmanha, diaInteiro: false, horaInicio: "15:00", status: "agendado", participantesIds: [] });
+    const f = falsos([{ ferramentas: [{ nome: "avisar_antes", args: { ref: reuniao.id.slice(0, 8), minutos: 30 } }] }, { texto: "Feito." }]);
+    await conversarComAssistente(msg(c.chatId, "me avisa 30 min antes da reunião"), f);
+    const tipos = (await prisma.lembreteCompromisso.findMany({ where: { compromissoId: reuniao.id } })).map((l) => l.tipo).sort();
+    assert.deepEqual(tipos, ["antes", "dia", "vespera"], "o aviso entra junto com os lembretes de sempre");
+    // O formulário do app não conhece o aviso: editar o título por lá não pode apagá-lo.
+    await calendario.atualizar(ctxCal, reuniao.id, { titulo: "Reunião com o Souza (obra)", categoria: "reuniao", data: depoisDeAmanha, diaInteiro: false, horaInicio: "15:00", status: "agendado", participantesIds: [] });
+    assert.equal((await prisma.compromisso.findUniqueOrThrow({ where: { id: reuniao.id } })).avisoMinutosAntes, 30);
+  });
+
+  await teste("25. cancelar pelo assistente para os avisos; compromisso de outra pessoa não pode ser cancelado por quem só foi convidado", async () => {
+    const c = await criarConta();
+    const f = falsos([{ ferramentas: [{ nome: "criar_lembrete", args: { titulo: "Pagar o aluguel", data: amanha(), hora: "08:00" } }] }, { texto: "ok" }]);
+    await conversarComAssistente(msg(c.chatId, "me lembra"), f);
+    const comp = await prisma.compromisso.findFirstOrThrow({ where: { empresaId: c.empresaId } });
+    const f2 = falsos([{ ferramentas: [{ nome: "cancelar_compromisso", args: { ref: comp.id.slice(0, 8) } }] }, { texto: "Cancelado." }]);
+    await conversarComAssistente(msg(c.chatId, "cancela aquele lembrete"), f2);
+    assert.equal((await prisma.compromisso.findUniqueOrThrow({ where: { id: comp.id } })).status, "cancelado");
+    assert.equal((await rodarLembretes(c.empresaId, new Date(Date.parse(comp.inicioEm) + 60_000))).whatsapp.length, 0, "cancelado não avisa");
+
+    // Colega da mesma empresa, convidado para o compromisso do dono: vê, mas não cancela.
+    const colega = await prisma.usuario.create({ data: { empresaId: c.empresaId, nome: "Colega", email: `${marca}-colega-${randomBytes(3).toString("hex")}@teste.local`, senhaHash: "x", papel: "membro", modulos: ["calendario"], criadoEm: iso(), atualizadoEm: iso() } });
+    const doDono = await calendario.criar({ usuarioId: c.usuarioId, empresaId: c.empresaId }, { titulo: "Visita à obra", categoria: "visita", data: amanha(), diaInteiro: false, horaInicio: "11:00", status: "agendado", participantesIds: [colega.id] });
+    const chatColega = `${marca}colega@c.us`;
+    const { codigo } = await gerarCodigoDeVinculo(colega.id);
+    await tratarMensagemRecebida({ chatId: chatColega, texto: `VINCULAR ${codigo}`, numero: null, mensagemId: null, midia: null });
+    const f3 = falsos([{ ferramentas: [{ nome: "cancelar_compromisso", args: { ref: doDono.id.slice(0, 8) } }] }, { texto: "Não posso." }]);
+    await conversarComAssistente(msg(chatColega, "cancela a visita"), f3);
+    assert.match(conteudo(f3.resultados()[0]), /Só quem criou/);
+    assert.equal((await prisma.compromisso.findUniqueOrThrow({ where: { id: doDono.id } })).status, "agendado");
+    assert.deepEqual(f3.pedidos[0].tools.map((t) => t.name), ["listar_compromissos", "criar_lembrete", "avisar_antes", "cancelar_compromisso"], "só calendário: nada de contas");
+  });
+
+  await teste("26. áudio: vira texto, segue para o assistente e a resposta mostra o que foi ouvido", async () => {
+    const c = await criarConta();
+    await lancar(c, { valor: 150, favorecido: "Vivo" });
+    let transcricoes = 0;
+    const transcritor = { transcrever: async () => (transcricoes++, " Quanto tenho  para pagar hoje? ") };
+    const baixar = async () => ({ base64: "AAAA", mimetype: "audio/ogg", bytes: 3 });
+    const f = falsos([{ ferramentas: [{ nome: "listar_contas", args: { tipo: "pagar", de: hoje(), ate: hoje() } }] }, { texto: "Hoje: R$ 150,00 da Vivo." }]);
+    const audio: MensagemRecebida = { ...msg(c.chatId, ""), midia: { tipo: "audio", url: null, mimetype: "audio/ogg" } };
+    assert.equal(await processarAudioRecebido(audio, { ...f, transcritor, baixar }), "respondida");
+    assert.match(f.enviadas[0], /^_Ouvi: "Quanto tenho para pagar hoje\?"_\n\nHoje: R\$ 150,00 da Vivo\.$/);
+    assert.match(JSON.stringify(f.pedidos[0].messages.at(-1)), /Quanto tenho para pagar hoje/);
+    // Mesmo áudio entregue de novo: não transcreve outra vez.
+    assert.equal(await processarAudioRecebido(audio, { ...f, transcritor, baixar }), "repetida");
+    assert.equal(transcricoes, 1);
+  });
+
+  await teste("27. áudio: sem transcrição configurada avisa; grande demais avisa; em atendimento humano nem baixa; SIM falado confirma", async () => {
+    const c = await criarConta();
+    const audio = () => ({ ...msg(c.chatId, ""), midia: { tipo: "audio" as const, url: null, mimetype: "audio/ogg" } });
+    const f = falsos([{ texto: "ok" }]);
+    let baixou = 0;
+    const baixar = async () => (baixou++, { base64: "AAAA", mimetype: "audio/ogg", bytes: 3 });
+    assert.equal(await processarAudioRecebido(audio(), { ...f, transcritor: null, baixar }), "sem_transcricao");
+    assert.match(f.enviadas.at(-1)!, /não consigo ouvir áudio/);
+    const grande = async () => {
+      throw new ErroWhatsapp(413);
+    };
+    assert.equal(await processarAudioRecebido(audio(), { ...f, transcritor: { transcrever: async () => "x" }, baixar: grande }), "audio_grande");
+    await conversarComAssistente(msg(c.chatId, "falar com atendente"), f);
+    assert.equal(await processarAudioRecebido(audio(), { ...f, transcritor: { transcrever: async () => "oi" }, baixar }), "humano");
+    assert.equal(baixou, 0);
+    await conversarComAssistente(msg(c.chatId, "assistente"), f);
+
+    const f2 = falsos([{ ferramentas: [LANCAR()] }]);
+    await conversarComAssistente(msg(c.chatId, "lança a internet"), f2);
+    assert.equal(await processarAudioRecebido(audio(), { ...f2, transcritor: { transcrever: async () => "Sim." }, baixar }), "executada");
+    assert.equal((await prisma.contaFinanceira.count({ where: { empresaId: c.empresaId } })), 1);
+    assert.match(f2.enviadas.at(-1)!, /_Ouvi: "Sim\."_\n\nPronto!/);
+  });
 }
 
 async function limpar(): Promise<void> {
@@ -504,6 +644,8 @@ async function limpar(): Promise<void> {
     prisma.acaoAssistente.deleteMany({ where: { empresaId: { in: ids } } }),
     prisma.conversaWhatsapp.deleteMany({ where: { empresaId: { in: ids } } }),
     prisma.eventoProduto.deleteMany({ where: { OR: [{ empresaId: { in: ids } }, { chave: { contains: marca } }] } }),
+    prisma.notificacao.deleteMany({ where: { empresaId: { in: ids } } }),
+    prisma.compromisso.deleteMany({ where: { empresaId: { in: ids } } }),
     prisma.rateioConta.deleteMany({ where: { contaFinanceira: { empresaId: { in: ids } } } }),
     prisma.contaFinanceira.deleteMany({ where: { empresaId: { in: ids } } }),
     prisma.obra.deleteMany({ where: { empresaId: { in: ids } } }),
@@ -511,7 +653,7 @@ async function limpar(): Promise<void> {
     prisma.usuario.deleteMany({ where: { empresaId: { in: ids } } }),
     prisma.empresa.deleteMany({ where: { id: { in: ids } } }),
   ]);
-  for (const chave of [...usuarioIds.map((id) => `assistente:u:${id}`), ...ids.map((id) => `assistente:e:${id}`)]) {
+  for (const chave of [...usuarioIds.map((id) => `assistente:u:${id}`), ...usuarioIds.map((id) => `assistente:audio:${id}`), ...ids.map((id) => `assistente:e:${id}`)]) {
     const hash = createHash("sha256").update(chave).digest("hex");
     await prisma.$executeRaw`DELETE FROM "LimiteTaxa" WHERE "chave" = ${hash}`;
   }

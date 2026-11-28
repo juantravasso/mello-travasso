@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
   alternarAvisosWhatsapp,
+  alternarLembretesWhatsapp,
   desvincularWhatsapp,
   iniciarVinculoWhatsapp,
   obterVinculoWhatsapp,
@@ -80,11 +81,24 @@ export function VinculoWhatsapp() {
     });
   }
 
+  function alternarLembretes() {
+    if (!estado) return;
+    const proximo = !estado.lembretesAtivos;
+    setEstado({ ...estado, lembretesAtivos: proximo });
+    executar(async () => {
+      const r = await alternarLembretesWhatsapp(proximo);
+      if (!r.ok) {
+        setEstado((e) => (e ? { ...e, lembretesAtivos: !proximo } : e));
+        setErro(r.mensagem);
+      }
+    });
+  }
+
   function desvincular() {
     setErro(null);
     executar(async () => {
       const r = await desvincularWhatsapp();
-      if (r.ok) setEstado((e) => (e ? { ...e, vinculado: false, avisosAtivos: false, numeroMascarado: null, aguardando: false } : e));
+      if (r.ok) setEstado((e) => (e ? { ...e, vinculado: false, avisosAtivos: false, lembretesAtivos: false, numeroMascarado: null, aguardando: false } : e));
       else setErro(r.mensagem);
     });
   }
@@ -93,7 +107,7 @@ export function VinculoWhatsapp() {
     <Card className="flex flex-col gap-3">
       <div>
         <p className="font-medium text-foreground">WhatsApp</p>
-        <p className="text-sm text-muted">Receba por aqui os avisos da sua conta, como o fim do teste e o vencimento do plano. Nós nunca escrevemos antes de você enviar o código.</p>
+        <p className="text-sm text-muted">Converse com o assistente do Elo (contas, pagamentos, lembretes, por texto ou áudio) e receba avisos da conta e lembretes do calendário. Nós nunca escrevemos antes de você enviar o código.</p>
       </div>
 
       {estado.vinculado ? (
@@ -104,6 +118,10 @@ export function VinculoWhatsapp() {
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
             <input type="checkbox" checked={estado.avisosAtivos} disabled={pendente} onChange={alternarAvisos} className="h-4 w-4 accent-[var(--color-primary)]" />
             Receber os avisos da conta por WhatsApp
+          </label>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
+            <input type="checkbox" checked={estado.lembretesAtivos} disabled={pendente} onChange={alternarLembretes} className="h-4 w-4 accent-[var(--color-primary)]" />
+            Receber os lembretes do calendário por WhatsApp
           </label>
           <div>
             <Button variante="outline" onClick={desvincular} disabled={pendente}>

@@ -13,7 +13,7 @@ function comHorario(data: string, hora: string): CompromissoParaLembretes {
 function diaInteiro(data: string): CompromissoParaLembretes {
   return { data, diaInteiro: true, horaInicio: null, fuso: SP, inicioEm: periodoDoCompromisso({ data, diaInteiro: true }, SP).inicioEm };
 }
-const iso = (d: Date) => d.toISOString();
+const iso = (d: Date | undefined) => (d as Date).toISOString();
 
 describe("quando cada lembrete sai", () => {
   it("com horário: a véspera sai 24 h antes do início", () => {
@@ -80,11 +80,11 @@ describe("reagendamento depois de uma edição", () => {
 
   it("sem lembretes ainda: cria os dois", () => {
     const acoes = planejarReagendamento([], [{ tipo: "vespera", disparoEm: vespera.disparoEm }, { tipo: "dia", disparoEm: dia.disparoEm }]);
-    assert.deepEqual(acoes.map((a) => a.acao), ["criar", "criar"]);
+    assert.deepEqual(acoes.map((a) => a.acao), ["criar", "criar", "manter"], "sem aviso extra, o 'antes' não existe");
   });
   it("edição que não mexe na data mantém tudo (nada é reenviado)", () => {
     const acoes = planejarReagendamento([vespera, dia], [{ tipo: "vespera", disparoEm: vespera.disparoEm }, { tipo: "dia", disparoEm: dia.disparoEm }]);
-    assert.deepEqual(acoes.map((a) => a.acao), ["manter", "manter"]);
+    assert.deepEqual(acoes.map((a) => a.acao), ["manter", "manter", "manter"]);
   });
   it("mudar o horário atualiza e sobe a versão, mesmo já enviado", () => {
     const enviado = { ...vespera, status: "processado" as const };
@@ -105,5 +105,45 @@ describe("reagendamento depois de uma edição", () => {
     const ignorado = { ...vespera, status: "ignorado" as const };
     const acao = planejarReagendamento([ignorado], [{ tipo: "vespera", disparoEm: vespera.disparoEm }])[0];
     assert.deepEqual(acao, { tipo: "vespera", acao: "atualizar", disparoEm: vespera.disparoEm, versao: 2 });
+  });
+});
+
+describe("aviso extra (antes) e lembrete simples do assistente", () => {
+  it("aviso X minutos antes do início, junto com véspera e dia", () => {
+    const c = { ...comHorario("2026-10-20", "14:00"), avisoMinutosAntes: 30 };
+    const d = calcularDisparos(c, CONFIG);
+    assert.equal(iso(d.antes), "2026-10-20T16:30:00.000Z"); // 13:30 em São Paulo
+    assert.ok(d.vespera && d.dia);
+  });
+  it("lembrete simples: só o aviso na hora pedida, sem véspera nem dia", () => {
+    const c = { ...comHorario("2026-10-20", "09:00"), avisoMinutosAntes: 0, lembretesPadrao: false };
+    const d = calcularDisparos(c, CONFIG);
+    assert.deepEqual(Object.keys(d), ["antes"]);
+    assert.equal(iso(d.antes), "2026-10-20T12:00:00.000Z");
+  });
+  it("dia inteiro: o aviso conta a partir da hora padrão do dia", () => {
+    const d = calcularDisparos({ ...diaInteiro("2026-10-20"), avisoMinutosAntes: 60, lembretesPadrao: false }, CONFIG);
+    assert.equal(iso(d.antes), "2026-10-20T11:00:00.000Z"); // 8h em São Paulo (9h − 60 min)
+  });
+  it("sem aviso pedido não existe 'antes'; aviso que já passou não é agendado", () => {
+    assert.equal(calcularDisparos(comHorario("2026-10-20", "14:00"), CONFIG).antes, undefined);
+    const c = { ...comHorario("2026-10-20", "14:00"), avisoMinutosAntes: 30, lembretesPadrao: false };
+    assert.deepEqual(agendarLembretes(c, new Date("2026-10-20T16:45:00Z"), CONFIG), []);
+    assert.deepEqual(agendarLembretes(c, new Date("2026-10-20T16:00:00Z"), CONFIG).map((x) => x.tipo), ["antes"]);
+  });
+  it("tirar o aviso ignora o lembrete 'antes' que ainda não saiu", () => {
+    const acoes = planejarReagendamento([{ tipo: "antes", disparoEm: "2026-10-20T16:30:00.000Z", status: "pendente", versao: 1 }], []);
+    assert.deepEqual(acoes.find((a) => a.tipo === "antes"), { tipo: "antes", acao: "ignorar" });
+  });
+});
+
+describe("compromisso pontual (sem término)", () => {
+  const pontual = { status: "agendado", inicioEm: "2026-10-20T12:00:00.000Z", fimEm: "2026-10-20T12:00:00.000Z" };
+  it("ainda avisa até 30 min depois do horário (o agendador pode atrasar)", () => {
+    assert.equal(aindaFazSentidoAvisar(pontual, new Date("2026-10-20T12:10:00Z")), true);
+    assert.equal(aindaFazSentidoAvisar(pontual, new Date("2026-10-20T12:30:01Z")), false);
+  });
+  it("com término, a regra não muda", () => {
+    assert.equal(aindaFazSentidoAvisar({ ...pontual, fimEm: "2026-10-20T13:00:00.000Z" }, new Date("2026-10-20T13:00:01Z")), false);
   });
 });
